@@ -107,8 +107,8 @@ Hybrid: ambient base layer + real-album preview shrine.
 7. Eclipse cinematic + museum + toys.
 8. Polish: performance, accessibility, mobile adaptation.
 
-## 12. Open questions
+## 12. Resolved decisions (formerly open questions)
 
-- Ambient mix: source CC-licensed during build (default) unless Rohan supplies picks. Album wall: Rohan supplies 4–6 album choices.
-- Asset pack licensing check before purchase/use (itch.io asset licenses generally permit web embedding; verify no redistribution of raw files).
-- Character design: pixel Rohan look (hair/outfit) — needs one reference photo or a quick approval round on sprite drafts.
+- **Album wall (final 6)**: Arctic Monkeys — *AM*; Arctic Monkeys — *Favourite Worst Nightmare*; Tame Impala — *Currents*; Radiohead — *OK Computer*; Goo Goo Dolls — *Iris* (single); Elvis Presley — *Can't Help Falling in Love* (single). Clicking an album plays a **random track from that album** (30s preview via iTunes API track listing); singles always play their song. Ambient mix: Claude sources CC-licensed options for Rohan to pick from during the build.
+- **Assets**: free-only (Kenney CC0 + free/CC0 itch packs as donor silhouettes, custom-generated for the rest); lighting compensates where donor quality is low. Paid packs may be revisited later.
+- **Pixel Rohan**: glasses (2px glint), yukata (dark, with sleeve/hem secondary motion; flowy graphics if achievable, simple version ships otherwise), white flowy mid-to-long anime hair with sway on the walk cycle. 2–3 sprite drafts for Rohan's approval before integration.
