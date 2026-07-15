@@ -14,6 +14,7 @@ const ROOM_LABELS: Record<RoomId, string> = {
 export function Hud() {
   const room = useThreeAm((s) => s.room);
   const portal = useThreeAm((s) => s.activePortal);
+  const pixelSize = useThreeAm((s) => s.pixelSize);
 
   return (
     <div className="pointer-events-none absolute inset-0 z-10 font-mono text-sm">
@@ -38,6 +39,10 @@ export function Hud() {
 
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-xs text-[#7d729e]">
         WASD / arrows to walk · E to interact · P to cycle pixel size
+      </div>
+
+      <div className="absolute bottom-4 right-5 rounded bg-black/50 px-2.5 py-1 text-xs text-[#7d729e]">
+        px: {pixelSize}
       </div>
     </div>
   );
