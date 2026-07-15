@@ -64,9 +64,14 @@ All portfolio data continues to live in `src/content/site.ts` — both modes rea
 
 ## 7. Music system
 
-- Turntable is the physical music player. 3–4 tracks (lo-fi / synthwave / breakcore; CC-licensed or user-provided), each a wall sleeve.
-- Interactions: click sleeve → swap (scratch SFX); lift tonearm → mute. One-shot SFX: paper, thuds, meow, clicks, ladder.
-- Positional audio via three.js; global volume control in a corner of the HUD.
+Hybrid: ambient base layer + real-album preview shrine.
+
+- **Ambient layer**: CC-licensed lo-fi/synthwave mix loops continuously as the house soundtrack (starts with the entry-click audio unlock). Eclipse swaps it for grim ambient chanting.
+- **Album wall**: a 2×3 grid of Rohan's real favorite albums in the music nook. Cover art fetched at build time from the iTunes/Deezer APIs, auto-pixelated (downscale + master-palette crunch) to match the room. Rohan supplies 4–6 album picks during the build.
+- **Playback flow**: click an album → ambient ducks out, sleeve slides onto the platter, needle-drop scratch SFX, the track's official 30-second preview MP3 (iTunes/Deezer API — legal, streamable) plays through the turntable's positional audio → preview ends, needle lifts, ambient fades back in. "Now playing" chip shows artist/title and links out to the full song on streaming services.
+- **No self-hosted copyrighted audio, ever** — full tracks only if CC-licensed or explicit permission.
+- Interactions: lift tonearm → mute/stop. One-shot SFX (CC0): paper, thuds, meow, clicks, ladder, needle scratch.
+- Positional audio via three.js (louder near the nook); global volume control in the HUD.
 
 ## 8. Easter eggs
 
@@ -78,7 +83,7 @@ All portfolio data continues to live in `src/content/site.ts` — both modes rea
 
 - **Route split**: `/brain` is fully client-side and lazy-loaded (`next/dynamic`); zero impact on `/` performance. Themed loading state ("booting brain… losing train of thought… found it").
 - **Scene**: react-three-fiber + drei (installed). Orthographic-ish camera; `@react-three/postprocessing` for bloom, DoF/tilt-shift, vignette, mild color grade. Rooms modeled as simple 3D geometry with pixel-art textures; props as textured meshes or billboarded sprites; character as animated sprite.
-- **Art pipeline (open decision, resolved during planning)**: base pixel-art interior/character asset packs (e.g. LimeZu Modern Interiors — paid, cheap, license-check) adapted + AI-assisted generation for custom pieces (record sleeves, paintings, town backdrop), cleaned by hand. Stitch MCP for 2D design assets where useful.
+- **Art pipeline**: target style is Eastward-texture + engine lighting; no pack is used as-is. (a) Engine lighting (bloom, colored point lights, DoF) supplies the drama that Eastward paints by hand — sprites need shape/texture, not baked lighting. (b) Asset packs (LimeZu Modern Interiors, Kenney) serve only as donor silhouettes, always processed: remapped to one master palette (warm woods, night blues, lantern amber) + grain/texture overlays; anything still reading "cutesy" after processing is dropped and made custom. (c) Signature pieces are custom from the start (turntable, album wall, paintings, sword, cat, character, town skyline) — script-generated pixel art iterated visually via browser screenshots. (d) Tiling surface textures (wood, plaster, roof) are script-generated. (e) Real project screenshots auto-converted (downscale + palette-crunch) for monitors/polaroids. Milestone 2 (music nook at final quality) is the explicit style gate where processed-pack vs custom is judged before mass production. Stitch MCP is used for the flat UI layer only (content panels, HUD, loading screen, plaque/poster layout references) — not for sprites or textures.
 - **State**: one zustand store (current room/station, now-playing, lamp states, eclipse flag, chaos timers). Content from `src/content/site.ts`.
 - **Animation**: GSAP for camera flights and cinematics; sprite-sheet animation for characters.
 - **Audio**: three.js positional audio + HTMLAudio SFX pool.
@@ -104,6 +109,6 @@ All portfolio data continues to live in `src/content/site.ts` — both modes rea
 
 ## 12. Open questions
 
-- Music tracks: source CC-licensed during build (default) unless Rohan supplies picks.
+- Ambient mix: source CC-licensed during build (default) unless Rohan supplies picks. Album wall: Rohan supplies 4–6 album choices.
 - Asset pack licensing check before purchase/use (itch.io asset licenses generally permit web embedding; verify no redistribution of raw files).
 - Character design: pixel Rohan look (hair/outfit) — needs one reference photo or a quick approval round on sprite drafts.
