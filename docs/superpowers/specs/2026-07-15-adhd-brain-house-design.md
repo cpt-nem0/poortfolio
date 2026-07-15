@@ -23,7 +23,7 @@ Success criteria: memorable enough that visitors share it; functional enough tha
 ## 3. World structure
 
 ### Establishing shot (entry sequence)
-Clicking "enter my brain" on the normal site: CRT-glitch takeover → camera high over a tiny pixel town at night (lanterns, distant train, one warm glowing window) → dives through that window → lands in the bedroom, pixel-Rohan wakes up, visitor takes control. The click doubles as the browser audio-unlock gesture; music fades in during the dive.
+Clicking "enter my brain" on the normal site: CRT-glitch takeover → camera high above moon-lit drifting cloud layers → dive punches through the cloud deck (brief whiteout, parallax layers sweeping past at different speeds for depth) → tiny pixel town at night revealed below (lanterns, distant train, one warm glowing window) → dives through that window → lands in the bedroom, pixel-Rohan wakes up, visitor takes control. The click doubles as the browser audio-unlock gesture; music fades in during the dive. Cloud layers are reused on the rooftop horizon (weather-API-drivable later; blood-red and churning during the eclipse).
 
 The town is painted parallax layers (not walkable in v1) and is reused as the rooftop skyline.
 
