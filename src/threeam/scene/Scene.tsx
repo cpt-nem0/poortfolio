@@ -4,6 +4,7 @@ import { Canvas } from "@react-three/fiber";
 import { House } from "./House";
 import { Player } from "./Player";
 import { FollowCamera } from "./FollowCamera";
+import { Effects } from "./Effects";
 
 /** The 3D world. Extended by House/Player/FollowCamera/Effects tasks. */
 export default function Scene() {
@@ -18,6 +19,7 @@ export default function Scene() {
       <House />
       <Player />
       <FollowCamera />
+      <Effects />
     </Canvas>
   );
 }
