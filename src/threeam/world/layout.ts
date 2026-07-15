@@ -28,8 +28,8 @@ export type Area = {
 };
 
 const WALL_T = 0.2; // interior wall thickness
-const DOOR_LO = 2.4; // doorway gap on z: [DOOR_LO, DOOR_HI]
-const DOOR_HI = 3.6;
+const DOOR_LO = 2.2; // doorway gap on z: [DOOR_LO, DOOR_HI]
+const DOOR_HI = 3.8;
 
 /** Interior dividing wall at `x` with a doorway gap, spanning depth `d`. */
 function dividerWithDoor(x: number, d: number): Rect[] {
