@@ -59,6 +59,8 @@ const ROOF: Area = {
 
 export const HOUSE: { areas: Record<AreaId, Area>; portals: Portal[] } = {
   areas: { ground: GROUND, roof: ROOF },
+  // Both ladder portals share one trigger rect on purpose: the ladder occupies
+  // the same footprint on both floors. If the roof layout changes, split them.
   portals: [
     {
       id: "ladder-up",

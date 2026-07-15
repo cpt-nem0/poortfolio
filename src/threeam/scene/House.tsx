@@ -2,10 +2,10 @@
 
 import { useThreeAm } from "@/threeam/state/store";
 import { HOUSE } from "@/threeam/world/layout";
-import type { Rect } from "@/threeam/world/layout";
+import type { Rect, RoomId } from "@/threeam/world/layout";
 
 const WALL_H = 2.5;
-const ROOM_TINTS: Record<string, string> = {
+const ROOM_TINTS: Record<RoomId, string> = {
   bedroom: "#4a3f70",
   workspace: "#3f4a70",
   music: "#5a3f70",

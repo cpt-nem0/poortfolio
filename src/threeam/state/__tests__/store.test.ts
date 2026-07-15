@@ -17,7 +17,7 @@ describe("useThreeAm store", () => {
 
   it("setRoom / setActivePortal update state", () => {
     useThreeAm.getState().setRoom("music");
-    const ladder = HOUSE.portals[0];
+    const ladder = HOUSE.portals.find((p) => p.id === "ladder-up")!;
     useThreeAm.getState().setActivePortal(ladder);
     expect(useThreeAm.getState().room).toBe("music");
     expect(useThreeAm.getState().activePortal?.id).toBe("ladder-up");

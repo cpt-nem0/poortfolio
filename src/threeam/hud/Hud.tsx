@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useThreeAm } from "@/threeam/state/store";
+import type { RoomId } from "@/threeam/world/layout";
 
-const ROOM_LABELS: Record<string, string> = {
+const ROOM_LABELS: Record<RoomId, string> = {
   bedroom: "the bedroom",
   workspace: "the workspace",
   music: "the music nook",

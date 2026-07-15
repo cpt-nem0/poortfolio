@@ -17,10 +17,12 @@ export function Player() {
   const keyboard = useKeyboard();
 
   useEffect(() => {
+    if (process.env.NODE_ENV === "production") return;
     // dev-only handle so browser automation can teleport & inspect state
-    (window as unknown as Record<string, unknown>).__3am = {
-      playerPosition,
-      store: useThreeAm,
+    const w = window as unknown as Record<string, unknown>;
+    w.__3am = { playerPosition, store: useThreeAm };
+    return () => {
+      delete w.__3am;
     };
   }, []);
 
@@ -50,7 +52,7 @@ export function Player() {
     );
     if (portal?.id !== s.activePortal?.id) s.setActivePortal(portal);
 
-    // interact is consumed in Task 10 (travel); consume harmlessly until then
+    // E on an armed portal travels immediately (area swap + teleport)
     if (keyboard.consumeInteract() && portal) {
       s.travel(portal);
     }

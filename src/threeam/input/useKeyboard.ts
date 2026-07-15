@@ -19,6 +19,7 @@ export function useKeyboard() {
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.code in KEY_TO_AXIS) {
         pressed.current.add(e.code);
         e.preventDefault();

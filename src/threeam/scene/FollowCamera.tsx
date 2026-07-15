@@ -17,6 +17,8 @@ export function FollowCamera() {
     const b = HOUSE.areas[useThreeAm.getState().area].bounds;
 
     // keep the framed point inside the area so edges don't show void
+    // NOTE: margins assume every area is ≥6m wide and ≥2m deep; clamp()
+    // returns `lo` if lo > hi, which would pin the camera in a smaller area.
     const tx = clamp(playerPosition.x, b.x + 3, b.x + b.w - 3);
     const tz = clamp(playerPosition.z, b.z + 1, b.z + b.d - 1);
 
