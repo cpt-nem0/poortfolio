@@ -2,6 +2,7 @@
 
 import { Canvas } from "@react-three/fiber";
 import { House } from "./House";
+import { Player } from "./Player";
 
 /** The 3D world. Extended by House/Player/FollowCamera/Effects tasks. */
 export default function Scene() {
@@ -14,6 +15,7 @@ export default function Scene() {
       <ambientLight intensity={0.5} />
       <directionalLight position={[6, 10, 4]} intensity={1.2} />
       <House />
+      <Player />
     </Canvas>
   );
 }
