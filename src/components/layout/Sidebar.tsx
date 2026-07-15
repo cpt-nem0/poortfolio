@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ArrowUpRight } from "@phosphor-icons/react/dist/ssr";
 import { site } from "@/content/site";
 import { Nav } from "./Nav";
@@ -34,6 +35,19 @@ export function Sidebar() {
             className="transition-transform duration-200 group-hover/link:-translate-y-0.5 group-hover/link:translate-x-0.5"
           />
         </a>
+
+        <Link
+          href="/3am"
+          className="group/brain inline-flex w-fit items-center gap-2 text-sm text-highlight transition-colors duration-200 hover:text-accent"
+        >
+          it&apos;s 3am in here
+          <span
+            aria-hidden
+            className="transition-transform duration-200 group-hover/brain:translate-x-1"
+          >
+            →
+          </span>
+        </Link>
 
         <Nav />
       </div>
