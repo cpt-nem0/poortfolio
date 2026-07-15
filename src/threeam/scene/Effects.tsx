@@ -8,8 +8,9 @@ import {
   Vignette,
 } from "@react-three/postprocessing";
 
-/** Candidate pixel sizes for the HD-2D look; P cycles through them live. */
-const GRANULARITY_STEPS = [3.5, 6, 8];
+/** Pixel sizes for the HD-2D look; index 0 (Rohan-approved) is the default,
+ *  P cycles the alternatives live for tuning. */
+const GRANULARITY_STEPS = [7, 6, 8, 3.5];
 
 /** Soft HD-2D look: pixel grid, glow on emissives, framed edges. */
 export function Effects() {
