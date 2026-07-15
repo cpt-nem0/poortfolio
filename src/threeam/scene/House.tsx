@@ -13,16 +13,30 @@ const ROOM_TINTS: Record<RoomId, string> = {
 };
 
 /** A box extruded up from a floor-plan rect. */
-function WallBox({ rect, color = "#6b5f8f" }: { rect: Rect; color?: string }) {
+function WallBox({
+  rect,
+  color = "#6b5f8f",
+  height = WALL_H,
+}: {
+  rect: Rect;
+  color?: string;
+  height?: number;
+}) {
   return (
     <mesh
-      position={[rect.x + rect.w / 2, WALL_H / 2, rect.z + rect.d / 2]}
+      position={[rect.x + rect.w / 2, height / 2, rect.z + rect.d / 2]}
     >
-      <boxGeometry args={[rect.w, WALL_H, rect.d]} />
+      <boxGeometry args={[rect.w, height, rect.d]} />
       <meshStandardMaterial color={color} />
     </mesh>
   );
 }
+
+/**
+ * Dollhouse cutaway: the camera-side (south) wall renders as a low stub so
+ * the character is never occluded. Collision still uses the full wall.
+ */
+const SOUTH_STUB_H = 0.55;
 
 export function House() {
   const area = useThreeAm((s) => s.area);
@@ -60,8 +74,15 @@ export function House() {
         </mesh>
       ))}
 
+      {/* roof: low parapets all around (it's open sky); ground: full walls
+          except the camera-side south stub */}
       {perimeter.map((rect, i) => (
-        <WallBox key={`p${i}`} rect={rect} />
+        <WallBox
+          key={`p${i}`}
+          rect={rect}
+          height={area === "roof" || i === 1 ? SOUTH_STUB_H : WALL_H}
+          color={i === 1 ? "#57497a" : undefined}
+        />
       ))}
       {a.walls.map((rect, i) => (
         <WallBox key={`w${i}`} rect={rect} color="#7d6fa8" />
