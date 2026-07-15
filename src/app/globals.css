@@ -1,26 +1,97 @@
 @import "tailwindcss";
 
+/* ───────────────────────────────────────────────
+   Design tokens — ported 1:1 from the original site.
+   Change these to re-theme everything.
+─────────────────────────────────────────────── */
+@theme {
+  --color-accent: #ff6500;
+  --color-accent-bg: #ff66001e;
+  --color-text: #8b9dbb;
+  --color-highlight: #dde4ee;
+  --color-underlay: #0b192c;
+  --color-void: #000000;
+
+  /* fonts are injected by next/font as CSS variables */
+  --font-bungee: var(--font-bungee), sans-serif;
+  --font-inter: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: dark;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-void);
+  color: var(--color-text);
+  font-family: var(--font-inter);
+  -webkit-font-smoothing: antialiased;
+  /* soft diagonal blue-grey glow, exactly like the original */
+  background-image: linear-gradient(
+    250deg,
+    rgba(139, 157, 187, 0.3),
+    transparent 40%
+  );
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  background-attachment: fixed;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  color: var(--color-highlight);
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-void);
+}
+
+/* Fixed navy wash sitting behind everything. */
+.underlay {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-color: var(--color-underlay);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Bungee display font helper. */
+.font-display {
+  font-family: var(--font-bungee);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-void);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(139, 157, 187, 0.2);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 157, 187, 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
