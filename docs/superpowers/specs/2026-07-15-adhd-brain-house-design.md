@@ -8,8 +8,8 @@
 
 The portfolio has two modes:
 
-- **Normal mode (`/`)** — the existing polished two-column portfolio. Untouched except for one addition: an "enter my brain 🧠" button. This is the recruiter-safe default.
-- **Brain mode (`/brain`)** — a full-screen, explorable HD-2D pixel-art world: Rohan's house at night. The visitor controls a tiny pixel Rohan and walks through 4 rooms. The experience *simulates ADHD* — distractions, interruptions, hyperfocus — while still delivering all real portfolio content (projects, experience, contact). Experience it, don't read about it.
+- **Normal mode (`/`)** — the existing polished two-column portfolio. Untouched except for one addition: an "it's 3am in here →" button. This is the recruiter-safe default.
+- **3am mode (`/3am`)** — a full-screen, explorable HD-2D pixel-art world: Rohan's house at night. The visitor controls a tiny pixel Rohan and walks through 4 rooms. The experience *simulates ADHD* — distractions, interruptions, hyperfocus — while still delivering all real portfolio content (projects, experience, contact). Experience it, don't read about it.
 
 Success criteria: memorable enough that visitors share it; functional enough that a recruiter can find projects, experience, and contact without instructions; performant on a mid-range laptop at 60fps.
 
@@ -23,7 +23,7 @@ Success criteria: memorable enough that visitors share it; functional enough tha
 ## 3. World structure
 
 ### Establishing shot (entry sequence)
-Clicking "enter my brain" on the normal site: CRT-glitch takeover → camera high above moon-lit drifting cloud layers → dive punches through the cloud deck (brief whiteout, parallax layers sweeping past at different speeds for depth) → tiny pixel town at night revealed below (lanterns, distant train, one warm glowing window) → dives through that window → lands in the bedroom, pixel-Rohan wakes up, visitor takes control. The click doubles as the browser audio-unlock gesture; music fades in during the dive. Cloud layers are reused on the rooftop horizon (weather-API-drivable later; blood-red and churning during the eclipse).
+Clicking "it's 3am in here →" on the normal site: CRT-glitch takeover → camera high above moon-lit drifting cloud layers → dive punches through the cloud deck (brief whiteout, parallax layers sweeping past at different speeds for depth) → tiny pixel town at night revealed below (lanterns, distant train, one warm glowing window) → dives through that window → lands in the bedroom, pixel-Rohan wakes up, visitor takes control. The click doubles as the browser audio-unlock gesture; music fades in during the dive. Cloud layers are reused on the rooftop horizon (weather-API-drivable later; blood-red and churning during the eclipse).
 
 The town is painted parallax layers (not walkable in v1) and is reused as the rooftop skyline.
 
@@ -81,7 +81,7 @@ Hybrid: ambient base layer + real-album preview shrine.
 
 ## 9. Technical architecture
 
-- **Route split**: `/brain` is fully client-side and lazy-loaded (`next/dynamic`); zero impact on `/` performance. Themed loading state ("booting brain… losing train of thought… found it").
+- **Route split**: `/3am` is fully client-side and lazy-loaded (`next/dynamic`); zero impact on `/` performance. Themed loading state ("booting brain… losing train of thought… found it").
 - **Scene**: react-three-fiber + drei (installed). Orthographic-ish camera; `@react-three/postprocessing` for bloom, DoF/tilt-shift, vignette, mild color grade. Rooms modeled as simple 3D geometry with pixel-art textures; props as textured meshes or billboarded sprites; character as animated sprite.
 - **Art pipeline**: target style is Eastward-texture + engine lighting; no pack is used as-is. (a) Engine lighting (bloom, colored point lights, DoF) supplies the drama that Eastward paints by hand — sprites need shape/texture, not baked lighting. (b) Asset packs (LimeZu Modern Interiors, Kenney) serve only as donor silhouettes, always processed: remapped to one master palette (warm woods, night blues, lantern amber) + grain/texture overlays; anything still reading "cutesy" after processing is dropped and made custom. (c) Signature pieces are custom from the start (turntable, album wall, paintings, sword, cat, character, town skyline) — script-generated pixel art iterated visually via browser screenshots. (d) Tiling surface textures (wood, plaster, roof) are script-generated. (e) Real project screenshots auto-converted (downscale + palette-crunch) for monitors/polaroids. Milestone 2 (music nook at final quality) is the explicit style gate where processed-pack vs custom is judged before mass production. Stitch MCP is used for the flat UI layer only (content panels, HUD, loading screen, plaque/poster layout references) — not for sprites or textures.
 - **State**: one zustand store (current room/station, now-playing, lamp states, eclipse flag, chaos timers). Content from `src/content/site.ts`.
