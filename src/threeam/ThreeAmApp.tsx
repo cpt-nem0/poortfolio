@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { Hud } from "./hud/Hud";
 
 const Scene = dynamic(() => import("./scene/Scene"), {
   ssr: false,
@@ -15,6 +16,7 @@ export function ThreeAmApp() {
   return (
     <div className="fixed inset-0 overflow-hidden bg-[#0a0916]">
       <Scene />
+      <Hud />
     </div>
   );
 }
