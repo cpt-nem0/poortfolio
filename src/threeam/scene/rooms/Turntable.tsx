@@ -27,9 +27,11 @@ export function Turntable() {
       vinylRef.current.rotation.y -= dt * 2.4; // ~33rpm-ish, stylized
     }
     if (armRef.current) {
-      // glide the tonearm toward its target pose
+      // glide the tonearm toward its target pose: over the record when
+      // playing; swung right, flat and parallel to the deck's right edge
+      // (its cradle) when resting
       const t = 1 - Math.exp(-8 * dt);
-      const target = resting ? { x: -0.5, y: 0.3 } : { x: 0, y: 0.55 };
+      const target = resting ? { x: 0, y: Math.PI / 2 } : { x: 0, y: 0.55 };
       armRef.current.rotation.x += (target.x - armRef.current.rotation.x) * t;
       armRef.current.rotation.y += (target.y - armRef.current.rotation.y) * t;
     }
