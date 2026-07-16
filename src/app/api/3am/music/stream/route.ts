@@ -5,7 +5,12 @@ export async function GET(req: Request) {
   if (!u || !isAllowedStreamUrl(u)) {
     return new Response("bad target", { status: 400 });
   }
-  const upstream = await fetch(u, { cache: "no-store" });
+  let upstream: Response;
+  try {
+    upstream = await fetch(u, { cache: "no-store" });
+  } catch {
+    return new Response("upstream failed", { status: 502 });
+  }
   if (!upstream.ok || !upstream.body) {
     return new Response("upstream failed", { status: 502 });
   }

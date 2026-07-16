@@ -18,10 +18,15 @@ export async function GET(
   const entry = MUSIC.find((m) => m.key === album);
   if (!entry) return NextResponse.json({ error: "unknown album" }, { status: 404 });
 
-  const res = await fetch(
-    `https://itunes.apple.com/lookup?id=${entry.itunesId}&entity=song&limit=200`,
-    { next: { revalidate: 86400 } }
-  );
+  let res: Response;
+  try {
+    res = await fetch(
+      `https://itunes.apple.com/lookup?id=${entry.itunesId}&entity=song&limit=200`,
+      { next: { revalidate: 86400 } }
+    );
+  } catch {
+    return NextResponse.json({ error: "lookup failed" }, { status: 502 });
+  }
   if (!res.ok) return NextResponse.json({ error: "lookup failed" }, { status: 502 });
 
   const data = (await res.json()) as { results?: ITunesTrack[] };
