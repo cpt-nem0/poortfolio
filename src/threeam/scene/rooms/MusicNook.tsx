@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { usePixelTexture } from "../usePixelTexture";
 import { AlbumWall } from "./AlbumWall";
 import { MUSIC_ROOM as R } from "./musicNook.constants";
@@ -10,32 +9,9 @@ import { Turntable } from "./Turntable";
 
 const WALL_H = 2.5;
 
-/* ── style-gate tuning toggles (removed once Rohan picks) ──
-   1 cycles walls, 2 cycles rugs. repeatY=1 means the texture spans the
-   full wall height (wainscot variants bake the lower panel in). */
-const WALL_VARIANTS = [
-  /* teal locked in by Rohan (2026-07); others kept for comparison until final lock */
-  { label: "teal + wainscot", path: "/3am/tex/wall-teal.png", ry: 1 },
-  { label: "cream plaster", path: "/3am/tex/plaster.png", ry: WALL_H },
-  { label: "dusty plum", path: "/3am/tex/wall-plum.png", ry: WALL_H },
-  { label: "vintage stripes", path: "/3am/tex/wall-stripes.png", ry: WALL_H },
-];
-const RUG_VARIANTS = [
-  { label: "persian rust", path: "/3am/tex/rug-persian.png", w: 3.4, d: 2.4 },
-  { label: "teal field", path: "/3am/tex/rug-tealfield.png", w: 3.4, d: 2.4 },
-  { label: "berber cream", path: "/3am/tex/rug-berber.png", w: 3.4, d: 2.4 },
-  { label: "round braided", path: "/3am/tex/rug-round.png", w: 2.6, d: 2.6 },
-  { label: "kilim bands", path: "/3am/tex/rug-kilim.png", w: 3.4, d: 2.4 },
-  { label: "purple diamond", path: "/3am/tex/rug.png", w: 3.4, d: 2.4 },
-];
-const FLOOR_VARIANTS = [
-  /* rx/ry: 32px tiles repeat once per meter; 64px tiles once per 2m */
-  { label: "honey planks", path: "/3am/tex/floor-planks.png", rx: R.w, ry: R.d },
-  { label: "dark walnut", path: "/3am/tex/floor-walnut.png", rx: R.w, ry: R.d },
-  { label: "herringbone", path: "/3am/tex/floor-herringbone.png", rx: R.w / 2, ry: R.d / 2 },
-  { label: "gray-washed", path: "/3am/tex/floor-graywash.png", rx: R.w, ry: R.d },
-  { label: "café checker", path: "/3am/tex/floor-checker.png", rx: R.w, ry: R.d },
-];
+/* Interior locked by Rohan (2026-07 style gate): teal + wainscot walls,
+   dark walnut floor, kilim rug. Alternatives are regenerable via
+   `node scripts/pixelart/gen-variants.mjs` if the room is redecorated. */
 
 /**
  * The music nook — the house's first fully art-passed room and the style
@@ -43,28 +19,10 @@ const FLOOR_VARIANTS = [
  * surfaces sit a few cm off House geometry; colliders live in layout.ts.
  */
 export function MusicNook() {
-  const [wallIdx, setWallIdx] = useState(0);
-  const [rugIdx, setRugIdx] = useState(0);
-  const [floorIdx, setFloorIdx] = useState(0);
-  const wallV = WALL_VARIANTS[wallIdx];
-  const rugV = RUG_VARIANTS[rugIdx];
-  const floorV = FLOOR_VARIANTS[floorIdx];
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.repeat) return;
-      if (e.code === "Digit1") setWallIdx((i) => (i + 1) % WALL_VARIANTS.length);
-      if (e.code === "Digit2") setRugIdx((i) => (i + 1) % RUG_VARIANTS.length);
-      if (e.code === "Digit3") setFloorIdx((i) => (i + 1) % FLOOR_VARIANTS.length);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
-  const floor = usePixelTexture(floorV.path, floorV.rx, floorV.ry);
-  const wallN = usePixelTexture(wallV.path, R.w, wallV.ry);
-  const wallE = usePixelTexture(wallV.path, R.d, wallV.ry);
-  const rugTex = usePixelTexture(rugV.path, 1, 1);
+  const floor = usePixelTexture("/3am/tex/floor-walnut.png", R.w, R.d); // 1 tile = 1m
+  const wallN = usePixelTexture("/3am/tex/wall-teal.png", R.w, 1); // wainscot baked in
+  const wallE = usePixelTexture("/3am/tex/wall-teal.png", R.d, 1);
+  const rugTex = usePixelTexture("/3am/tex/rug-kilim.png", 1, 1);
   const posterGig = usePixelTexture("/3am/tex/poster-gig.png", 1, 1);
   const posterWave = usePixelTexture("/3am/tex/poster-wave.png", 1, 1);
   const posterMoons = usePixelTexture("/3am/tex/poster-moons.png", 1, 1);
@@ -117,7 +75,7 @@ export function MusicNook() {
 
       {/* rug (visual only, walkable) */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[19.3, 0.035, 3.2]}>
-        <planeGeometry args={[rugV.w, rugV.d]} />
+        <planeGeometry args={[3.4, 2.4]} />
         <meshStandardMaterial map={rugTex} transparent />
       </mesh>
 
