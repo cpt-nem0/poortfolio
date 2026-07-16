@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { usePixelTexture } from "../usePixelTexture";
 import { AlbumWall } from "./AlbumWall";
 import { MUSIC_ROOM as R } from "./musicNook.constants";
@@ -9,16 +10,50 @@ import { Turntable } from "./Turntable";
 
 const WALL_H = 2.5;
 
+/* ── style-gate tuning toggles (removed once Rohan picks) ──
+   1 cycles walls, 2 cycles rugs. repeatY=1 means the texture spans the
+   full wall height (wainscot variants bake the lower panel in). */
+const WALL_VARIANTS = [
+  { label: "cream plaster", path: "/3am/tex/plaster.png", ry: WALL_H },
+  { label: "teal + wainscot", path: "/3am/tex/wall-teal.png", ry: 1 },
+  { label: "dusty plum", path: "/3am/tex/wall-plum.png", ry: WALL_H },
+  { label: "vintage stripes", path: "/3am/tex/wall-stripes.png", ry: WALL_H },
+];
+const RUG_VARIANTS = [
+  { label: "purple diamond", path: "/3am/tex/rug.png", w: 3.4, d: 2.4 },
+  { label: "kilim bands", path: "/3am/tex/rug-kilim.png", w: 3.4, d: 2.4 },
+  { label: "teal field", path: "/3am/tex/rug-tealfield.png", w: 3.4, d: 2.4 },
+  { label: "round braided", path: "/3am/tex/rug-round.png", w: 2.6, d: 2.6 },
+];
+
 /**
  * The music nook — the house's first fully art-passed room and the style
  * gate for the whole project. Renders INSIDE the gray-box shell: textured
  * surfaces sit a few cm off House geometry; colliders live in layout.ts.
  */
 export function MusicNook() {
+  const [wallIdx, setWallIdx] = useState(0);
+  const [rugIdx, setRugIdx] = useState(0);
+  const wallV = WALL_VARIANTS[wallIdx];
+  const rugV = RUG_VARIANTS[rugIdx];
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.repeat) return;
+      if (e.code === "Digit1") setWallIdx((i) => (i + 1) % WALL_VARIANTS.length);
+      if (e.code === "Digit2") setRugIdx((i) => (i + 1) % RUG_VARIANTS.length);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const floor = usePixelTexture("/3am/tex/floor-planks.png", R.w, R.d); // 1 tile = 1m
-  const wallN = usePixelTexture("/3am/tex/plaster.png", R.w, WALL_H);
-  const wallE = usePixelTexture("/3am/tex/plaster.png", R.d, WALL_H);
-  const rugTex = usePixelTexture("/3am/tex/rug.png", 1, 1);
+  const wallN = usePixelTexture(wallV.path, R.w, wallV.ry);
+  const wallE = usePixelTexture(wallV.path, R.d, wallV.ry);
+  const rugTex = usePixelTexture(rugV.path, 1, 1);
+  const posterGig = usePixelTexture("/3am/tex/poster-gig.png", 1, 1);
+  const posterWave = usePixelTexture("/3am/tex/poster-wave.png", 1, 1);
+  const posterMoons = usePixelTexture("/3am/tex/poster-moons.png", 1, 1);
 
   return (
     <group>
@@ -68,8 +103,23 @@ export function MusicNook() {
 
       {/* rug (visual only, walkable) */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[19.3, 0.035, 3.2]}>
-        <planeGeometry args={[3.4, 2.4]} />
+        <planeGeometry args={[rugV.w, rugV.d]} />
         <meshStandardMaterial map={rugTex} transparent />
+      </mesh>
+
+      {/* posters — long gig poster on the west wall over the sofa, wave +
+          moon-phases pair on the previously empty east wall */}
+      <mesh rotation={[0, Math.PI / 2, 0]} position={[16.11, 1.35, 4.9]}>
+        <planeGeometry args={[0.7, 1.9]} />
+        <meshStandardMaterial map={posterGig} />
+      </mesh>
+      <mesh rotation={[0, -Math.PI / 2, 0]} position={[21.98, 1.5, 2.3]}>
+        <planeGeometry args={[0.8, 1.12]} />
+        <meshStandardMaterial map={posterWave} />
+      </mesh>
+      <mesh rotation={[0, -Math.PI / 2, 0]} position={[21.98, 1.4, 3.6]}>
+        <planeGeometry args={[0.8, 1.12]} />
+        <meshStandardMaterial map={posterMoons} />
       </mesh>
 
       {/* sofa — collider {16.4,4.0,1.8,1.7} */}
