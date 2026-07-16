@@ -81,6 +81,40 @@ function rugRound(x, y) {
   return [...shade(c, (seam ? 0.82 : 0.96) + hash2(x, y, 111) * 0.08), 255];
 }
 
+/* ---- rug option E: persian rust — terracotta field, cream medallion ---- */
+const RUST = "#a04b3a";
+function rugPersian(x, y) {
+  const b = Math.min(x, 63 - x, y, 63 - y);
+  if (b < 2) return shade("#6e3325", 0.9);
+  if (b < 5) return hexToRgb(PALETTE.cream100);
+  if (b < 6) return shade(RUST, 0.8);
+  const dx = Math.abs(x - 32);
+  const dy = Math.abs(y - 32);
+  const dia = dx + dy;
+  if (dia < 5) return hexToRgb(PALETTE.cream100);
+  if (dia < 8) return shade("#6e3325", 1.0);
+  if (dia < 10) return hexToRgb(PALETTE.cream100);
+  // corner motifs
+  if ((dx > 20 && dy > 12) && (dx + dy) % 9 < 2) return shade(PALETTE.cream100, 0.92);
+  // field texture
+  const n = hash2(x, y, 131);
+  if (n > 0.96) return shade(RUST, 1.15);
+  return shade(RUST, 0.92 + hash2(Math.floor(x / 2), y, 132) * 0.12);
+}
+
+/* ---- rug option F: berber cream — light field, dark diamond lattice ---- */
+function rugBerber(x, y) {
+  const b = Math.min(x, 63 - x, y, 63 - y);
+  if (b < 2) return shade("#4a3a2e", 1.0);
+  if (b < 3) return hexToRgb(PALETTE.cream100);
+  const gx = ((x - 4) % 14) - 7;
+  const gy = ((y - 4) % 14) - 7;
+  if (Math.abs(Math.abs(gx) + Math.abs(gy) - 7) < 1) return shade("#4a3a2e", 1.15);
+  const n = hash2(x, y, 141);
+  if (n > 0.97) return shade(PALETTE.plaster500, 0.95);
+  return shade(PALETTE.cream100, 0.94 + hash2(Math.floor(x / 3), Math.floor(y / 3), 142) * 0.06);
+}
+
 /* ---- posters ---- */
 /* tall gig poster 32×88: sunburst over mountains, "text" bars below */
 function posterGig(x, y) {
@@ -144,6 +178,8 @@ const JOBS = [
   ["rug-kilim", 64, 64, rugKilim],
   ["rug-tealfield", 64, 64, rugTealField],
   ["rug-round", 64, 64, rugRound],
+  ["rug-persian", 64, 64, rugPersian],
+  ["rug-berber", 64, 64, rugBerber],
   ["poster-gig", 32, 88, posterGig],
   ["poster-wave", 40, 56, posterWave],
   ["poster-moons", 40, 56, posterMoons],

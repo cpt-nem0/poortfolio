@@ -14,16 +14,19 @@ const WALL_H = 2.5;
    1 cycles walls, 2 cycles rugs. repeatY=1 means the texture spans the
    full wall height (wainscot variants bake the lower panel in). */
 const WALL_VARIANTS = [
-  { label: "cream plaster", path: "/3am/tex/plaster.png", ry: WALL_H },
+  /* teal locked in by Rohan (2026-07); others kept for comparison until final lock */
   { label: "teal + wainscot", path: "/3am/tex/wall-teal.png", ry: 1 },
+  { label: "cream plaster", path: "/3am/tex/plaster.png", ry: WALL_H },
   { label: "dusty plum", path: "/3am/tex/wall-plum.png", ry: WALL_H },
   { label: "vintage stripes", path: "/3am/tex/wall-stripes.png", ry: WALL_H },
 ];
 const RUG_VARIANTS = [
-  { label: "purple diamond", path: "/3am/tex/rug.png", w: 3.4, d: 2.4 },
-  { label: "kilim bands", path: "/3am/tex/rug-kilim.png", w: 3.4, d: 2.4 },
-  { label: "teal field", path: "/3am/tex/rug-tealfield.png", w: 3.4, d: 2.4 },
+  { label: "persian rust", path: "/3am/tex/rug-persian.png", w: 3.4, d: 2.4 },
+  { label: "berber cream", path: "/3am/tex/rug-berber.png", w: 3.4, d: 2.4 },
   { label: "round braided", path: "/3am/tex/rug-round.png", w: 2.6, d: 2.6 },
+  { label: "kilim bands", path: "/3am/tex/rug-kilim.png", w: 3.4, d: 2.4 },
+  { label: "purple diamond", path: "/3am/tex/rug.png", w: 3.4, d: 2.4 },
+  { label: "teal field", path: "/3am/tex/rug-tealfield.png", w: 3.4, d: 2.4 },
 ];
 
 /**
