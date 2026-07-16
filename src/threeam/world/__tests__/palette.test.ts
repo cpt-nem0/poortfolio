@@ -1,5 +1,4 @@
 import { describe, it, expect } from "vitest";
-// @ts-expect-error — plain-JS module shared with node generation scripts
 import { PALETTE, hexToRgb, shade, hash2 } from "../../../../scripts/pixelart/palette.mjs";
 
 describe("master palette", () => {
