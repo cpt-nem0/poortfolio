@@ -21,6 +21,16 @@ export function MusicNook() {
 
   return (
     <group>
+      {/* floor lamp glow */}
+      <pointLight position={[16.675, 1.75, 0.675]} color="#ffb35c" intensity={9} distance={7} decay={1.8} />
+      {/* small warm fill over the cabinet/turntable */}
+      <pointLight position={[18.7, 1.6, 1.1]} color="#ffd9a0" intensity={3.5} distance={4.5} decay={2} />
+      {/* soft bounce over the rug/beanbag so the listening corner stays alive */}
+      <pointLight position={[20.0, 1.3, 3.4]} color="#ff9e63" intensity={2.2} distance={4.5} decay={2} />
+      {/* doorway spill: lights don't shadow-cast, so the warm pool bleeding
+          into the gray workspace is painted deliberately just past the door */}
+      <pointLight position={[15.4, 0.7, 3.0]} color="#ffb35c" intensity={7} distance={4.5} decay={2} />
+
       {/* plank floor, 2cm above the gray base floor */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[R.x + R.w / 2, 0.02, R.z + R.d / 2]}>
         <planeGeometry args={[R.w, R.d]} />

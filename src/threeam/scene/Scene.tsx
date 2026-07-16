@@ -19,8 +19,8 @@ export default function Scene() {
       style={{ position: "absolute", inset: 0 }}
     >
       <color attach="background" args={["#0a0916"]} />
-      <ambientLight intensity={0.5} />
-      <directionalLight position={[6, 10, 4]} intensity={1.2} />
+      <ambientLight intensity={0.22} color="#8d9bd6" />
+      <directionalLight position={[6, 10, 4]} intensity={0.4} color="#7684c9" />
       <House />
       {area === "ground" && (
         <Suspense fallback={null}>
