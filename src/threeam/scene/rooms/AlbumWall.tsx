@@ -13,6 +13,8 @@ const WALL_Z = 0.035; // in front of the plaster plane at z≈0.01
 const ART = 0.62;
 const FRAME = 0.72;
 
+let lastAlbumClick = 0;
+
 function AlbumFrame({ index }: { index: number }) {
   const entry = MUSIC[index];
   const tex = usePixelTexture(entry.art);
@@ -26,18 +28,20 @@ function AlbumFrame({ index }: { index: number }) {
   const y = ROWS_Y[Math.floor(index / 3)];
 
   async function play() {
+    const clickId = ++lastAlbumClick;
     try {
       const res = await fetch(`/api/3am/music/${entry.key}`);
       if (!res.ok) throw new Error(String(res.status));
       const t = (await res.json()) as {
         artist: string; title: string; previewProxyUrl: string; storeUrl?: string;
       };
+      if (clickId !== lastAlbumClick) return; // a newer album click superseded this one
       await audioEngine.playPreview(
         { artist: t.artist, title: t.title, albumKey: entry.key, storeUrl: t.storeUrl },
         t.previewProxyUrl
       );
     } catch {
-      useAudioStore.getState().setError("record skipped… try again");
+      if (clickId === lastAlbumClick) useAudioStore.getState().setError("record skipped… try again");
     }
   }
 
