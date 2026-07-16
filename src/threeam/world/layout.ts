@@ -47,11 +47,12 @@ const GROUND: Area = {
   bounds: { x: 0, z: 0, w: 22, d: 6 },
   walls: [...dividerWithDoor(8, 6), ...dividerWithDoor(16, 6)],
   furniture: [
-    { x: 17.2, z: 0.3, w: 3.0, d: 1.0 }, // turntable cabinet
-    { x: 20.6, z: 0.4, w: 0.8, d: 0.8 }, // record crate
-    { x: 20.8, z: 3.4, w: 0.9, d: 0.9 }, // beanbag
+    { x: 17.3, z: 0.3, w: 2.8, d: 0.9 }, // record console (turntable + speakers on top)
+    { x: 20.6, z: 0.4, w: 0.5, d: 0.5 }, // snake plant pot
     { x: 16.5, z: 0.5, w: 0.35, d: 0.35 }, // floor lamp
-    { x: 21.1, z: 5.0, w: 0.45, d: 0.45 }, // monstera pot
+    { x: 16.4, z: 4.0, w: 1.8, d: 1.7 }, // sofa (AABB of the angled sofa)
+    { x: 18.35, z: 4.95, w: 0.5, d: 0.5 }, // side table
+    { x: 21.0, z: 4.9, w: 0.55, d: 0.55 }, // standing art totem
   ],
   rooms: [
     { id: "bedroom", rect: { x: 0, z: 0, w: 8, d: 6 } },

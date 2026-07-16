@@ -151,6 +151,19 @@ class Engine {
     this.listener.setMasterVolume(muted ? 0 : 1);
     useAudioStore.getState().setMuted(muted);
   }
+
+  /**
+   * HUD pause/play: suspends the whole AudioContext, freezing playback
+   * position (unlike mute, which silences while audio keeps advancing).
+   */
+  togglePause() {
+    if (!this.listener) return;
+    const ctx = this.listener.context;
+    const paused = !useAudioStore.getState().paused;
+    if (paused) void ctx.suspend();
+    else void ctx.resume();
+    useAudioStore.getState().setPaused(paused);
+  }
 }
 
 export const audioEngine = new Engine();

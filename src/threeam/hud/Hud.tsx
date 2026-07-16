@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useThreeAm } from "@/threeam/state/store";
 import { useAudioStore } from "@/threeam/state/audio";
+import { audioEngine } from "@/threeam/audio/engine";
 import type { RoomId } from "@/threeam/world/layout";
 
 const ROOM_LABELS: Record<RoomId, string> = {
@@ -18,6 +19,7 @@ export function Hud() {
   const unlocked = useAudioStore((s) => s.unlocked);
   const nowPlaying = useAudioStore((s) => s.nowPlaying);
   const muted = useAudioStore((s) => s.muted);
+  const paused = useAudioStore((s) => s.paused);
   const audioError = useAudioStore((s) => s.error);
 
   return (
@@ -53,6 +55,14 @@ export function Hud() {
 
       {nowPlaying && (
         <div className="absolute bottom-4 left-5 flex items-center gap-2 rounded bg-black/60 px-3 py-2 text-xs text-[#cfc6ee]">
+          <button
+            type="button"
+            onClick={() => audioEngine.togglePause()}
+            aria-label={paused ? "play music" : "pause music"}
+            className="pointer-events-auto -my-1 rounded px-1 py-1 text-[#ffd9a0] transition-colors hover:text-[#ffb35c]"
+          >
+            {paused ? "▶" : "⏸"}
+          </button>
           <span aria-hidden>{muted ? "🔇" : "♫"}</span>
           <span>
             {nowPlaying.artist} — {nowPlaying.title}

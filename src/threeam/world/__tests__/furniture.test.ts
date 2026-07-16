@@ -8,24 +8,30 @@ describe("music-room furniture colliders", () => {
   it("areas expose a furniture list", () => {
     expect(Array.isArray(ground.furniture)).toBe(true);
     expect(Array.isArray(HOUSE.areas.roof.furniture)).toBe(true);
-    expect(ground.furniture.length).toBeGreaterThanOrEqual(5);
+    expect(ground.furniture.length).toBeGreaterThanOrEqual(6);
   });
 
-  it("the cabinet blocks the player", () => {
+  it("the record console blocks the player", () => {
     expect(isBlocked(ground, 18.7, 0.8)).toBe(true); // turntable spot
   });
 
-  it("the beanbag and plant block", () => {
-    expect(isBlocked(ground, 21.2, 3.8)).toBe(true);
-    expect(isBlocked(ground, 21.3, 5.2)).toBe(true);
+  it("the sofa, side table, snake plant and art totem block", () => {
+    expect(isBlocked(ground, 17.2, 4.8)).toBe(true); // sofa
+    expect(isBlocked(ground, 18.6, 5.2)).toBe(true); // side table
+    expect(isBlocked(ground, 20.85, 0.65)).toBe(true); // snake plant
+    expect(isBlocked(ground, 21.3, 5.2)).toBe(true); // art totem
+  });
+
+  it("the beanbag spot is walkable again (beanbag removed)", () => {
+    expect(isBlocked(ground, 21.2, 3.8)).toBe(false);
   });
 
   it("the doorway into the music room stays open", () => {
     expect(isBlocked(ground, 16, 3)).toBe(false);
   });
 
-  it("the nook's walking space stays open (rug area + in front of the wall)", () => {
-    expect(isBlocked(ground, 18.7, 2.5)).toBe(false); // before the cabinet
-    expect(isBlocked(ground, 19.5, 4.5)).toBe(false); // rug center-south
+  it("the nook's walking space stays open (rug area + listening spot)", () => {
+    expect(isBlocked(ground, 18.7, 2.5)).toBe(false); // between console and rug
+    expect(isBlocked(ground, 19.5, 4.5)).toBe(false); // rug south, clear of table
   });
 });

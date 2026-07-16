@@ -3,6 +3,8 @@
 import { usePixelTexture } from "../usePixelTexture";
 import { AlbumWall } from "./AlbumWall";
 import { MUSIC_ROOM as R } from "./musicNook.constants";
+import { RecordConsole } from "./RecordConsole";
+import { Sofa } from "./Sofa";
 import { Turntable } from "./Turntable";
 
 const WALL_H = 2.5;
@@ -16,7 +18,6 @@ export function MusicNook() {
   const floor = usePixelTexture("/3am/tex/floor-planks.png", R.w, R.d); // 1 tile = 1m
   const wallN = usePixelTexture("/3am/tex/plaster.png", R.w, WALL_H);
   const wallE = usePixelTexture("/3am/tex/plaster.png", R.d, WALL_H);
-  const cabinetTex = usePixelTexture("/3am/tex/cabinet-wood.png", 3, 1);
   const rugTex = usePixelTexture("/3am/tex/rug.png", 1, 1);
 
   return (
@@ -25,7 +26,7 @@ export function MusicNook() {
       <pointLight position={[16.675, 1.75, 0.675]} color="#ffb35c" intensity={9} distance={7} decay={1.8} />
       {/* small warm fill over the cabinet/turntable */}
       <pointLight position={[18.7, 1.6, 1.1]} color="#ffd9a0" intensity={3.5} distance={4.5} decay={2} />
-      {/* soft bounce over the rug/beanbag so the listening corner stays alive */}
+      {/* soft bounce over the rug/sofa so the listening corner stays alive */}
       <pointLight position={[20.0, 1.3, 3.4]} color="#ff9e63" intensity={2.2} distance={4.5} decay={2} />
       {/* doorway spill: sits IN the door gap so the glow reads as light
           escaping the nook, not a floating source in the workspace
@@ -60,27 +61,10 @@ export function MusicNook() {
         <meshStandardMaterial color="#4a3a2e" />
       </mesh>
 
-      {/* cabinet under the turntable — collider {17.2,0.3,3.0,1.0} */}
-      <mesh position={[18.7, 0.45, 0.8]}>
-        <boxGeometry args={[3.0, 0.9, 1.0]} />
-        <meshStandardMaterial map={cabinetTex} />
-      </mesh>
+      {/* record console (turntable + speakers) — collider {17.3,0.3,2.8,0.9} */}
+      <RecordConsole />
       <Turntable />
       <AlbumWall />
-
-      {/* record crate — collider {20.6,0.4,0.8,0.8} */}
-      <group position={[21.0, 0, 0.8]}>
-        <mesh position={[0, 0.25, 0]}>
-          <boxGeometry args={[0.8, 0.5, 0.8]} />
-          <meshStandardMaterial color="#6b4128" />
-        </mesh>
-        {[0, 1, 2, 3].map((i) => (
-          <mesh key={i} position={[-0.24 + i * 0.16, 0.52, 0]} rotation={[0, 0, -0.12 + i * 0.06]}>
-            <boxGeometry args={[0.03, 0.42, 0.62]} />
-            <meshStandardMaterial color={["#5b4b8a", "#b3475f", "#2e6e54", "#c9b088"][i]} />
-          </mesh>
-        ))}
-      </group>
 
       {/* rug (visual only, walkable) */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[19.3, 0.035, 3.2]}>
@@ -88,11 +72,91 @@ export function MusicNook() {
         <meshStandardMaterial map={rugTex} transparent />
       </mesh>
 
-      {/* beanbag — collider {20.8,3.4,0.9,0.9} */}
-      <mesh position={[21.25, 0.28, 3.85]} scale={[1, 0.62, 1]}>
-        <sphereGeometry args={[0.5, 12, 8]} />
-        <meshStandardMaterial color="#b3475f" />
-      </mesh>
+      {/* sofa — collider {16.4,4.0,1.8,1.7} */}
+      <Sofa />
+
+      {/* side table + coffee mug — collider {18.35,4.95,0.5,0.5} */}
+      <group position={[18.6, 0, 5.2]}>
+        <mesh position={[0, 0.42, 0]}>
+          <cylinderGeometry args={[0.24, 0.24, 0.035, 10]} />
+          <meshStandardMaterial color="#6b4128" />
+        </mesh>
+        <mesh position={[0, 0.21, 0]}>
+          <cylinderGeometry args={[0.03, 0.03, 0.4, 6]} />
+          <meshStandardMaterial color="#4a3a2e" />
+        </mesh>
+        <mesh position={[0, 0.02, 0]}>
+          <cylinderGeometry args={[0.14, 0.16, 0.035, 8]} />
+          <meshStandardMaterial color="#4a3a2e" />
+        </mesh>
+        {/* the 3am coffee mug */}
+        <mesh position={[0.06, 0.485, 0.03]}>
+          <cylinderGeometry args={[0.045, 0.04, 0.1, 8]} />
+          <meshStandardMaterial color="#f2ecd8" />
+        </mesh>
+        <mesh position={[0.125, 0.49, 0.03]}>
+          <boxGeometry args={[0.03, 0.05, 0.02]} />
+          <meshStandardMaterial color="#f2ecd8" />
+        </mesh>
+      </group>
+
+      {/* snake plant (right of console) — collider {20.6,0.4,0.5,0.5} */}
+      <group position={[20.85, 0, 0.65]}>
+        <mesh position={[0, 0.14, 0]}>
+          <cylinderGeometry args={[0.15, 0.11, 0.28, 8]} />
+          <meshStandardMaterial color="#a04b3a" />
+        </mesh>
+        {Array.from({ length: 9 }, (_, i) => {
+          const a = (i / 9) * Math.PI * 2;
+          const r = 0.03 + (i % 3) * 0.035;
+          return (
+            <mesh
+              key={i}
+              position={[Math.sin(a) * r, 0.28 + (0.7 + (i % 4) * 0.14) / 2, Math.cos(a) * r]}
+              rotation={[((i % 3) - 1) * 0.08, a, ((i % 2) - 0.5) * 0.1]}
+            >
+              <boxGeometry args={[0.055, 0.7 + (i % 4) * 0.14, 0.018]} />
+              <meshStandardMaterial color={i % 2 ? "#3f8f5a" : "#2e6e54"} />
+            </mesh>
+          );
+        })}
+      </group>
+
+      {/* standing carved art totem (SE corner) — collider {21.0,4.9,0.55,0.55} */}
+      <group position={[21.275, 0, 5.175]} rotation={[0, -0.5, 0]}>
+        <mesh position={[0, 0.08, 0]}>
+          <boxGeometry args={[0.42, 0.16, 0.42]} />
+          <meshStandardMaterial color="#4a3a2e" />
+        </mesh>
+        <mesh position={[0, 0.62, 0]}>
+          <boxGeometry args={[0.3, 0.95, 0.3]} />
+          <meshStandardMaterial color="#6b4128" />
+        </mesh>
+        {/* carved face + geometric inlays (painted cream) */}
+        <mesh position={[-0.07, 0.86, 0.152]}>
+          <boxGeometry args={[0.07, 0.05, 0.01]} />
+          <meshStandardMaterial color="#f2ecd8" />
+        </mesh>
+        <mesh position={[0.07, 0.86, 0.152]}>
+          <boxGeometry args={[0.07, 0.05, 0.01]} />
+          <meshStandardMaterial color="#f2ecd8" />
+        </mesh>
+        <mesh position={[0, 0.68, 0.152]}>
+          <boxGeometry args={[0.16, 0.035, 0.01]} />
+          <meshStandardMaterial color="#f2ecd8" />
+        </mesh>
+        {[0, 1, 2].map((i) => (
+          <mesh key={i} position={[-0.07 + i * 0.07, 0.42, 0.152]} rotation={[0, 0, Math.PI / 4]}>
+            <boxGeometry args={[0.05, 0.05, 0.008]} />
+            <meshStandardMaterial color={i === 1 ? "#b3475f" : "#f2ecd8"} />
+          </mesh>
+        ))}
+        {/* crown */}
+        <mesh position={[0, 1.16, 0]}>
+          <boxGeometry args={[0.38, 0.12, 0.38]} />
+          <meshStandardMaterial color="#4a3a2e" />
+        </mesh>
+      </group>
 
       {/* floor lamp — collider {16.5,0.5,0.35,0.35}; light source added in Task 11 */}
       <group position={[16.675, 0, 0.675]}>
@@ -110,23 +174,6 @@ export function MusicNook() {
         </mesh>
       </group>
 
-      {/* monstera — collider {21.1,5.0,0.45,0.45} */}
-      <group position={[21.325, 0, 5.225]}>
-        <mesh position={[0, 0.16, 0]}>
-          <cylinderGeometry args={[0.16, 0.12, 0.32, 8]} />
-          <meshStandardMaterial color="#a04b3a" />
-        </mesh>
-        {[0, 1, 2, 3, 4].map((i) => (
-          <mesh
-            key={i}
-            position={[Math.sin(i * 1.25) * 0.14, 0.5 + (i % 3) * 0.16, Math.cos(i * 1.25) * 0.14]}
-            rotation={[0.4, i * 1.25, 0]}
-          >
-            <coneGeometry args={[0.13, 0.34, 5]} />
-            <meshStandardMaterial color={i % 2 ? "#3f8f5a" : "#2e6e54"} />
-          </mesh>
-        ))}
-      </group>
     </group>
   );
 }
