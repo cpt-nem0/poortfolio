@@ -62,7 +62,7 @@ export function Hud() {
               e.currentTarget.blur(); // don't hold the focus ring after a mouse click
             }}
             aria-label={paused ? "play music" : "pause music"}
-            className="pointer-events-auto -my-1 rounded px-1 py-1 text-[#ffd9a0] outline-none transition-colors hover:text-[#ffb35c] focus:outline-none focus-visible:text-[#ffb35c]"
+            className="pointer-events-auto -my-1 rounded px-1 py-1 text-base leading-none text-[#ffd9a0] outline-none transition-colors hover:text-[#ffb35c] focus:outline-none focus-visible:text-[#ffb35c]"
           >
             {paused ? "▶" : "⏸"}
           </button>
