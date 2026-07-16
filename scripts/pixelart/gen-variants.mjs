@@ -234,7 +234,32 @@ function posterMoons(x, y) {
   return c;
 }
 
+/* ---- neon "3AM" sign 40×16: coral tubes with a dim halo, transparent bg ---- */
+const NEON_ROWS = [
+  "1110 0110 10001",
+  "0001 1001 11011",
+  "0110 1111 10101",
+  "0001 1001 10001",
+  "1110 1001 10001",
+];
+function neonSign(x, y) {
+  const gx = x - 6;
+  const gy = y - 5;
+  const row = NEON_ROWS[gy];
+  const lit = (rx, ry) =>
+    ry >= 0 && ry < 5 && rx >= 0 && NEON_ROWS[ry][rx] === "1";
+  if (row && lit(gx, gy)) return [255, 180, 160, 255]; // bright tube core
+  // halo: adjacent to a lit pixel
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      if (lit(gx + dx, gy + dy)) return [255, 106, 69, 140];
+    }
+  }
+  return [0, 0, 0, 0];
+}
+
 const JOBS = [
+  ["neon-3am", 40, 16, neonSign],
   ["wall-teal", 32, 80, wallTeal],
   ["wall-plum", 32, 32, wallPlum],
   ["wall-stripes", 32, 32, wallStripes],

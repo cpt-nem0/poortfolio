@@ -31,6 +31,7 @@ export function MusicNook() {
   // south stub (dollhouse cutaway): sample only the teal band of the texture
   const wallS = usePixelTexture("/3am/tex/wall-teal.png", R.w, 0.2, 0, 0.5);
   const rugTex = usePixelTexture("/3am/tex/rug-kilim.png", 1, 1);
+  const neonTex = usePixelTexture("/3am/tex/neon-3am.png", 1, 1);
   const posterGig = usePixelTexture("/3am/tex/poster-gig.png", 1, 1);
   const posterWave = usePixelTexture("/3am/tex/poster-wave.png", 1, 1);
   const posterMoons = usePixelTexture("/3am/tex/poster-moons.png", 1, 1);
@@ -329,22 +330,13 @@ export function MusicNook() {
         ))}
       </group>
 
-      {/* clip lamp on the south half-wall rim, aimed at the guitar corner */}
-      <group position={[20.75, 0.55, 5.9]}>
-        <mesh position={[0, 0.02, 0]}>
-          <boxGeometry args={[0.07, 0.09, 0.09]} />
-          <meshStandardMaterial color="#22222c" />
-        </mesh>
-        <mesh position={[0, 0.14, -0.03]} rotation={[0.5, 0, 0]}>
-          <cylinderGeometry args={[0.012, 0.012, 0.16, 5]} />
-          <meshStandardMaterial color="#22222c" />
-        </mesh>
-        <mesh position={[0, 0.22, -0.09]} rotation={[0.9, 0, 0]}>
-          <coneGeometry args={[0.055, 0.09, 8, 1, true]} />
-          <meshStandardMaterial color="#ffd9a0" emissive="#ffd9a0" emissiveIntensity={1.1} side={2} />
-        </mesh>
-      </group>
-      <pointLight position={[20.78, 0.82, 5.68]} color="#ffd9a0" intensity={3.2} distance={2.8} decay={2} />
+      {/* neon "3AM" sign on the east wall — the guitar corner's light and
+          the house's name in coral neon */}
+      <mesh rotation={[0, -Math.PI / 2, 0]} position={[21.96, 1.95, 4.85]}>
+        <planeGeometry args={[1.0, 0.4]} />
+        <meshBasicMaterial map={neonTex} transparent />
+      </mesh>
+      <pointLight position={[21.6, 1.85, 4.9]} color="#ff7a5c" intensity={3} distance={3} decay={2} />
 
       {/* the guitar corner (SE): cutaway acoustic + seafoam electric on
           A-frame stands — collider {20.9,4.85,0.6,0.6} */}
