@@ -38,6 +38,9 @@ function WallBox({
  */
 const SOUTH_STUB_H = 0.55;
 
+/** Rooms with their own art-passed surfaces skip the debug tint patch. */
+const ART_PASSED = new Set<string>(["music"]);
+
 export function House() {
   const area = useThreeAm((s) => s.area);
   const a = HOUSE.areas[area];
@@ -63,7 +66,7 @@ export function House() {
       </mesh>
 
       {/* room tint patches: visually confirms room detection boundaries */}
-      {a.rooms.map((r) => (
+      {a.rooms.filter((r) => !ART_PASSED.has(r.id)).map((r) => (
         <mesh
           key={r.id}
           rotation={[-Math.PI / 2, 0, 0]}
