@@ -6,7 +6,8 @@ import { usePixelTexture } from "../usePixelTexture";
  * Open-frame record console on hairpin legs (styled after Rohan's reference
  * photo): top slab carrying the turntable + two bookshelf speakers, two
  * cubbies below packed with records standing on edge.
- * Footprint matches the layout collider {17.3, 0.3, 2.8, 0.9}.
+ * Centered on the north wall (x=19); footprint matches the layout
+ * collider {17.6, 0.3, 2.8, 0.9}.
  */
 
 const SLEEVE_COLORS = [
@@ -68,7 +69,7 @@ export function RecordConsole() {
   const wood = usePixelTexture("/3am/tex/cabinet-wood.png", 3, 1);
 
   return (
-    <group position={[18.7, 0, 0.75]}>
+    <group position={[19, 0, 0.75]}>
       {/* top slab (console top = y 0.74) */}
       <mesh position={[0, 0.715, 0]}>
         <boxGeometry args={[2.8, 0.05, 0.9]} />

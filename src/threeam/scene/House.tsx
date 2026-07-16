@@ -4,7 +4,7 @@ import { useThreeAm } from "@/threeam/state/store";
 import { HOUSE } from "@/threeam/world/layout";
 import type { Rect, RoomId } from "@/threeam/world/layout";
 
-const WALL_H = 2.5;
+const WALL_H = 2.8; // raised from 2.5 at the style gate: wall art needs the headroom
 const ROOM_TINTS: Record<RoomId, string> = {
   bedroom: "#4a3f70",
   workspace: "#3f4a70",

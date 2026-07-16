@@ -7,7 +7,7 @@ import { RecordConsole } from "./RecordConsole";
 import { Sofa } from "./Sofa";
 import { Turntable } from "./Turntable";
 
-const WALL_H = 2.5;
+const WALL_H = 2.8; // must match House.tsx's shell wall height
 
 /* Interior locked by Rohan (2026-07 style gate): teal + wainscot walls,
    dark walnut floor, kilim rug. Alternatives are regenerable via
@@ -31,8 +31,8 @@ export function MusicNook() {
     <group>
       {/* floor lamp glow */}
       <pointLight position={[16.675, 1.75, 0.675]} color="#ffb35c" intensity={9} distance={7} decay={1.8} />
-      {/* small warm fill over the cabinet/turntable */}
-      <pointLight position={[18.7, 1.6, 1.1]} color="#ffd9a0" intensity={3.5} distance={4.5} decay={2} />
+      {/* small warm fill over the console/turntable */}
+      <pointLight position={[19, 1.6, 1.1]} color="#ffd9a0" intensity={3.5} distance={4.5} decay={2} />
       {/* soft bounce over the rug/sofa so the listening corner stays alive */}
       <pointLight position={[20.0, 1.3, 3.4]} color="#ff9e63" intensity={2.2} distance={4.5} decay={2} />
       {/* doorway spill: sits IN the door gap so the glow reads as light

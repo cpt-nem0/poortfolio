@@ -6,9 +6,10 @@ import { audioEngine } from "@/threeam/audio/engine";
 import { useAudioStore } from "@/threeam/state/audio";
 import { usePixelTexture } from "../usePixelTexture";
 
-/** 2 rows × 3 cols of Rohan's real albums on the north wall above the cabinet. */
-const COLS_X = [17.6, 18.7, 19.8];
-const ROWS_Y = [2.1, 1.35];
+/** 2 rows × 3 cols of Rohan's real albums, centered on the north wall (x=19)
+ *  with breathing room between rows (style-gate feedback: was cramped). */
+const COLS_X = [17.9, 19.0, 20.1];
+const ROWS_Y = [2.4, 1.56];
 const WALL_Z = 0.035; // in front of the plaster plane at z≈0.01
 const ART = 0.62;
 const FRAME = 0.72;
