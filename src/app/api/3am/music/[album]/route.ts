@@ -29,7 +29,12 @@ export async function GET(
   }
   if (!res.ok) return NextResponse.json({ error: "lookup failed" }, { status: 502 });
 
-  const data = (await res.json()) as { results?: ITunesTrack[] };
+  let data: { results?: ITunesTrack[] };
+  try {
+    data = (await res.json()) as { results?: ITunesTrack[] };
+  } catch {
+    return NextResponse.json({ error: "lookup failed" }, { status: 502 });
+  }
   const tracks = (data.results ?? []).filter(
     (t) => t.wrapperType === "track" && t.previewUrl && isAllowedStreamUrl(t.previewUrl)
   );

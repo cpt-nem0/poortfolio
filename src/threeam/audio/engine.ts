@@ -45,6 +45,7 @@ class Engine {
     this.ambientStarted = false;
     this.previewToken++; // kills in-flight preview fetches
     useAudioStore.getState().setNowPlaying(null);
+    useAudioStore.getState().setError(null);
   }
 
   private makePositional(mount: THREE.Object3D) {
@@ -78,16 +79,24 @@ class Engine {
       .then((buf) => ctx.decodeAudioData(buf))
       .then((audio) => {
         if (this.ambient !== node) return; // stale attach
-        this.ambient.setBuffer(audio);
-        this.ambient.setLoop(true);
-        this.ambient.setVolume(AMBIENT_VOL);
-        this.ambient.play();
+        const previewActive =
+          useAudioStore.getState().nowPlaying?.kind === "preview";
+        node.setBuffer(audio);
+        node.setLoop(true);
+        node.setVolume(previewActive ? AMBIENT_DUCKED : AMBIENT_VOL);
+        node.play();
         this.stopCrackle = startCrackle(ctx, this.listener!.getInput());
-        useAudioStore.getState().setNowPlaying({
-          kind: "ambient", artist: "late night mix", title: "side a",
-        });
+        if (!previewActive) {
+          useAudioStore.getState().setNowPlaying({
+            kind: "ambient", artist: "late night mix", title: "side a",
+          });
+        }
       })
-      .catch(() => useAudioStore.getState().setError("the record player is being weird"));
+      .catch(() => {
+        if (this.ambient === node) {
+          useAudioStore.getState().setError("the record player is being weird");
+        }
+      });
   }
 
   async playPreview(

@@ -14,6 +14,9 @@ export async function GET(req: Request) {
   if (!upstream.ok || !upstream.body) {
     return new Response("upstream failed", { status: 502 });
   }
+  if (!isAllowedStreamUrl(upstream.url)) {
+    return new Response("upstream failed", { status: 502 });
+  }
   return new Response(upstream.body, {
     headers: {
       "content-type": upstream.headers.get("content-type") ?? "audio/mp4",
