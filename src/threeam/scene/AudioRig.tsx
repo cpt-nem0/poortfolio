@@ -21,6 +21,7 @@ export function AudioRig() {
       w.__3amAudio = { store: useAudioStore, engine: audioEngine };
     }
     return () => {
+      audioEngine.detach();
       camera.remove(listener);
       if (process.env.NODE_ENV !== "production") {
         delete (window as unknown as Record<string, unknown>).__3amAudio;

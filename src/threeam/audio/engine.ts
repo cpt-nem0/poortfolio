@@ -16,15 +16,35 @@ class Engine {
   private listener: THREE.AudioListener | null = null;
   private ambient: THREE.PositionalAudio | null = null;
   private preview: THREE.PositionalAudio | null = null;
+  /** Crackle runs for the whole unlocked session by design (until detach). */
   private stopCrackle: (() => void) | null = null;
   private wantUnlock = false;
+  private ambientStarted = false;
   private previewToken = 0;
 
   attach(listener: THREE.AudioListener, mount: THREE.Object3D) {
     this.listener = listener;
     this.ambient = this.makePositional(mount);
     this.preview = this.makePositional(mount);
+    this.ambientStarted = false;
+    listener.setMasterVolume(useAudioStore.getState().muted ? 0 : 1);
     if (this.wantUnlock) this.unlock();
+  }
+
+  /** Tears down the WebAudio graph on scene unmount; attach() can rebuild. */
+  detach() {
+    if (this.preview?.isPlaying) this.preview.stop(); // stop() nulls onended
+    if (this.ambient?.isPlaying) this.ambient.stop();
+    this.stopCrackle?.();
+    this.stopCrackle = null;
+    this.preview?.parent?.remove(this.preview);
+    this.ambient?.parent?.remove(this.ambient);
+    this.ambient = null;
+    this.preview = null;
+    this.listener = null;
+    this.ambientStarted = false;
+    this.previewToken++; // kills in-flight preview fetches
+    useAudioStore.getState().setNowPlaying(null);
   }
 
   private makePositional(mount: THREE.Object3D) {
@@ -42,14 +62,22 @@ class Engine {
     if (!this.listener || !this.ambient) return; // attach() will re-run us
     const ctx = this.listener.context;
     if (ctx.state === "suspended") void ctx.resume();
-    if (useAudioStore.getState().unlocked) return;
-    useAudioStore.getState().setUnlocked(true);
+    useAudioStore.getState().setUnlocked(true); // idempotent
+    this.startAmbient();
+  }
+
+  /** Fetch/decode/loop the ambient track once per attach. */
+  private startAmbient() {
+    if (this.ambientStarted || !this.ambient || !this.listener) return;
+    this.ambientStarted = true;
+    const ctx = this.listener.context;
+    const node = this.ambient; // capture: bail if detach/attach raced us
 
     void fetch(AMBIENT_URL)
       .then((r) => r.arrayBuffer())
       .then((buf) => ctx.decodeAudioData(buf))
       .then((audio) => {
-        if (!this.ambient) return;
+        if (this.ambient !== node) return; // stale attach
         this.ambient.setBuffer(audio);
         this.ambient.setLoop(true);
         this.ambient.setVolume(AMBIENT_VOL);
