@@ -1,6 +1,7 @@
 "use client";
 
 import { usePixelTexture } from "../usePixelTexture";
+import { AlbumWall } from "./AlbumWall";
 import { MUSIC_ROOM as R } from "./musicNook.constants";
 import { Turntable } from "./Turntable";
 
@@ -54,6 +55,7 @@ export function MusicNook() {
         <meshStandardMaterial map={cabinetTex} />
       </mesh>
       <Turntable />
+      <AlbumWall />
 
       {/* record crate — collider {20.6,0.4,0.8,0.8} */}
       <group position={[21.0, 0, 0.8]}>
