@@ -61,6 +61,8 @@ All portfolio data continues to live in `src/content/site.ts` — both modes rea
 - All lamps off → near-black room; emissives remain: TV flicker (with its own dim blue light), monitor glow, string lights, power LEDs, moonlight through the curtain.
 - Dark room wakes the cat: glowing eyes (emissive + bloom), head tracks cursor. Lamp back on → back to sleep.
 - Late-night dark mode flips the thought ticker to whispery; BRAIN ALERT: "it is 3am. go to sleep."
+- **Hard rule (locked at the music-nook style gate): no invisible light sources.** Every warm light is attached to a visible fixture; global cool ambient/directional is the only non-fixture light.
+- **Day mode / music-nook window (Rohan, 2026-07-17):** an off-screen window on the cut-away south wall behind the sofa — by day, a window-shaped sun patch falls across the sofa/rug (skewed warm quad + soft southern directional; the patch can crawl with time of day), by night the lamps take over. Ships with this lighting system's time-of-day state; extends later to the weather-API sky. (Alternative considered: a literal window on the east wall — rejected while the sofa wall is the money composition.)
 
 ## 7. Music system
 
