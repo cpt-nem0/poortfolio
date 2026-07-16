@@ -49,6 +49,8 @@ const GROUND: Area = {
   furniture: [
     { x: 17.6, z: 0.3, w: 2.8, d: 0.9 }, // record console, centered on the wall (turntable + speakers on top)
     { x: 20.675, z: 0.475, w: 0.35, d: 0.35 }, // floor lamp (right of console)
+    { x: 16.5, z: 0.5, w: 0.35, d: 0.35 }, // snake plant (console's left flank)
+    { x: 16.2, z: 1.7, w: 0.3, d: 0.3 }, // barrel cactus by the doorway
     { x: 18.1, z: 4.8, w: 1.8, d: 0.8 }, // sofa (sweet spot, facing the console)
     { x: 17.15, z: 4.9, w: 0.6, d: 0.6 }, // coffee table w/ lamp (sofa's left)
     { x: 21.0, z: 4.9, w: 0.55, d: 0.55 }, // standing art totem
