@@ -29,16 +29,12 @@ export function MusicNook() {
 
   return (
     <group>
-      {/* floor lamp glow (right of the console) */}
+      {/* Exactly two warm sources, both attached to VISIBLE lamps (Rohan's
+          rule: no invisible light sources — more/stronger lamps come later).
+          1. the floor lamp right of the console (below)
+          2. the coffee-table lamp by the sofa (inside its group)
+          Previously-removed phantoms: console fill, rug bounce, doorway spill. */}
       <pointLight position={[20.85, 1.75, 0.65]} color="#ffb35c" intensity={9} distance={7} decay={1.8} />
-      {/* small warm fill over the console/turntable */}
-      <pointLight position={[19, 1.6, 1.1]} color="#ffd9a0" intensity={3.5} distance={4.5} decay={2} />
-      {/* (rug bounce light removed — the coffee-table lamp lights the seating
-          corner now, and the invisible source made the player glow) */}
-      {/* doorway spill: sits IN the door gap so the glow reads as light
-          escaping the nook, not a floating source in the workspace
-          (style-gate feedback: the far-out version looked like its own lamp) */}
-      <pointLight position={[16.0, 1.1, 3.0]} color="#ffb35c" intensity={4} distance={2.8} decay={2} />
 
       {/* plank floor, 2cm above the gray base floor */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[R.x + R.w / 2, 0.02, R.z + R.d / 2]}>
