@@ -26,6 +26,8 @@ export function MusicNook() {
   const floor = usePixelTexture("/3am/tex/floor-walnut.png", R.w, R.d); // 1 tile = 1m
   const wallN = usePixelTexture("/3am/tex/wall-teal.png", R.w, 1); // wainscot baked in
   const wallE = usePixelTexture("/3am/tex/wall-teal.png", R.d, 1);
+  const wallWN = usePixelTexture("/3am/tex/wall-teal.png", 2.2, 1); // west divider, north of door
+  const wallWS = usePixelTexture("/3am/tex/wall-teal.png", 2.2, 1); // west divider, south of door
   const rugTex = usePixelTexture("/3am/tex/rug-kilim.png", 1, 1);
   const posterGig = usePixelTexture("/3am/tex/poster-gig.png", 1, 1);
   const posterWave = usePixelTexture("/3am/tex/poster-wave.png", 1, 1);
@@ -101,6 +103,25 @@ export function MusicNook() {
         <meshStandardMaterial map={wallE} />
       </mesh>
 
+      {/* west divider wall, nook-facing side — teal over the gray-box purple
+          (two segments flanking the doorway; workspace side stays gray until Plan 3) */}
+      <mesh rotation={[0, Math.PI / 2, 0]} position={[R.x + 0.105, WALL_H / 2, 1.1]}>
+        <planeGeometry args={[2.2, WALL_H]} />
+        <meshStandardMaterial map={wallWN} />
+      </mesh>
+      <mesh rotation={[0, Math.PI / 2, 0]} position={[R.x + 0.105, WALL_H / 2, 4.9]}>
+        <planeGeometry args={[2.2, WALL_H]} />
+        <meshStandardMaterial map={wallWS} />
+      </mesh>
+      <mesh position={[R.x + 0.145, 0.09, 1.1]}>
+        <boxGeometry args={[0.07, 0.18, 2.2]} />
+        <meshStandardMaterial color="#4a3a2e" />
+      </mesh>
+      <mesh position={[R.x + 0.145, 0.09, 4.9]}>
+        <boxGeometry args={[0.07, 0.18, 2.2]} />
+        <meshStandardMaterial color="#4a3a2e" />
+      </mesh>
+
       {/* baseboards */}
       <mesh position={[R.x + R.w / 2, 0.09, R.z + 0.045]}>
         <boxGeometry args={[R.w, 0.18, 0.07]} />
@@ -124,7 +145,7 @@ export function MusicNook() {
 
       {/* posters — long gig poster on the west wall over the sofa, wave +
           moon-phases pair on the previously empty east wall */}
-      <mesh rotation={[0, Math.PI / 2, 0]} position={[16.11, 1.35, 4.9]}>
+      <mesh rotation={[0, Math.PI / 2, 0]} position={[16.125, 1.35, 4.9]}>
         <planeGeometry args={[0.7, 1.9]} />
         <meshStandardMaterial map={posterGig} />
       </mesh>
@@ -179,6 +200,65 @@ export function MusicNook() {
           <meshStandardMaterial color="#f2ecd8" />
         </mesh>
       </group>
+
+      {/* listening shelf on the west wall (left of the snake plant):
+          headphones, books, a cassette, and its own mini lamp — the room's
+          fifth visible light source (no collider — wall-mounted overhead) */}
+      <group position={[16.19, 1.45, 1.05]}>
+        {/* plank + brackets */}
+        <mesh>
+          <boxGeometry args={[0.18, 0.035, 0.75]} />
+          <meshStandardMaterial color="#6b4128" />
+        </mesh>
+        <mesh position={[-0.04, -0.06, -0.22]}>
+          <boxGeometry args={[0.1, 0.09, 0.03]} />
+          <meshStandardMaterial color="#4a3a2e" />
+        </mesh>
+        <mesh position={[-0.04, -0.06, 0.22]}>
+          <boxGeometry args={[0.1, 0.09, 0.03]} />
+          <meshStandardMaterial color="#4a3a2e" />
+        </mesh>
+        {/* mini shelf lamp */}
+        <mesh position={[0, 0.04, -0.28]}>
+          <cylinderGeometry args={[0.045, 0.05, 0.025, 8]} />
+          <meshStandardMaterial color="#2e2a4d" />
+        </mesh>
+        <mesh position={[0, 0.11, -0.28]}>
+          <cylinderGeometry args={[0.01, 0.01, 0.12, 6]} />
+          <meshStandardMaterial color="#2e2a4d" />
+        </mesh>
+        <mesh position={[0, 0.19, -0.28]}>
+          <coneGeometry args={[0.055, 0.08, 8, 1, true]} />
+          <meshStandardMaterial color="#ffc87a" emissive="#ffc87a" emissiveIntensity={0.9} side={2} />
+        </mesh>
+        {/* headphones resting mid-shelf */}
+        <group position={[0, 0.065, 0]} rotation={[0, Math.PI / 2, 0]}>
+          <mesh>
+            <torusGeometry args={[0.085, 0.014, 6, 12, Math.PI]} />
+            <meshStandardMaterial color="#22222c" />
+          </mesh>
+          <mesh position={[-0.085, -0.03, 0]}>
+            <cylinderGeometry args={[0.035, 0.035, 0.035, 8]} />
+            <meshStandardMaterial color="#b3475f" />
+          </mesh>
+          <mesh position={[0.085, -0.03, 0]}>
+            <cylinderGeometry args={[0.035, 0.035, 0.035, 8]} />
+            <meshStandardMaterial color="#b3475f" />
+          </mesh>
+        </group>
+        {/* leaning books + cassette */}
+        {[0, 1, 2].map((i) => (
+          <mesh key={i} position={[0, 0.1, 0.22 + i * 0.035]} rotation={[-0.12 + i * 0.05, 0, 0]}>
+            <boxGeometry args={[0.13, 0.17, 0.025]} />
+            <meshStandardMaterial color={["#5b4b8a", "#2e6e54", "#c98a2e"][i]} />
+          </mesh>
+        ))}
+        <mesh position={[0, 0.032, 0.33]} rotation={[0, 0.3, 0]}>
+          <boxGeometry args={[0.075, 0.025, 0.05]} />
+          <meshStandardMaterial color="#57b6e8" />
+        </mesh>
+      </group>
+      <pointLight position={[16.32, 1.66, 0.77]} color="#ffc87a" intensity={2} distance={2.2} decay={2} />
 
       {/* snake plant, back on the console's left flank — collider {16.5,0.5,0.35,0.35} */}
       <group position={[16.675, 0, 0.675]}>
