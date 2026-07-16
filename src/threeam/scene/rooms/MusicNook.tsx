@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import * as THREE from "three";
 import { usePixelTexture } from "../usePixelTexture";
 import { AlbumWall } from "./AlbumWall";
 import { MUSIC_ROOM as R } from "./musicNook.constants";
@@ -19,6 +21,8 @@ const WALL_H = 2.8; // must match House.tsx's shell wall height
  * surfaces sit a few cm off House geometry; colliders live in layout.ts.
  */
 export function MusicNook() {
+  /** aim point for the sunset lamp's projection (center of the album grid) */
+  const [sunsetTarget] = useState(() => new THREE.Object3D());
   const floor = usePixelTexture("/3am/tex/floor-walnut.png", R.w, R.d); // 1 tile = 1m
   const wallN = usePixelTexture("/3am/tex/wall-teal.png", R.w, 1); // wainscot baked in
   const wallE = usePixelTexture("/3am/tex/wall-teal.png", R.d, 1);
@@ -50,18 +54,34 @@ export function MusicNook() {
       </group>
       <pointLight position={[21.7, 2.35, 3.0]} color="#ffcf8f" intensity={3.2} distance={3.4} decay={2} />
 
-      {/* salt rock lamp on the console top, front-left */}
-      <group position={[17.85, 0.74, 0.52]}>
-        <mesh position={[0, 0.025, 0]}>
-          <cylinderGeometry args={[0.07, 0.08, 0.05, 7]} />
-          <meshStandardMaterial color="#4a3a2e" />
+      {/* sunset lamp on the console — projects its warm circle up across
+          the album wall (fixture between the deck and the right speaker) */}
+      <group position={[19.68, 0.74, 0.8]}>
+        <mesh position={[0, 0.05, 0]}>
+          <coneGeometry args={[0.07, 0.1, 8]} />
+          <meshStandardMaterial color="#2e2a4d" />
         </mesh>
-        <mesh position={[0, 0.11, 0]} scale={[1, 1.25, 0.9]}>
-          <dodecahedronGeometry args={[0.085, 0]} />
-          <meshStandardMaterial color="#ff8f70" emissive="#ff8f70" emissiveIntensity={0.75} />
+        <mesh position={[0, 0.13, -0.01]} rotation={[-0.9, 0, 0]}>
+          <cylinderGeometry args={[0.045, 0.045, 0.15, 10]} />
+          <meshStandardMaterial color="#3a3244" />
+        </mesh>
+        {/* glowing lens facing the wall */}
+        <mesh position={[0, 0.19, -0.065]} rotation={[-0.9, 0, 0]}>
+          <cylinderGeometry args={[0.04, 0.04, 0.012, 10]} />
+          <meshStandardMaterial color="#ff7a4d" emissive="#ff6a45" emissiveIntensity={2.2} />
         </mesh>
       </group>
-      <pointLight position={[17.85, 0.92, 0.52]} color="#ff8f70" intensity={1.6} distance={1.9} decay={2} />
+      <spotLight
+        position={[19.68, 0.9, 0.76]}
+        target={sunsetTarget}
+        angle={0.52}
+        penumbra={0.7}
+        intensity={9}
+        distance={4.5}
+        decay={1.6}
+        color="#ff6a45"
+      />
+      <primitive object={sunsetTarget} position={[19, 2.05, 0.05]} />
 
       {/* plank floor, 2cm above the gray base floor */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[R.x + R.w / 2, 0.02, R.z + R.d / 2]}>
