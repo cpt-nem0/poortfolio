@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useThreeAm } from "@/threeam/state/store";
+import { useAudioStore } from "@/threeam/state/audio";
 import type { RoomId } from "@/threeam/world/layout";
 
 const ROOM_LABELS: Record<RoomId, string> = {
@@ -14,6 +15,7 @@ const ROOM_LABELS: Record<RoomId, string> = {
 export function Hud() {
   const room = useThreeAm((s) => s.room);
   const portal = useThreeAm((s) => s.activePortal);
+  const unlocked = useAudioStore((s) => s.unlocked);
 
   return (
     <div className="pointer-events-none absolute inset-0 z-10 font-mono text-sm">
@@ -39,6 +41,12 @@ export function Hud() {
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-xs text-[#7d729e]">
         WASD / arrows to walk · E to interact
       </div>
+
+      {!unlocked && (
+        <div className="absolute left-1/2 top-16 -translate-x-1/2 rounded bg-black/60 px-4 py-2 text-xs text-[#ffd9a0]">
+          🔊 press any key — the record player is waiting
+        </div>
+      )}
     </div>
   );
 }
