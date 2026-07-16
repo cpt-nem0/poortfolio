@@ -7,16 +7,31 @@ import { audioEngine } from "@/threeam/audio/engine";
 import { useAudioStore } from "@/threeam/state/audio";
 import { TURNTABLE_POS } from "./musicNook.constants";
 
-/** Deck + spinning vinyl + clickable tonearm (lift = mute). */
+/**
+ * Deck + spinning vinyl + clickable tonearm (lift = mute).
+ * The hardware mirrors the audio state diegetically: pausing (HUD ⏸) or
+ * muting lifts the tonearm to its rest and stops the platter; resuming
+ * swings the arm back onto the record. The arm glides between poses.
+ */
 export function Turntable() {
   const vinylRef = useRef<Group>(null);
+  const armRef = useRef<Group>(null);
   const [hover, setHover] = useState(false);
   const muted = useAudioStore((s) => s.muted);
+  const paused = useAudioStore((s) => s.paused);
   const unlocked = useAudioStore((s) => s.unlocked);
+  const resting = muted || paused || !unlocked;
 
   useFrame((_, dt) => {
-    if (vinylRef.current && unlocked && !muted) {
+    if (vinylRef.current && !resting) {
       vinylRef.current.rotation.y -= dt * 2.4; // ~33rpm-ish, stylized
+    }
+    if (armRef.current) {
+      // glide the tonearm toward its target pose
+      const t = 1 - Math.exp(-8 * dt);
+      const target = resting ? { x: -0.5, y: 0.3 } : { x: 0, y: 0.55 };
+      armRef.current.rotation.x += (target.x - armRef.current.rotation.x) * t;
+      armRef.current.rotation.y += (target.y - armRef.current.rotation.y) * t;
     }
   });
 
@@ -50,10 +65,10 @@ export function Turntable() {
           <meshStandardMaterial color="#8d86a8" />
         </mesh>
       </group>
-      {/* tonearm — clickable; lifted (rotated up) when muted */}
+      {/* tonearm — clickable; glides to rest when muted/paused */}
       <group
+        ref={armRef}
         position={[0.24, 0.07, -0.14]}
-        rotation={[muted ? -0.5 : 0, muted ? 0.3 : 0.55, 0]}
         onClick={(e) => {
           e.stopPropagation();
           audioEngine.toggleMute();
