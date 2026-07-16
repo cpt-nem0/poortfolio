@@ -68,17 +68,17 @@ export function MusicNook() {
         {/* glowing lens facing the wall */}
         <mesh position={[0, 0.19, -0.065]} rotation={[-0.9, 0, 0]}>
           <cylinderGeometry args={[0.04, 0.04, 0.012, 10]} />
-          <meshStandardMaterial color="#ff7a4d" emissive="#ff6a45" emissiveIntensity={2.2} />
+          <meshStandardMaterial color="#ff7a4d" emissive="#ff6a45" emissiveIntensity={3.5} />
         </mesh>
       </group>
       <spotLight
         position={[19.68, 0.9, 0.76]}
         target={sunsetTarget}
-        angle={0.52}
-        penumbra={0.7}
-        intensity={9}
-        distance={4.5}
-        decay={1.6}
+        angle={0.58}
+        penumbra={0.65}
+        intensity={16}
+        distance={5.5}
+        decay={1.4}
         color="#ff6a45"
       />
       <primitive object={sunsetTarget} position={[19, 2.05, 0.05]} />
