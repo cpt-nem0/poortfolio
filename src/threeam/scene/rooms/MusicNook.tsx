@@ -97,8 +97,8 @@ export function MusicNook() {
       {/* sofa — collider {16.4,4.0,1.8,1.7} */}
       <Sofa />
 
-      {/* side table + coffee mug — collider {18.35,4.95,0.5,0.5} */}
-      <group position={[18.6, 0, 5.2]}>
+      {/* side table + coffee mug, at the sofa's right hand — collider {19.95,4.95,0.5,0.5} */}
+      <group position={[20.2, 0, 5.2]}>
         <mesh position={[0, 0.42, 0]}>
           <cylinderGeometry args={[0.24, 0.24, 0.035, 10]} />
           <meshStandardMaterial color="#6b4128" />

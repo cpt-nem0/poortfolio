@@ -1,14 +1,14 @@
 "use client";
 
 /**
- * Two-seat sofa in the nook's SW corner, angled toward the turntable (NE)
- * with the front partially visible to the camera. A throw blanket hangs
- * over the left armrest; cushions sit slightly uneven — lived-in, not staged.
- * World AABB collider: {16.4, 4.0, 1.8, 1.7}.
+ * Two-seat sofa in the audiophile sweet spot: dead-center on the console's
+ * axis (x=19), backed against the south edge, facing the speakers straight
+ * on. A throw blanket hangs over one armrest; cushions sit slightly uneven.
+ * World AABB collider: {18.1, 4.8, 1.8, 0.8}.
  */
 export function Sofa() {
   return (
-    <group position={[17.35, 0, 4.85]} rotation={[0, 2.25, 0]}>
+    <group position={[19, 0, 5.2]} rotation={[0, Math.PI, 0]}>
       {/* base */}
       <mesh position={[0, 0.22, 0]}>
         <boxGeometry args={[1.8, 0.28, 0.8]} />
