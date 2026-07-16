@@ -348,7 +348,7 @@ export function MusicNook() {
         <planeGeometry args={[1.0, 0.4]} />
         <meshBasicMaterial map={neonTex} transparent />
       </mesh>
-      <pointLight position={[21.6, 1.85, 4.9]} color="#ff7a5c" intensity={3} distance={3} decay={2} />
+      <pointLight castShadow shadow-mapSize={[256, 256]} shadow-bias={-0.004} shadow-radius={5} shadow-intensity={0.4} position={[21.6, 1.85, 4.9]} color="#ff7a5c" intensity={3} distance={3} decay={2} />
 
       {/* the guitar corner (SE): cutaway acoustic + seafoam electric on
           A-frame stands — collider {20.9,4.85,0.6,0.6} */}
