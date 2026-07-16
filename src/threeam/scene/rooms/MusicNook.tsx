@@ -33,8 +33,8 @@ export function MusicNook() {
       <pointLight position={[20.85, 1.75, 0.65]} color="#ffb35c" intensity={9} distance={7} decay={1.8} />
       {/* small warm fill over the console/turntable */}
       <pointLight position={[19, 1.6, 1.1]} color="#ffd9a0" intensity={3.5} distance={4.5} decay={2} />
-      {/* soft bounce over the rug/sofa so the listening corner stays alive */}
-      <pointLight position={[20.0, 1.3, 3.4]} color="#ff9e63" intensity={2.2} distance={4.5} decay={2} />
+      {/* (rug bounce light removed — the coffee-table lamp lights the seating
+          corner now, and the invisible source made the player glow) */}
       {/* doorway spill: sits IN the door gap so the glow reads as light
           escaping the nook, not a floating source in the workspace
           (style-gate feedback: the far-out version looked like its own lamp) */}
