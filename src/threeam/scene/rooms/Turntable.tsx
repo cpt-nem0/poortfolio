@@ -13,6 +13,8 @@ import { TURNTABLE_POS } from "./musicNook.constants";
  * muting lifts the tonearm to its rest and stops the platter; resuming
  * swings the arm back onto the record. The arm glides between poses.
  */
+const PLAY_Y = 0.55; // arm yaw when the needle sits on the record
+
 export function Turntable() {
   const vinylRef = useRef<Group>(null);
   const armRef = useRef<Group>(null);
@@ -26,16 +28,20 @@ export function Turntable() {
     // clamp: ctx.resume()/suspend() can stall a frame — an unclamped dt
     // would make the exponential glide teleport (looked like a glitch)
     const dt = Math.min(rawDt, 0.05);
-    if (vinylRef.current && !resting) {
-      vinylRef.current.rotation.y -= dt * 2.4; // ~33rpm-ish, stylized
-    }
     if (armRef.current) {
       // glide the tonearm toward its target pose: over the record when
       // playing; swung right, flat and parallel to the deck's right edge
       // (its cradle) when resting
       const t = 1 - Math.exp(-8 * dt);
-      const targetY = resting ? Math.PI / 2 : 0.55;
+      const targetY = resting ? Math.PI / 2 : PLAY_Y;
       armRef.current.rotation.y += (targetY - armRef.current.rotation.y) * t;
+
+      // the platter only spins once the arm has actually landed on the
+      // record — sequencing arm → spin for every path (pause/mute/unlock)
+      const armLanded = Math.abs(armRef.current.rotation.y - PLAY_Y) < 0.06;
+      if (vinylRef.current && !resting && armLanded) {
+        vinylRef.current.rotation.y -= dt * 2.4; // ~33rpm-ish, stylized
+      }
     }
   });
 

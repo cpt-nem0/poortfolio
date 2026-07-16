@@ -21,6 +21,7 @@ class Engine {
   private wantUnlock = false;
   private ambientStarted = false;
   private previewToken = 0;
+  private resumeTimer: ReturnType<typeof setTimeout> | null = null;
 
   attach(listener: THREE.AudioListener, mount: THREE.Object3D) {
     this.listener = listener;
@@ -33,6 +34,10 @@ class Engine {
 
   /** Tears down the WebAudio graph on scene unmount; attach() can rebuild. */
   detach() {
+    if (this.resumeTimer) {
+      clearTimeout(this.resumeTimer);
+      this.resumeTimer = null;
+    }
     if (this.preview?.isPlaying) this.preview.stop(); // stop() nulls onended
     if (this.ambient?.isPlaying) this.ambient.stop();
     this.stopCrackle?.();
@@ -155,13 +160,28 @@ class Engine {
   /**
    * HUD pause/play: suspends the whole AudioContext, freezing playback
    * position (unlike mute, which silences while audio keeps advancing).
+   * On resume, the sound waits for the deck's choreography — tonearm
+   * lands (~450ms), platter spins up — then the needle-drop plays and
+   * the music continues from where it froze.
    */
   togglePause() {
     if (!this.listener) return;
     const ctx = this.listener.context;
     const paused = !useAudioStore.getState().paused;
-    if (paused) void ctx.suspend();
-    else void ctx.resume();
+    if (this.resumeTimer) {
+      clearTimeout(this.resumeTimer);
+      this.resumeTimer = null;
+    }
+    if (paused) {
+      void ctx.suspend();
+    } else {
+      this.resumeTimer = setTimeout(() => {
+        this.resumeTimer = null;
+        if (useAudioStore.getState().paused || !this.listener) return;
+        playNeedleDrop(ctx, this.listener.getInput()); // starts audibly at resume
+        void ctx.resume();
+      }, 700);
+    }
     useAudioStore.getState().setPaused(paused);
   }
 }
