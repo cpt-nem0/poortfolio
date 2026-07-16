@@ -8,17 +8,17 @@ describe("music-room furniture colliders", () => {
   it("areas expose a furniture list", () => {
     expect(Array.isArray(ground.furniture)).toBe(true);
     expect(Array.isArray(HOUSE.areas.roof.furniture)).toBe(true);
-    expect(ground.furniture.length).toBeGreaterThanOrEqual(6);
+    expect(ground.furniture.length).toBeGreaterThanOrEqual(5);
   });
 
   it("the record console blocks the player", () => {
     expect(isBlocked(ground, 18.7, 0.8)).toBe(true); // turntable spot
   });
 
-  it("the sofa, coffee table, snake plant and art totem block", () => {
+  it("the sofa, coffee table, floor lamp and art totem block", () => {
     expect(isBlocked(ground, 19, 5.2)).toBe(true); // sofa (sweet spot)
     expect(isBlocked(ground, 17.45, 5.2)).toBe(true); // coffee table
-    expect(isBlocked(ground, 20.85, 0.65)).toBe(true); // snake plant
+    expect(isBlocked(ground, 20.85, 0.65)).toBe(true); // floor lamp
     expect(isBlocked(ground, 21.3, 5.2)).toBe(true); // art totem
   });
 

@@ -29,8 +29,8 @@ export function MusicNook() {
 
   return (
     <group>
-      {/* floor lamp glow */}
-      <pointLight position={[16.675, 1.75, 0.675]} color="#ffb35c" intensity={9} distance={7} decay={1.8} />
+      {/* floor lamp glow (right of the console) */}
+      <pointLight position={[20.85, 1.75, 0.65]} color="#ffb35c" intensity={9} distance={7} decay={1.8} />
       {/* small warm fill over the console/turntable */}
       <pointLight position={[19, 1.6, 1.1]} color="#ffd9a0" intensity={3.5} distance={4.5} decay={2} />
       {/* soft bounce over the rug/sofa so the listening corner stays alive */}
@@ -137,28 +137,6 @@ export function MusicNook() {
         </mesh>
       </group>
 
-      {/* snake plant (right of console) — collider {20.6,0.4,0.5,0.5} */}
-      <group position={[20.85, 0, 0.65]}>
-        <mesh position={[0, 0.14, 0]}>
-          <cylinderGeometry args={[0.15, 0.11, 0.28, 8]} />
-          <meshStandardMaterial color="#a04b3a" />
-        </mesh>
-        {Array.from({ length: 9 }, (_, i) => {
-          const a = (i / 9) * Math.PI * 2;
-          const r = 0.03 + (i % 3) * 0.035;
-          return (
-            <mesh
-              key={i}
-              position={[Math.sin(a) * r, 0.28 + (0.7 + (i % 4) * 0.14) / 2, Math.cos(a) * r]}
-              rotation={[((i % 3) - 1) * 0.08, a, ((i % 2) - 0.5) * 0.1]}
-            >
-              <boxGeometry args={[0.055, 0.7 + (i % 4) * 0.14, 0.018]} />
-              <meshStandardMaterial color={i % 2 ? "#3f8f5a" : "#2e6e54"} />
-            </mesh>
-          );
-        })}
-      </group>
-
       {/* standing carved art totem (SE corner) — collider {21.0,4.9,0.55,0.55} */}
       <group position={[21.275, 0, 5.175]} rotation={[0, -0.5, 0]}>
         <mesh position={[0, 0.08, 0]}>
@@ -195,8 +173,8 @@ export function MusicNook() {
         </mesh>
       </group>
 
-      {/* floor lamp — collider {16.5,0.5,0.35,0.35}; light source added in Task 11 */}
-      <group position={[16.675, 0, 0.675]}>
+      {/* floor lamp, right of the console — collider {20.675,0.475,0.35,0.35} */}
+      <group position={[20.85, 0, 0.65]}>
         <mesh position={[0, 0.02, 0]}>
           <cylinderGeometry args={[0.16, 0.18, 0.04, 10]} />
           <meshStandardMaterial color="#2e2a4d" />

@@ -48,8 +48,7 @@ const GROUND: Area = {
   walls: [...dividerWithDoor(8, 6), ...dividerWithDoor(16, 6)],
   furniture: [
     { x: 17.6, z: 0.3, w: 2.8, d: 0.9 }, // record console, centered on the wall (turntable + speakers on top)
-    { x: 20.6, z: 0.4, w: 0.5, d: 0.5 }, // snake plant pot
-    { x: 16.5, z: 0.5, w: 0.35, d: 0.35 }, // floor lamp
+    { x: 20.675, z: 0.475, w: 0.35, d: 0.35 }, // floor lamp (right of console)
     { x: 18.1, z: 4.8, w: 1.8, d: 0.8 }, // sofa (sweet spot, facing the console)
     { x: 17.15, z: 4.9, w: 0.6, d: 0.6 }, // coffee table w/ lamp (sofa's left)
     { x: 21.0, z: 4.9, w: 0.55, d: 0.55 }, // standing art totem
