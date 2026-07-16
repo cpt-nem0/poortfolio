@@ -25,6 +25,8 @@ function WallBox({
   return (
     <mesh
       position={[rect.x + rect.w / 2, height / 2, rect.z + rect.d / 2]}
+      castShadow
+      receiveShadow
     >
       <boxGeometry args={[rect.w, height, rect.d]} />
       <meshStandardMaterial color={color} />
@@ -60,6 +62,7 @@ export function House() {
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
         position={[b.x + b.w / 2, 0, b.z + b.d / 2]}
+        receiveShadow
       >
         <planeGeometry args={[b.w, b.d]} />
         <meshStandardMaterial color="#3f3560" />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { usePixelTexture } from "../usePixelTexture";
 import { AlbumWall } from "./AlbumWall";
@@ -23,6 +23,18 @@ const WALL_H = 2.8; // must match House.tsx's shell wall height
 export function MusicNook() {
   /** aim point for the sunset lamp's projection (center of the album grid) */
   const [sunsetTarget] = useState(() => new THREE.Object3D());
+  const rootRef = useRef<THREE.Group>(null);
+
+  useEffect(() => {
+    // Real shadows stop the lamps bleeding through walls into other rooms
+    // (three.js has no per-object light masking — walls must block light).
+    rootRef.current?.traverse((obj) => {
+      if ((obj as THREE.Mesh).isMesh) {
+        obj.castShadow = true;
+        obj.receiveShadow = true;
+      }
+    });
+  }, []);
   const floor = usePixelTexture("/3am/tex/floor-walnut.png", R.w, R.d); // 1 tile = 1m
   const wallN = usePixelTexture("/3am/tex/wall-teal.png", R.w, 1); // wainscot baked in
   const wallE = usePixelTexture("/3am/tex/wall-teal.png", R.d, 1);
@@ -37,14 +49,14 @@ export function MusicNook() {
   const posterMoons = usePixelTexture("/3am/tex/poster-moons.png", 1, 1);
 
   return (
-    <group>
+    <group ref={rootRef}>
       {/* The lamp family — every light attached to a VISIBLE fixture (hard
           rule), each with its own shape, size and warmth:
           1. floor lamp, amber (right of console — light below, fixture further down)
           2. coffee-table lamp, soft peach (inside the table group)
           3. wall sconce, golden (east wall, between the posters)
           4. salt rock lamp, pink-orange (on the console's front-left corner) */}
-      <pointLight position={[20.85, 1.75, 0.65]} color="#ffb35c" intensity={9} distance={7} decay={1.8} />
+      <pointLight castShadow shadow-mapSize={[512, 512]} shadow-bias={-0.004} position={[20.85, 1.75, 0.65]} color="#ffb35c" intensity={9} distance={7} decay={1.8} />
 
       {/* wall sconce — brass half-dome washing the east wall */}
       <group position={[21.94, 2.15, 3.0]} rotation={[0, -Math.PI / 2, 0]}>
@@ -57,7 +69,7 @@ export function MusicNook() {
           <meshStandardMaterial color="#ffcf8f" emissive="#ffcf8f" emissiveIntensity={0.8} side={2} />
         </mesh>
       </group>
-      <pointLight position={[21.7, 2.35, 3.0]} color="#ffcf8f" intensity={3.2} distance={3.4} decay={2} />
+      <pointLight castShadow shadow-mapSize={[256, 256]} shadow-bias={-0.004} position={[21.7, 2.35, 3.0]} color="#ffcf8f" intensity={3.2} distance={3.4} decay={2} />
 
       {/* sunset lamp on the console — projects its warm circle up across
           the album wall (fixture between the deck and the right speaker) */}
@@ -199,7 +211,7 @@ export function MusicNook() {
           <cylinderGeometry args={[0.07, 0.1, 0.13, 8, 1, true]} />
           <meshStandardMaterial color="#ffb35c" emissive="#ffb35c" emissiveIntensity={0.85} side={2} />
         </mesh>
-        <pointLight position={[-0.08, 0.85, -0.04]} color="#ffd9a0" intensity={2.2} distance={2.6} decay={2} />
+        <pointLight castShadow shadow-mapSize={[256, 256]} shadow-bias={-0.004} position={[-0.08, 0.85, -0.04]} color="#ffd9a0" intensity={2.2} distance={2.6} decay={2} />
         {/* the 3am coffee mug */}
         <mesh position={[0.13, 0.57, 0.08]}>
           <cylinderGeometry args={[0.045, 0.04, 0.1, 8]} />
@@ -268,7 +280,7 @@ export function MusicNook() {
           <meshStandardMaterial color="#57b6e8" />
         </mesh>
       </group>
-      <pointLight position={[16.32, 1.66, 0.77]} color="#ffc87a" intensity={2} distance={2.2} decay={2} />
+      <pointLight castShadow shadow-mapSize={[256, 256]} shadow-bias={-0.004} position={[16.32, 1.66, 0.77]} color="#ffc87a" intensity={2} distance={2.2} decay={2} />
 
       {/* snake plant, back on the console's left flank — collider {16.5,0.5,0.35,0.35} */}
       <group position={[16.675, 0, 0.675]}>
@@ -336,7 +348,7 @@ export function MusicNook() {
         <planeGeometry args={[1.0, 0.4]} />
         <meshBasicMaterial map={neonTex} transparent />
       </mesh>
-      <pointLight position={[21.6, 1.85, 4.9]} color="#ff7a5c" intensity={3} distance={3} decay={2} />
+      <pointLight castShadow shadow-mapSize={[256, 256]} shadow-bias={-0.004} position={[21.6, 1.85, 4.9]} color="#ff7a5c" intensity={3} distance={3} decay={2} />
 
       {/* the guitar corner (SE): cutaway acoustic + seafoam electric on
           A-frame stands — collider {20.9,4.85,0.6,0.6} */}

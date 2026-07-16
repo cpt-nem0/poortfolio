@@ -15,6 +15,7 @@ export default function Scene() {
   const area = useThreeAm((s) => s.area);
   return (
     <Canvas
+      shadows
       camera={{ fov: 35, position: [11, 9, 11] }}
       style={{ position: "absolute", inset: 0 }}
     >

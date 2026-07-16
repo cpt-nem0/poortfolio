@@ -63,7 +63,7 @@ export function Player() {
   });
 
   return (
-    <mesh ref={meshRef}>
+    <mesh ref={meshRef} castShadow>
       <capsuleGeometry args={[0.35, 0.9, 4, 12]} />
       <meshStandardMaterial color="#ffb35c" />
     </mesh>
