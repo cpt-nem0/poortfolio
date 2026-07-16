@@ -70,7 +70,8 @@ function AlbumFrame({ index }: { index: number }) {
           emissiveIntensity={isPlaying ? 0.7 : hover ? 0.15 : 0}
         />
       </mesh>
-      <mesh>
+      {/* art sits 4mm proud of the frame's front face — coplanar = z-fighting */}
+      <mesh position={[0, 0, 0.004]}>
         <planeGeometry args={[ART, ART]} />
         <meshStandardMaterial map={tex} />
       </mesh>

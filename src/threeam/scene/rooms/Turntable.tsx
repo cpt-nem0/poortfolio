@@ -21,7 +21,8 @@ export function Turntable() {
   });
 
   return (
-    <group position={TURNTABLE_POS}>
+    /* scaled up per style-gate feedback — spin + hardware read better big */
+    <group position={TURNTABLE_POS} scale={1.35}>
       {/* plinth */}
       <mesh position={[0, 0.03, 0]}>
         <boxGeometry args={[0.7, 0.06, 0.5]} />
@@ -37,10 +38,16 @@ export function Turntable() {
           <cylinderGeometry args={[0.07, 0.07, 0.005, 16]} />
           <meshStandardMaterial color="#ffb35c" />
         </mesh>
-        {/* groove sheen line so the spin reads */}
-        <mesh position={[0.13, 0.011, 0]}>
-          <boxGeometry args={[0.05, 0.002, 0.01]} />
-          <meshStandardMaterial color="#221e29" />
+        {/* off-center label dot — the high-contrast marker that makes the
+            spin visible (style-gate feedback: old dark sheen was invisible) */}
+        <mesh position={[0.045, 0.016, 0]}>
+          <cylinderGeometry args={[0.014, 0.014, 0.004, 8]} />
+          <meshStandardMaterial color="#12101f" />
+        </mesh>
+        {/* bright groove sheen wedge */}
+        <mesh position={[0.14, 0.012, 0]} rotation={[0, 0.3, 0]}>
+          <boxGeometry args={[0.06, 0.002, 0.02]} />
+          <meshStandardMaterial color="#8d86a8" />
         </mesh>
       </group>
       {/* tonearm — clickable; lifted (rotated up) when muted */}
