@@ -20,7 +20,12 @@ export function isBlocked(
   const b = area.bounds;
   if (x - r < b.x || x + r > b.x + b.w) return true;
   if (z - r < b.z || z + r > b.z + b.d) return true;
-  return area.walls.some((w) => circleIntersectsRect(x, z, r, w));
+  // Tangent contact (distance exactly == r) counts as NOT blocked — the
+  // strict `<` in circleIntersectsRect is intentional (allows wall-hugging).
+  return (
+    area.walls.some((w) => circleIntersectsRect(x, z, r, w)) ||
+    area.furniture.some((f) => circleIntersectsRect(x, z, r, f))
+  );
 }
 
 /**

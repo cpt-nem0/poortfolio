@@ -24,6 +24,9 @@ export type Area = {
   bounds: Rect;
   /** Blocked rectangles inside the bounds (interior walls; furniture later). */
   walls: Rect[];
+  /** Solid furniture footprints — collide like walls but are rendered by
+   *  room components (not by House), so art and physics share one source. */
+  furniture: Rect[];
   rooms: { id: RoomId; rect: Rect }[];
 };
 
@@ -43,6 +46,13 @@ const GROUND: Area = {
   id: "ground",
   bounds: { x: 0, z: 0, w: 22, d: 6 },
   walls: [...dividerWithDoor(8, 6), ...dividerWithDoor(16, 6)],
+  furniture: [
+    { x: 17.2, z: 0.3, w: 3.0, d: 1.0 }, // turntable cabinet
+    { x: 20.6, z: 0.4, w: 0.8, d: 0.8 }, // record crate
+    { x: 20.8, z: 3.4, w: 0.9, d: 0.9 }, // beanbag
+    { x: 16.5, z: 0.5, w: 0.35, d: 0.35 }, // floor lamp
+    { x: 21.1, z: 5.0, w: 0.45, d: 0.45 }, // monstera pot
+  ],
   rooms: [
     { id: "bedroom", rect: { x: 0, z: 0, w: 8, d: 6 } },
     { id: "workspace", rect: { x: 8, z: 0, w: 8, d: 6 } },
@@ -54,6 +64,7 @@ const ROOF: Area = {
   id: "roof",
   bounds: { x: 8, z: 0, w: 8, d: 6 },
   walls: [],
+  furniture: [],
   rooms: [{ id: "rooftop", rect: { x: 8, z: 0, w: 8, d: 6 } }],
 };
 
