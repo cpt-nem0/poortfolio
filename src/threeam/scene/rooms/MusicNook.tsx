@@ -28,6 +28,8 @@ export function MusicNook() {
   const wallE = usePixelTexture("/3am/tex/wall-teal.png", R.d, 1);
   const wallWN = usePixelTexture("/3am/tex/wall-teal.png", 2.2, 1); // west divider, north of door
   const wallWS = usePixelTexture("/3am/tex/wall-teal.png", 2.2, 1); // west divider, south of door
+  // south stub (dollhouse cutaway): sample only the teal band of the texture
+  const wallS = usePixelTexture("/3am/tex/wall-teal.png", R.w, 0.2, 0, 0.5);
   const rugTex = usePixelTexture("/3am/tex/rug-kilim.png", 1, 1);
   const posterGig = usePixelTexture("/3am/tex/poster-gig.png", 1, 1);
   const posterWave = usePixelTexture("/3am/tex/poster-wave.png", 1, 1);
@@ -120,6 +122,13 @@ export function MusicNook() {
       <mesh position={[R.x + 0.145, 0.09, 4.9]}>
         <boxGeometry args={[0.07, 0.18, 2.2]} />
         <meshStandardMaterial color="#4a3a2e" />
+      </mesh>
+
+      {/* south stub wall, nook-facing side — teal band so the cutaway edge
+          matches the room instead of gray-box purple */}
+      <mesh rotation={[0, Math.PI, 0]} position={[R.x + R.w / 2, 0.275, R.z + R.d - 0.015]}>
+        <planeGeometry args={[R.w, 0.55]} />
+        <meshStandardMaterial map={wallS} />
       </mesh>
 
       {/* baseboards */}
