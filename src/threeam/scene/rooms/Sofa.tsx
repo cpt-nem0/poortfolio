@@ -28,31 +28,32 @@ export function Sofa() {
         <boxGeometry args={[0.2, 0.42, 0.8]} />
         <meshStandardMaterial color="#454269" />
       </mesh>
-      {/* seat cushions, slightly uneven */}
-      <mesh position={[-0.4, 0.39, 0.05]} rotation={[0, 0.03, 0]}>
+      {/* seat cushions — mirrored, just a whisper of unevenness */}
+      <mesh position={[-0.4, 0.39, 0.04]} rotation={[0, 0.015, 0]}>
         <boxGeometry args={[0.76, 0.12, 0.6]} />
         <meshStandardMaterial color="#5a5687" />
       </mesh>
-      <mesh position={[0.4, 0.38, 0.03]} rotation={[0, -0.02, 0]}>
+      <mesh position={[0.4, 0.39, 0.04]} rotation={[0, -0.015, 0]}>
         <boxGeometry args={[0.76, 0.12, 0.6]} />
-        <meshStandardMaterial color="#565283" />
+        <meshStandardMaterial color="#585486" />
       </mesh>
-      {/* back cushions */}
-      <mesh position={[-0.42, 0.62, -0.22]} rotation={[-0.18, 0, 0.02]}>
+      {/* back cushions — mirrored */}
+      <mesh position={[-0.42, 0.61, -0.22]} rotation={[-0.16, 0, 0.015]}>
         <boxGeometry args={[0.7, 0.34, 0.14]} />
         <meshStandardMaterial color="#5a5687" />
       </mesh>
-      <mesh position={[0.42, 0.6, -0.23]} rotation={[-0.15, 0, -0.03]}>
+      <mesh position={[0.42, 0.61, -0.22]} rotation={[-0.16, 0, -0.015]}>
         <boxGeometry args={[0.7, 0.34, 0.14]} />
-        <meshStandardMaterial color="#565283" />
+        <meshStandardMaterial color="#585486" />
       </mesh>
-      {/* throw blanket over the left armrest */}
-      <mesh position={[-0.89, 0.56, 0.05]} rotation={[0, 0, 0.06]}>
-        <boxGeometry args={[0.26, 0.05, 0.66]} />
+      {/* throw blanket folded flat over one armrest (kept subtle so the
+          arms still read as twins) */}
+      <mesh position={[-0.89, 0.545, 0]}>
+        <boxGeometry args={[0.24, 0.045, 0.62]} />
         <meshStandardMaterial color="#c98a2e" />
       </mesh>
-      <mesh position={[-1.0, 0.36, 0.05]} rotation={[0, 0, 0.1]}>
-        <boxGeometry args={[0.05, 0.38, 0.6]} />
+      <mesh position={[-1.005, 0.42, 0]}>
+        <boxGeometry args={[0.035, 0.3, 0.56]} />
         <meshStandardMaterial color="#b87d26" />
       </mesh>
       {/* short wooden feet */}

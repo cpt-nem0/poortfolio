@@ -73,8 +73,8 @@ export function MusicNook() {
       <Turntable />
       <AlbumWall />
 
-      {/* rug (visual only, walkable) */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[19.3, 0.035, 3.2]}>
+      {/* rug (visual only, walkable) — centered on the sofa/console axis */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[19, 0.035, 3.2]}>
         <planeGeometry args={[3.4, 2.4]} />
         <meshStandardMaterial map={rugTex} transparent />
       </mesh>
@@ -97,26 +97,41 @@ export function MusicNook() {
       {/* sofa — collider {16.4,4.0,1.8,1.7} */}
       <Sofa />
 
-      {/* side table + coffee mug, at the sofa's right hand — collider {19.95,4.95,0.5,0.5} */}
-      <group position={[20.2, 0, 5.2]}>
-        <mesh position={[0, 0.42, 0]}>
-          <cylinderGeometry args={[0.24, 0.24, 0.035, 10]} />
+      {/* coffee table at the sofa's left, with table lamp + the 3am mug —
+          collider {17.15,4.9,0.6,0.6} */}
+      <group position={[17.45, 0, 5.2]}>
+        <mesh position={[0, 0.5, 0]}>
+          <cylinderGeometry args={[0.3, 0.3, 0.04, 12]} />
           <meshStandardMaterial color="#6b4128" />
         </mesh>
-        <mesh position={[0, 0.21, 0]}>
-          <cylinderGeometry args={[0.03, 0.03, 0.4, 6]} />
+        <mesh position={[0, 0.25, 0]}>
+          <cylinderGeometry args={[0.035, 0.035, 0.48, 6]} />
           <meshStandardMaterial color="#4a3a2e" />
         </mesh>
-        <mesh position={[0, 0.02, 0]}>
-          <cylinderGeometry args={[0.14, 0.16, 0.035, 8]} />
+        <mesh position={[0, 0.025, 0]}>
+          <cylinderGeometry args={[0.18, 0.2, 0.04, 8]} />
           <meshStandardMaterial color="#4a3a2e" />
         </mesh>
+        {/* table lamp */}
+        <mesh position={[-0.08, 0.54, -0.04]}>
+          <cylinderGeometry args={[0.07, 0.08, 0.03, 8]} />
+          <meshStandardMaterial color="#2e2a4d" />
+        </mesh>
+        <mesh position={[-0.08, 0.65, -0.04]}>
+          <cylinderGeometry args={[0.015, 0.015, 0.2, 6]} />
+          <meshStandardMaterial color="#2e2a4d" />
+        </mesh>
+        <mesh position={[-0.08, 0.78, -0.04]}>
+          <cylinderGeometry args={[0.07, 0.1, 0.13, 8, 1, true]} />
+          <meshStandardMaterial color="#ffb35c" emissive="#ffb35c" emissiveIntensity={0.85} side={2} />
+        </mesh>
+        <pointLight position={[-0.08, 0.85, -0.04]} color="#ffb35c" intensity={2.2} distance={2.6} decay={2} />
         {/* the 3am coffee mug */}
-        <mesh position={[0.06, 0.485, 0.03]}>
+        <mesh position={[0.13, 0.57, 0.08]}>
           <cylinderGeometry args={[0.045, 0.04, 0.1, 8]} />
           <meshStandardMaterial color="#f2ecd8" />
         </mesh>
-        <mesh position={[0.125, 0.49, 0.03]}>
+        <mesh position={[0.195, 0.575, 0.08]}>
           <boxGeometry args={[0.03, 0.05, 0.02]} />
           <meshStandardMaterial color="#f2ecd8" />
         </mesh>
