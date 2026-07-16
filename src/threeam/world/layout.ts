@@ -53,7 +53,7 @@ const GROUND: Area = {
     { x: 16.2, z: 1.7, w: 0.3, d: 0.3 }, // barrel cactus by the doorway
     { x: 18.1, z: 4.8, w: 1.8, d: 0.8 }, // sofa (sweet spot, facing the console)
     { x: 17.15, z: 4.9, w: 0.6, d: 0.6 }, // coffee table w/ lamp (sofa's left)
-    { x: 21.05, z: 4.95, w: 0.45, d: 0.45 }, // acoustic guitar on stand
+    { x: 20.9, z: 4.85, w: 0.6, d: 0.6 }, // guitar corner (cutaway acoustic + electric)
   ],
   rooms: [
     { id: "bedroom", rect: { x: 0, z: 0, w: 8, d: 6 } },

@@ -329,8 +329,26 @@ export function MusicNook() {
         ))}
       </group>
 
-      {/* acoustic guitar on a stand (SE corner) — collider {21.05,4.95,0.45,0.45} */}
-      <group position={[21.275, 0, 5.175]} rotation={[0, -0.65, 0]}>
+      {/* clip lamp on the south half-wall rim, aimed at the guitar corner */}
+      <group position={[20.75, 0.55, 5.9]}>
+        <mesh position={[0, 0.02, 0]}>
+          <boxGeometry args={[0.07, 0.09, 0.09]} />
+          <meshStandardMaterial color="#22222c" />
+        </mesh>
+        <mesh position={[0, 0.14, -0.03]} rotation={[0.5, 0, 0]}>
+          <cylinderGeometry args={[0.012, 0.012, 0.16, 5]} />
+          <meshStandardMaterial color="#22222c" />
+        </mesh>
+        <mesh position={[0, 0.22, -0.09]} rotation={[0.9, 0, 0]}>
+          <coneGeometry args={[0.055, 0.09, 8, 1, true]} />
+          <meshStandardMaterial color="#ffd9a0" emissive="#ffd9a0" emissiveIntensity={1.1} side={2} />
+        </mesh>
+      </group>
+      <pointLight position={[20.78, 0.82, 5.68]} color="#ffd9a0" intensity={3.2} distance={2.8} decay={2} />
+
+      {/* the guitar corner (SE): cutaway acoustic + seafoam electric on
+          A-frame stands — collider {20.9,4.85,0.6,0.6} */}
+      <group position={[21.35, 0, 5.28]} rotation={[0, -0.65, 0]}>
         {/* A-frame stand */}
         <mesh position={[-0.1, 0.22, 0.06]} rotation={[0.25, 0, 0.28]}>
           <cylinderGeometry args={[0.012, 0.012, 0.5, 5]} />
@@ -340,14 +358,15 @@ export function MusicNook() {
           <cylinderGeometry args={[0.012, 0.012, 0.5, 5]} />
           <meshStandardMaterial color="#22222c" />
         </mesh>
-        {/* body — leaned back on the stand */}
+        {/* body — leaned back on the stand; upper bout offset = the cutaway */}
         <group rotation={[-0.18, 0, 0]}>
           <mesh position={[0, 0.24, 0]} rotation={[Math.PI / 2, 0, 0]}>
             <cylinderGeometry args={[0.2, 0.2, 0.09, 14]} />
             <meshStandardMaterial color="#a06b42" />
           </mesh>
-          <mesh position={[0, 0.5, 0]} rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[0.15, 0.15, 0.09, 12]} />
+          {/* cutaway: upper bout shifted off the treble side, leaving the scoop */}
+          <mesh position={[-0.055, 0.485, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.125, 0.125, 0.09, 12]} />
             <meshStandardMaterial color="#a06b42" />
           </mesh>
           {/* sound hole */}
@@ -381,6 +400,68 @@ export function MusicNook() {
           {/* strings — one bright strip reads as all six at pixel scale */}
           <mesh position={[0, 0.62, 0.052]}>
             <boxGeometry args={[0.028, 0.92, 0.004]} />
+            <meshStandardMaterial color="#f2ecd8" emissive="#f2ecd8" emissiveIntensity={0.12} />
+          </mesh>
+        </group>
+      </group>
+
+      {/* seafoam electric — offset solid body, cream pickguard */}
+      <group position={[21.0, 0, 4.98]} rotation={[0, -0.35, 0]}>
+        <mesh position={[-0.09, 0.2, 0.05]} rotation={[0.25, 0, 0.26]}>
+          <cylinderGeometry args={[0.011, 0.011, 0.44, 5]} />
+          <meshStandardMaterial color="#22222c" />
+        </mesh>
+        <mesh position={[0.09, 0.2, 0.05]} rotation={[0.25, 0, -0.26]}>
+          <cylinderGeometry args={[0.011, 0.011, 0.44, 5]} />
+          <meshStandardMaterial color="#22222c" />
+        </mesh>
+        <group rotation={[-0.16, 0, 0]}>
+          {/* offset body: two overlapping flattened cylinders */}
+          <mesh position={[0.02, 0.22, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.155, 0.155, 0.06, 12]} />
+            <meshStandardMaterial color="#4f8a80" />
+          </mesh>
+          <mesh position={[-0.05, 0.34, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.115, 0.115, 0.06, 10]} />
+            <meshStandardMaterial color="#4f8a80" />
+          </mesh>
+          {/* cream pickguard */}
+          <mesh position={[0.045, 0.24, 0.033]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.09, 0.09, 0.012, 8]} />
+            <meshStandardMaterial color="#f2ecd8" />
+          </mesh>
+          {/* pickups + knobs */}
+          <mesh position={[0, 0.3, 0.04]}>
+            <boxGeometry args={[0.09, 0.025, 0.012]} />
+            <meshStandardMaterial color="#22222c" />
+          </mesh>
+          <mesh position={[0.01, 0.2, 0.04]}>
+            <boxGeometry args={[0.09, 0.025, 0.012]} />
+            <meshStandardMaterial color="#22222c" />
+          </mesh>
+          <mesh position={[0.11, 0.15, 0.04]}>
+            <cylinderGeometry args={[0.014, 0.014, 0.02, 6]} />
+            <meshStandardMaterial color="#c9b088" />
+          </mesh>
+          {/* slim neck */}
+          <mesh position={[-0.02, 0.72, 0.02]}>
+            <boxGeometry args={[0.04, 0.55, 0.025]} />
+            <meshStandardMaterial color="#6b4128" />
+          </mesh>
+          {/* 6-inline headstock */}
+          <mesh position={[-0.045, 1.04, 0.02]}>
+            <boxGeometry args={[0.075, 0.11, 0.03]} />
+            <meshStandardMaterial color="#4f8a80" />
+          </mesh>
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <mesh key={i} position={[-0.085, 0.995 + i * 0.018, 0.02]}>
+              <boxGeometry args={[0.016, 0.012, 0.012]} />
+              <meshStandardMaterial color="#c9b088" />
+            </mesh>
+          ))}
+          {/* strings */}
+          <mesh position={[-0.01, 0.58, 0.042]}>
+            <boxGeometry args={[0.024, 0.82, 0.004]} />
             <meshStandardMaterial color="#f2ecd8" emissive="#f2ecd8" emissiveIntensity={0.12} />
           </mesh>
         </group>
