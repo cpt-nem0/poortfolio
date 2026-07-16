@@ -22,7 +22,10 @@ export function Turntable() {
   const unlocked = useAudioStore((s) => s.unlocked);
   const resting = muted || paused || !unlocked;
 
-  useFrame((_, dt) => {
+  useFrame((_, rawDt) => {
+    // clamp: ctx.resume()/suspend() can stall a frame — an unclamped dt
+    // would make the exponential glide teleport (looked like a glitch)
+    const dt = Math.min(rawDt, 0.05);
     if (vinylRef.current && !resting) {
       vinylRef.current.rotation.y -= dt * 2.4; // ~33rpm-ish, stylized
     }
@@ -31,9 +34,8 @@ export function Turntable() {
       // playing; swung right, flat and parallel to the deck's right edge
       // (its cradle) when resting
       const t = 1 - Math.exp(-8 * dt);
-      const target = resting ? { x: 0, y: Math.PI / 2 } : { x: 0, y: 0.55 };
-      armRef.current.rotation.x += (target.x - armRef.current.rotation.x) * t;
-      armRef.current.rotation.y += (target.y - armRef.current.rotation.y) * t;
+      const targetY = resting ? Math.PI / 2 : 0.55;
+      armRef.current.rotation.y += (targetY - armRef.current.rotation.y) * t;
     }
   });
 
@@ -67,10 +69,13 @@ export function Turntable() {
           <meshStandardMaterial color="#8d86a8" />
         </mesh>
       </group>
-      {/* tonearm — clickable; glides to rest when muted/paused */}
+      {/* tonearm — clickable; glides to rest when muted/paused. Pivot sits
+          ABOVE the vinyl surface so the platter never occludes the arm
+          (occlusion read as the arm changing length). Starts in the cradle. */}
       <group
         ref={armRef}
-        position={[0.24, 0.07, -0.14]}
+        position={[0.24, 0.105, -0.14]}
+        rotation={[0, Math.PI / 2, 0]}
         onClick={(e) => {
           e.stopPropagation();
           audioEngine.toggleMute();
@@ -92,8 +97,8 @@ export function Turntable() {
             emissiveIntensity={hover ? 0.35 : 0}
           />
         </mesh>
-        <mesh>
-          <cylinderGeometry args={[0.025, 0.025, 0.05, 10]} />
+        <mesh position={[0, -0.025, 0]}>
+          <cylinderGeometry args={[0.025, 0.025, 0.1, 10]} />
           <meshStandardMaterial color="#c9b088" />
         </mesh>
       </group>
