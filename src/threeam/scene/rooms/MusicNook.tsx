@@ -22,11 +22,19 @@ const WALL_VARIANTS = [
 ];
 const RUG_VARIANTS = [
   { label: "persian rust", path: "/3am/tex/rug-persian.png", w: 3.4, d: 2.4 },
+  { label: "teal field", path: "/3am/tex/rug-tealfield.png", w: 3.4, d: 2.4 },
   { label: "berber cream", path: "/3am/tex/rug-berber.png", w: 3.4, d: 2.4 },
   { label: "round braided", path: "/3am/tex/rug-round.png", w: 2.6, d: 2.6 },
   { label: "kilim bands", path: "/3am/tex/rug-kilim.png", w: 3.4, d: 2.4 },
   { label: "purple diamond", path: "/3am/tex/rug.png", w: 3.4, d: 2.4 },
-  { label: "teal field", path: "/3am/tex/rug-tealfield.png", w: 3.4, d: 2.4 },
+];
+const FLOOR_VARIANTS = [
+  /* rx/ry: 32px tiles repeat once per meter; 64px tiles once per 2m */
+  { label: "honey planks", path: "/3am/tex/floor-planks.png", rx: R.w, ry: R.d },
+  { label: "dark walnut", path: "/3am/tex/floor-walnut.png", rx: R.w, ry: R.d },
+  { label: "herringbone", path: "/3am/tex/floor-herringbone.png", rx: R.w / 2, ry: R.d / 2 },
+  { label: "gray-washed", path: "/3am/tex/floor-graywash.png", rx: R.w, ry: R.d },
+  { label: "café checker", path: "/3am/tex/floor-checker.png", rx: R.w, ry: R.d },
 ];
 
 /**
@@ -37,20 +45,23 @@ const RUG_VARIANTS = [
 export function MusicNook() {
   const [wallIdx, setWallIdx] = useState(0);
   const [rugIdx, setRugIdx] = useState(0);
+  const [floorIdx, setFloorIdx] = useState(0);
   const wallV = WALL_VARIANTS[wallIdx];
   const rugV = RUG_VARIANTS[rugIdx];
+  const floorV = FLOOR_VARIANTS[floorIdx];
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.repeat) return;
       if (e.code === "Digit1") setWallIdx((i) => (i + 1) % WALL_VARIANTS.length);
       if (e.code === "Digit2") setRugIdx((i) => (i + 1) % RUG_VARIANTS.length);
+      if (e.code === "Digit3") setFloorIdx((i) => (i + 1) % FLOOR_VARIANTS.length);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const floor = usePixelTexture("/3am/tex/floor-planks.png", R.w, R.d); // 1 tile = 1m
+  const floor = usePixelTexture(floorV.path, floorV.rx, floorV.ry);
   const wallN = usePixelTexture(wallV.path, R.w, wallV.ry);
   const wallE = usePixelTexture(wallV.path, R.d, wallV.ry);
   const rugTex = usePixelTexture(rugV.path, 1, 1);

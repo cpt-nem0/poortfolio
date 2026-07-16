@@ -115,6 +115,56 @@ function rugBerber(x, y) {
   return shade(PALETTE.cream100, 0.94 + hash2(Math.floor(x / 3), Math.floor(y / 3), 142) * 0.06);
 }
 
+/* ---- floor option B: dark walnut planks (32×32, same layout as original) ---- */
+const WALNUT_TONES = [PALETTE.wood700, PALETTE.wood900, PALETTE.wood700, "#3a2c22"];
+function floorWalnut(x, y) {
+  const row = Math.floor(y / 8);
+  const stagger = (row % 2) * 16;
+  const seg = Math.floor(((x + stagger) % 32) / 16);
+  const tone = WALNUT_TONES[Math.floor(hash2(seg, row, 151) * WALNUT_TONES.length)];
+  if (y % 8 === 0) return shade(tone, 0.55);
+  if ((x + stagger) % 16 === 0) return shade(tone, 0.6);
+  const grain = hash2(x, y, 152);
+  if (grain > 0.93) return shade(tone, 0.8);
+  if (grain < 0.04) return shade(tone, 1.15);
+  return shade(tone, 0.95 + hash2(x, Math.floor(y / 8), 153) * 0.1);
+}
+
+/* ---- floor option C: herringbone parquet (64×64; repeat at half density) ---- */
+function floorHerringbone(x, y) {
+  const lane = Math.floor((x + y) / 8) % 2;
+  const u = lane === 0 ? x - y : x + y;
+  const v = lane === 0 ? x + y : x - y;
+  const plankId = Math.floor((u + 128) / 8) * 31 + Math.floor((v + 128) / 8) * 7 + lane;
+  const tone = PLANK_TONES_H[Math.floor(hash2(plankId, lane, 161) * PLANK_TONES_H.length)];
+  if ((u + 128) % 8 === 0 || (x + y) % 8 === 0) return shade(tone, 0.6);
+  const grain = hash2(x, y, 162);
+  if (grain > 0.94) return shade(tone, 0.82);
+  return shade(tone, 0.95 + hash2(plankId, 0, 163) * 0.1);
+}
+const PLANK_TONES_H = [PALETTE.wood300, PALETTE.wood500, "#96653e", PALETTE.wood700];
+
+/* ---- floor option D: gray-washed boards (32×32) ---- */
+const GRAY_TONES = ["#8d8478", "#7d7468", "#867d72", "#6e665c"];
+function floorGraywash(x, y) {
+  const row = Math.floor(y / 8);
+  const stagger = (row % 2) * 16;
+  const tone = GRAY_TONES[Math.floor(hash2(Math.floor(((x + stagger) % 32) / 16), row, 171) * GRAY_TONES.length)];
+  if (y % 8 === 0) return shade(tone, 0.62);
+  if ((x + stagger) % 16 === 0) return shade(tone, 0.68);
+  const grain = hash2(x, y, 172);
+  if (grain > 0.94) return shade(tone, 0.85);
+  return shade(tone, 0.96 + hash2(x, row, 173) * 0.07);
+}
+
+/* ---- floor option E: café checkerboard, cream + deep teal (32×32) ---- */
+function floorChecker(x, y) {
+  const check = (Math.floor(x / 16) + Math.floor(y / 16)) % 2;
+  const base = check ? "#2e4f4a" : PALETTE.plaster300;
+  if (x % 16 === 0 || y % 16 === 0) return shade(base, 0.8);
+  return shade(base, 0.95 + hash2(x, y, 181) * 0.08);
+}
+
 /* ---- posters ---- */
 /* tall gig poster 32×88: sunburst over mountains, "text" bars below */
 function posterGig(x, y) {
@@ -180,6 +230,10 @@ const JOBS = [
   ["rug-round", 64, 64, rugRound],
   ["rug-persian", 64, 64, rugPersian],
   ["rug-berber", 64, 64, rugBerber],
+  ["floor-walnut", 32, 32, floorWalnut],
+  ["floor-herringbone", 64, 64, floorHerringbone],
+  ["floor-graywash", 32, 32, floorGraywash],
+  ["floor-checker", 32, 32, floorChecker],
   ["poster-gig", 32, 88, posterGig],
   ["poster-wave", 40, 56, posterWave],
   ["poster-moons", 40, 56, posterMoons],

@@ -44,7 +44,7 @@ export function Hud() {
       )}
 
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-xs text-[#7d729e]">
-        WASD / arrows to walk · E to interact · style test: 1 walls, 2 rugs
+        WASD / arrows to walk · E to interact · style test: 1 walls, 2 rugs, 3 floors
       </div>
 
       {!unlocked && (
