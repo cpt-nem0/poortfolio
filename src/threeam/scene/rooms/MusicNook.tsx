@@ -329,40 +329,61 @@ export function MusicNook() {
         ))}
       </group>
 
-      {/* standing carved art totem (SE corner) — collider {21.0,4.9,0.55,0.55} */}
-      <group position={[21.275, 0, 5.175]} rotation={[0, -0.5, 0]}>
-        <mesh position={[0, 0.08, 0]}>
-          <boxGeometry args={[0.42, 0.16, 0.42]} />
-          <meshStandardMaterial color="#4a3a2e" />
+      {/* acoustic guitar on a stand (SE corner) — collider {21.05,4.95,0.45,0.45} */}
+      <group position={[21.275, 0, 5.175]} rotation={[0, -0.65, 0]}>
+        {/* A-frame stand */}
+        <mesh position={[-0.1, 0.22, 0.06]} rotation={[0.25, 0, 0.28]}>
+          <cylinderGeometry args={[0.012, 0.012, 0.5, 5]} />
+          <meshStandardMaterial color="#22222c" />
         </mesh>
-        <mesh position={[0, 0.62, 0]}>
-          <boxGeometry args={[0.3, 0.95, 0.3]} />
-          <meshStandardMaterial color="#6b4128" />
+        <mesh position={[0.1, 0.22, 0.06]} rotation={[0.25, 0, -0.28]}>
+          <cylinderGeometry args={[0.012, 0.012, 0.5, 5]} />
+          <meshStandardMaterial color="#22222c" />
         </mesh>
-        {/* carved face + geometric inlays (painted cream) */}
-        <mesh position={[-0.07, 0.86, 0.152]}>
-          <boxGeometry args={[0.07, 0.05, 0.01]} />
-          <meshStandardMaterial color="#f2ecd8" />
-        </mesh>
-        <mesh position={[0.07, 0.86, 0.152]}>
-          <boxGeometry args={[0.07, 0.05, 0.01]} />
-          <meshStandardMaterial color="#f2ecd8" />
-        </mesh>
-        <mesh position={[0, 0.68, 0.152]}>
-          <boxGeometry args={[0.16, 0.035, 0.01]} />
-          <meshStandardMaterial color="#f2ecd8" />
-        </mesh>
-        {[0, 1, 2].map((i) => (
-          <mesh key={i} position={[-0.07 + i * 0.07, 0.42, 0.152]} rotation={[0, 0, Math.PI / 4]}>
-            <boxGeometry args={[0.05, 0.05, 0.008]} />
-            <meshStandardMaterial color={i === 1 ? "#b3475f" : "#f2ecd8"} />
+        {/* body — leaned back on the stand */}
+        <group rotation={[-0.18, 0, 0]}>
+          <mesh position={[0, 0.24, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.2, 0.2, 0.09, 14]} />
+            <meshStandardMaterial color="#a06b42" />
           </mesh>
-        ))}
-        {/* crown */}
-        <mesh position={[0, 1.16, 0]}>
-          <boxGeometry args={[0.38, 0.12, 0.38]} />
-          <meshStandardMaterial color="#4a3a2e" />
-        </mesh>
+          <mesh position={[0, 0.5, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.15, 0.15, 0.09, 12]} />
+            <meshStandardMaterial color="#a06b42" />
+          </mesh>
+          {/* sound hole */}
+          <mesh position={[0, 0.33, 0.047]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.055, 0.055, 0.01, 10]} />
+            <meshStandardMaterial color="#2b1d12" />
+          </mesh>
+          {/* bridge */}
+          <mesh position={[0, 0.17, 0.05]}>
+            <boxGeometry args={[0.12, 0.025, 0.012]} />
+            <meshStandardMaterial color="#4a3a2e" />
+          </mesh>
+          {/* neck + fretboard */}
+          <mesh position={[0, 0.82, 0.03]}>
+            <boxGeometry args={[0.05, 0.5, 0.03]} />
+            <meshStandardMaterial color="#4a3a2e" />
+          </mesh>
+          {/* headstock + tuners */}
+          <mesh position={[0, 1.11, 0.03]}>
+            <boxGeometry args={[0.07, 0.12, 0.035]} />
+            <meshStandardMaterial color="#6b4128" />
+          </mesh>
+          {[-1, 1].map((s) =>
+            [0, 1, 2].map((i) => (
+              <mesh key={`${s}-${i}`} position={[s * 0.045, 1.075 + i * 0.032, 0.03]}>
+                <boxGeometry args={[0.018, 0.014, 0.014]} />
+                <meshStandardMaterial color="#c9b088" />
+              </mesh>
+            ))
+          )}
+          {/* strings — one bright strip reads as all six at pixel scale */}
+          <mesh position={[0, 0.62, 0.052]}>
+            <boxGeometry args={[0.028, 0.92, 0.004]} />
+            <meshStandardMaterial color="#f2ecd8" emissive="#f2ecd8" emissiveIntensity={0.12} />
+          </mesh>
+        </group>
       </group>
 
       {/* floor lamp, right of the console — collider {20.675,0.475,0.35,0.35} */}

@@ -165,59 +165,72 @@ function floorChecker(x, y) {
   return shade(base, 0.95 + hash2(x, y, 181) * 0.08);
 }
 
-/* ---- posters ---- */
-/* tall gig poster 32×88: sunburst over mountains, "text" bars below */
+/* ---- posters (music-centric set, locked at the style gate) ---- */
+/* tall concert poster 32×88: speaker stack radiating sound rings,
+   headline bar up top, illegible lineup bars below */
 function posterGig(x, y) {
   if (x === 0 || x === 31 || y === 0 || y === 87) return shade(PALETTE.night900, 1.4);
-  // sky
-  let c = y < 40 ? shade(PALETTE.night500, 1 + (40 - y) * 0.004) : hexToRgb(PALETTE.night700);
-  const dx = x - 16;
-  const dy = y - 22;
-  const r = Math.sqrt(dx * dx + dy * dy);
-  if (r < 9) c = hexToRgb(PALETTE.amber500);
-  else if (r < 11) c = hexToRgb(PALETTE.amber700);
-  else if (y < 40 && Math.abs(Math.atan2(dy, dx) * 8 - Math.round(Math.atan2(dy, dx) * 8)) < 0.14 && r < 22)
-    c = shade(PALETTE.amber700, 0.75); // rays
-  // mountains
-  const ridge = 46 + Math.abs(((x * 13) % 17) - 8);
-  if (y > 40 && y > ridge) c = shade(PALETTE.purple700, y > ridge + 6 ? 0.65 : 0.9);
-  // text bars
-  if (y > 66 && y < 84 && y % 5 < 2 && x > 5 && x < 27 - (y % 7)) c = hexToRgb(PALETTE.cream100);
+  let c = shade(PALETTE.night700, 0.95 + hash2(x, y, 201) * 0.06);
+  // headline bar
+  if (y > 4 && y < 10 && x > 4 && x < 28) c = hexToRgb(PALETTE.amber500);
+  // speaker cabinet
+  if (x > 8 && x < 24 && y > 26 && y < 52) {
+    c = shade(PALETTE.wood900, 1.05);
+    const dxw = x - 16;
+    const dyw = y - 33;
+    const dyt = y - 45;
+    if (dxw * dxw + dyw * dyw < 20) c = dxw * dxw + dyw * dyw < 6 ? hexToRgb(PALETTE.night900) : hexToRgb("#3a3244");
+    if (dxw * dxw + dyt * dyt < 9) c = dxw * dxw + dyt * dyt < 3 ? hexToRgb(PALETTE.night900) : hexToRgb("#3a3244");
+  }
+  // sound rings radiating up from the cabinet
+  const dxr = x - 16;
+  const dyr = y - 26;
+  const rr = Math.sqrt(dxr * dxr + dyr * dyr);
+  if (y < 26 && (Math.abs(rr - 7) < 0.9 || Math.abs(rr - 12) < 0.9 || Math.abs(rr - 17) < 0.9))
+    c = hexToRgb([PALETTE.teal500, PALETTE.amber500, PALETTE.red500][Math.round(rr / 5) % 3]);
+  // lineup text bars
+  if (y > 58 && y < 84 && y % 4 < 2 && x > 5 && x < 27 - ((y * 7) % 9)) c = hexToRgb(PALETTE.cream100);
   return c;
 }
 
-/* wave poster 40×56 */
+/* cassette poster 40×56 */
 function posterWave(x, y) {
   if (x === 0 || x === 39 || y === 0 || y === 55) return shade(PALETTE.night900, 1.4);
-  const wave = Math.sin(x * 0.35) * 5 + Math.sin(x * 0.13 + 2) * 4;
-  const band = y - 30 - wave;
-  let c = hexToRgb(PALETTE.night700);
-  if (band > 8) c = hexToRgb("#1f5c55");
-  else if (band > 4) c = hexToRgb(PALETTE.cream100);
-  else if (band > 0) c = hexToRgb("#4a736c");
-  const dx = x - 29;
-  const dy = y - 12;
-  if (dx * dx + dy * dy < 25) c = hexToRgb(PALETTE.red500); // sun
+  let c = shade("#1f5c55", 0.9 + hash2(x, y, 211) * 0.08);
+  // cassette shell
+  if (x > 5 && x < 34 && y > 14 && y < 36) {
+    c = hexToRgb("#22222c");
+    if (y > 16 && y < 24) c = hexToRgb(PALETTE.red500); // label band
+    // reels
+    const dl = (x - 13) * (x - 13) + (y - 29) * (y - 29);
+    const dr = (x - 26) * (x - 26) + (y - 29) * (y - 29);
+    if (dl < 8 || dr < 8) c = hexToRgb(PALETTE.cream100);
+    if (dl < 2 || dr < 2) c = hexToRgb("#22222c");
+    // window between reels
+    if (x > 16 && x < 23 && y > 27 && y < 31) c = shade(PALETTE.wood900, 0.8);
+  }
+  // title bars below
+  if (y > 42 && y < 52 && y % 4 < 2 && x > 7 && x < 32 - ((y * 3) % 6)) c = hexToRgb(PALETTE.cream100);
   return c;
 }
 
-/* moon phases poster 40×56 */
+/* vinyl close-up poster 40×56 */
 function posterMoons(x, y) {
   if (x === 0 || x === 39 || y === 0 || y === 55) return shade(PALETTE.night900, 1.4);
-  let c = shade(PALETTE.night700, 0.9 + hash2(x, y, 121) * 0.06);
-  for (let row = 0; row < 3; row++) {
-    for (let col = 0; col < 3; col++) {
-      const cx = 9 + col * 11;
-      const cy = 12 + row * 16;
-      const dx = x - cx;
-      const dy = y - cy;
-      if (dx * dx + dy * dy < 16) {
-        const phase = row * 3 + col;
-        const cut = dx + (phase - 4); // crude phase mask
-        c = cut < 0 ? shade(PALETTE.night500, 1.1) : hexToRgb(PALETTE.cream100);
-      }
-    }
+  let c = shade(PALETTE.night500, 0.9 + hash2(x, y, 221) * 0.06);
+  const dx = x - 20;
+  const dy = y - 24;
+  const r = Math.sqrt(dx * dx + dy * dy);
+  if (r < 17) {
+    // grooved disc with a subtle highlight arc
+    const ring = Math.floor(r) % 3 === 0 ? 0.85 : 1.0;
+    c = shade(PALETTE.vinyl700, ring);
+    if (Math.abs(Math.atan2(dy, dx) - 2.3) < 0.35 && r > 6) c = shade("#3a3244", 1.15);
+    if (r < 5.5) c = hexToRgb(PALETTE.amber500); // label
+    if (r < 1.2) c = hexToRgb(PALETTE.night900); // spindle hole
   }
+  // caption bars
+  if (y > 45 && y < 53 && y % 4 < 2 && x > 8 && x < 31 - ((y * 5) % 7)) c = hexToRgb(PALETTE.cream100);
   return c;
 }
 

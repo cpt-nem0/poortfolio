@@ -15,11 +15,11 @@ describe("music-room furniture colliders", () => {
     expect(isBlocked(ground, 18.7, 0.8)).toBe(true); // turntable spot
   });
 
-  it("the sofa, coffee table, floor lamp and art totem block", () => {
+  it("the sofa, coffee table, floor lamp and guitar block", () => {
     expect(isBlocked(ground, 19, 5.2)).toBe(true); // sofa (sweet spot)
     expect(isBlocked(ground, 17.45, 5.2)).toBe(true); // coffee table
     expect(isBlocked(ground, 20.85, 0.65)).toBe(true); // floor lamp
-    expect(isBlocked(ground, 21.3, 5.2)).toBe(true); // art totem
+    expect(isBlocked(ground, 21.3, 5.2)).toBe(true); // guitar on stand
   });
 
   it("the beanbag spot is walkable again (beanbag removed)", () => {
