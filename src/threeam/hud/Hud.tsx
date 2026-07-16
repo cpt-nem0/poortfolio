@@ -57,9 +57,12 @@ export function Hud() {
         <div className="absolute bottom-4 left-5 flex items-center gap-2 rounded bg-black/60 px-3 py-2 text-xs text-[#cfc6ee]">
           <button
             type="button"
-            onClick={() => audioEngine.togglePause()}
+            onClick={(e) => {
+              audioEngine.togglePause();
+              e.currentTarget.blur(); // don't hold the focus ring after a mouse click
+            }}
             aria-label={paused ? "play music" : "pause music"}
-            className="pointer-events-auto -my-1 rounded px-1 py-1 text-[#ffd9a0] transition-colors hover:text-[#ffb35c]"
+            className="pointer-events-auto -my-1 rounded px-1 py-1 text-[#ffd9a0] outline-none transition-colors hover:text-[#ffb35c] focus:outline-none focus-visible:text-[#ffb35c]"
           >
             {paused ? "▶" : "⏸"}
           </button>
