@@ -16,13 +16,15 @@ const SLEEVE_COLORS = [
 ];
 
 function RecordRow({ x, count, seed }: { x: number; count: number; seed: number }) {
+  // packed tight like a real collection — sleeves nearly touching, the
+  // occasional one leaning a couple of degrees
   return (
     <group position={[x, 0.27, 0]}>
       {Array.from({ length: count }, (_, i) => (
         <mesh
           key={i}
-          position={[-0.5 + i * (1.0 / count), 0.19, 0.02 * ((i + seed) % 3)]}
-          rotation={[0, 0, -0.06 + ((i + seed) % 4) * 0.035]}
+          position={[-0.575 + i * (1.15 / count), 0.19, 0.012 * ((i + seed) % 3)]}
+          rotation={[0, 0, -0.02 + ((i + seed) % 4) * 0.013]}
         >
           <boxGeometry args={[0.025, 0.37, 0.37]} />
           <meshStandardMaterial color={SLEEVE_COLORS[(i + seed) % SLEEVE_COLORS.length]} />
@@ -87,9 +89,9 @@ export function RecordConsole() {
           <meshStandardMaterial map={wood} />
         </mesh>
       ))}
-      {/* records standing on edge in both cubbies */}
-      <RecordRow x={-0.69} count={9} seed={0} />
-      <RecordRow x={0.69} count={11} seed={4} />
+      {/* records standing on edge in both cubbies, packed full */}
+      <RecordRow x={-0.69} count={21} seed={0} />
+      <RecordRow x={0.69} count={23} seed={4} />
       {/* hairpin legs */}
       {[
         [-1.3, -0.38], [-1.3, 0.38], [1.3, -0.38], [1.3, 0.38],
