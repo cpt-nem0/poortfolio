@@ -1,0 +1,8 @@
+[
+  { "key": "am", "artist": "Arctic Monkeys", "title": "AM", "kind": "album", "itunesId": 663097964 },
+  { "key": "fwn", "artist": "Arctic Monkeys", "title": "Favourite Worst Nightmare", "kind": "album", "itunesId": 251499221 },
+  { "key": "currents", "artist": "Tame Impala", "title": "Currents", "kind": "album", "itunesId": 1440838039 },
+  { "key": "okc", "artist": "Radiohead", "title": "OK Computer", "kind": "album", "itunesId": 1097861387 },
+  { "key": "iris", "artist": "Goo Goo Dolls", "title": "Iris", "kind": "single", "itunesId": 1109658204 },
+  { "key": "chfl", "artist": "Elvis Presley", "title": "Can't Help Falling In Love", "kind": "single", "itunesId": 949550091 }
+]

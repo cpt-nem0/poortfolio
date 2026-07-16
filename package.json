@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "gen:textures": "node scripts/pixelart/gen-textures.mjs"
+    "gen:textures": "node scripts/pixelart/gen-textures.mjs",
+    "gen:albums": "node scripts/pixelart/gen-albums.mjs"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
