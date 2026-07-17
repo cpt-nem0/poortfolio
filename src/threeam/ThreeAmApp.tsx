@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import dynamic from "next/dynamic";
 import { Hud } from "./hud/Hud";
+import { StationPanel } from "./hud/StationPanel";
 import { audioEngine } from "@/threeam/audio/engine";
 import { useThreeAm } from "@/threeam/state/store";
 
@@ -38,6 +39,7 @@ export function ThreeAmApp() {
     <div className="fixed inset-0 overflow-hidden bg-[#0a0916]">
       <Scene />
       <Hud />
+      <StationPanel />
     </div>
   );
 }
