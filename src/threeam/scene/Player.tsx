@@ -28,7 +28,10 @@ export function Player() {
   }, []);
 
   useFrame((_, rawDt) => {
-    if (useThreeAm.getState().focus) return; // station focused: player frozen
+    if (useThreeAm.getState().focus) {
+      keyboard.consumeInteract(); // drain stale E presses while frozen
+      return;
+    }
     const dt = Math.min(rawDt, 0.05); // clamp tab-switch spikes
     const s = useThreeAm.getState();
     const area = HOUSE.areas[s.area];
