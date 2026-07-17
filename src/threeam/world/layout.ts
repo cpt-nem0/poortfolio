@@ -55,7 +55,7 @@ const GROUND: Area = {
     { x: 17.15, z: 4.9, w: 0.6, d: 0.6 }, // coffee table w/ lamp (sofa's left)
     { x: 20.9, z: 4.85, w: 0.6, d: 0.6 }, // guitar corner (cutaway acoustic + electric)
     // workspace
-    { x: 9.5, z: 0.3, w: 3.0, d: 0.9 }, // desk
+    { x: 9.7, z: 0.3, w: 2.6, d: 0.9 }, // desk
     { x: 10.7, z: 1.5, w: 0.8, d: 0.8 }, // desk chair
     { x: 8.15, z: 4.3, w: 0.55, d: 1.1 }, // shelf unit (west wall, south of door)
     { x: 8.9, z: 5.3, w: 0.35, d: 0.35 }, // floor lamp

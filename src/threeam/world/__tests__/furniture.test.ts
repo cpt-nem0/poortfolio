@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { HOUSE } from "@/threeam/world/layout";
+import { HOUSE, type Rect } from "@/threeam/world/layout";
 import { isBlocked } from "@/threeam/world/collision";
+import { STATIONS } from "@/threeam/world/stations";
 
 const ground = HOUSE.areas.ground;
 
@@ -62,5 +63,21 @@ describe("workspace furniture colliders", () => {
     expect(isBlocked(ground, 9.7, 2.9)).toBe(false); // between chair and west door
     expect(isBlocked(ground, 13.5, 1.1)).toBe(false); // corkboard station spot
     expect(isBlocked(ground, 8.9, 1.2)).toBe(false); // projects station spot
+  });
+});
+
+describe("station triggers vs furniture", () => {
+  const intersects = (a: Rect, b: Rect) =>
+    a.x < b.x + b.w && b.x < a.x + a.w && a.z < b.z + b.d && b.z < a.z + a.d;
+
+  it("no station trigger overlaps any ground furniture rect", () => {
+    for (const station of STATIONS) {
+      for (const rect of ground.furniture) {
+        expect(
+          intersects(station.trigger, rect),
+          `station "${station.id}" trigger overlaps furniture rect ${JSON.stringify(rect)}`
+        ).toBe(false);
+      }
+    }
   });
 });
