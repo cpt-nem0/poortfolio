@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import dynamic from "next/dynamic";
 import { Hud } from "./hud/Hud";
 import { audioEngine } from "@/threeam/audio/engine";
+import { useThreeAm } from "@/threeam/state/store";
 
 const Scene = dynamic(() => import("./scene/Scene"), {
   ssr: false,
@@ -23,6 +24,14 @@ export function ThreeAmApp() {
       window.removeEventListener("pointerdown", unlock);
       window.removeEventListener("keydown", unlock);
     };
+  }, []);
+
+  useEffect(() => {
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.code === "Escape") useThreeAm.getState().setFocus(null);
+    };
+    window.addEventListener("keydown", onEsc);
+    return () => window.removeEventListener("keydown", onEsc);
   }, []);
 
   return (

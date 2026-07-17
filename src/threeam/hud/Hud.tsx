@@ -16,6 +16,8 @@ const ROOM_LABELS: Record<RoomId, string> = {
 export function Hud() {
   const room = useThreeAm((s) => s.room);
   const portal = useThreeAm((s) => s.activePortal);
+  const activeStation = useThreeAm((s) => s.activeStation);
+  const focus = useThreeAm((s) => s.focus);
   const unlocked = useAudioStore((s) => s.unlocked);
   const nowPlaying = useAudioStore((s) => s.nowPlaying);
   const muted = useAudioStore((s) => s.muted);
@@ -43,9 +45,17 @@ export function Hud() {
         </div>
       )}
 
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-xs text-[#7d729e]">
-        WASD / arrows to walk · E to interact
-      </div>
+      {!focus && !portal && activeStation && (
+        <div className="absolute bottom-16 left-1/2 -translate-x-1/2 rounded bg-black/60 px-4 py-2 text-[#ffd9a0]">
+          [E] {activeStation.label}
+        </div>
+      )}
+
+      {!focus && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-xs text-[#7d729e]">
+          WASD / arrows to walk · E to interact
+        </div>
+      )}
 
       {!unlocked && (
         <div className="absolute left-1/2 top-16 -translate-x-1/2 rounded bg-black/60 px-4 py-2 text-xs text-[#ffd9a0]">

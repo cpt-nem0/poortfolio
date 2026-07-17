@@ -7,6 +7,7 @@ import { useKeyboard } from "@/threeam/input/useKeyboard";
 import { HOUSE } from "@/threeam/world/layout";
 import { resolveMovement } from "@/threeam/world/collision";
 import { roomAt, portalAt } from "@/threeam/world/detect";
+import { stationAt } from "@/threeam/world/stations";
 import { playerPosition } from "@/threeam/world/runtime";
 import { useThreeAm } from "@/threeam/state/store";
 
@@ -27,6 +28,7 @@ export function Player() {
   }, []);
 
   useFrame((_, rawDt) => {
+    if (useThreeAm.getState().focus) return; // station focused: player frozen
     const dt = Math.min(rawDt, 0.05); // clamp tab-switch spikes
     const s = useThreeAm.getState();
     const area = HOUSE.areas[s.area];
@@ -52,9 +54,16 @@ export function Player() {
     );
     if (portal?.id !== s.activePortal?.id) s.setActivePortal(portal);
 
-    // E on an armed portal travels immediately (area swap + teleport)
-    if (keyboard.consumeInteract() && portal) {
-      s.travel(portal);
+    const station = stationAt(s.area, playerPosition.x, playerPosition.z);
+    if (station?.id !== s.activeStation?.id) s.setActiveStation(station);
+
+    // E priority: portal travels immediately, else focus the station
+    if (keyboard.consumeInteract()) {
+      if (portal) {
+        s.travel(portal);
+      } else if (station) {
+        s.setFocus(station.id);
+      }
     }
 
     if (meshRef.current) {
