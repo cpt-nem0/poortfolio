@@ -409,8 +409,8 @@ export function MusicNook() {
         </group>
       </group>
 
-      {/* seafoam electric — offset solid body, cream pickguard */}
-      <group position={[21.0, 0, 4.98]} rotation={[0, -0.35, 0]}>
+      {/* seafoam electric — Revstar-style, sized up per style feedback */}
+      <group position={[21.0, 0, 4.98]} rotation={[0, -0.35, 0]} scale={1.35}>
         <mesh position={[-0.09, 0.2, 0.05]} rotation={[0.25, 0, 0.26]}>
           <cylinderGeometry args={[0.011, 0.011, 0.44, 5]} />
           <meshStandardMaterial color="#22222c" />
@@ -419,53 +419,99 @@ export function MusicNook() {
           <cylinderGeometry args={[0.011, 0.011, 0.44, 5]} />
           <meshStandardMaterial color="#22222c" />
         </mesh>
+        {/* Revstar-style: double-horn body, cream racing stripe, angular
+            pickguard, two humbuckers, black 3+3 headstock */}
         <group rotation={[-0.16, 0, 0]}>
-          {/* offset body: two overlapping flattened cylinders */}
-          <mesh position={[0.02, 0.22, 0]} rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[0.155, 0.155, 0.06, 12]} />
+          {/* body: big lower bout + upper bout */}
+          <mesh position={[0, 0.2, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.16, 0.16, 0.06, 14]} />
             <meshStandardMaterial color="#4f8a80" />
           </mesh>
-          <mesh position={[-0.05, 0.34, 0]} rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[0.115, 0.115, 0.06, 10]} />
+          <mesh position={[0, 0.33, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.125, 0.125, 0.06, 12]} />
             <meshStandardMaterial color="#4f8a80" />
           </mesh>
-          {/* cream pickguard */}
-          <mesh position={[0.045, 0.24, 0.033]} rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[0.09, 0.09, 0.012, 8]} />
+          {/* the two horns flanking the neck joint */}
+          <mesh position={[-0.1, 0.44, 0]} rotation={[0, 0, 0.3]}>
+            <boxGeometry args={[0.05, 0.1, 0.055]} />
+            <meshStandardMaterial color="#4f8a80" />
+          </mesh>
+          <mesh position={[0.1, 0.44, 0]} rotation={[0, 0, -0.3]}>
+            <boxGeometry args={[0.05, 0.1, 0.055]} />
+            <meshStandardMaterial color="#4f8a80" />
+          </mesh>
+          {/* cream racing stripe pair down the body center */}
+          <mesh position={[-0.016, 0.27, 0.032]}>
+            <boxGeometry args={[0.016, 0.33, 0.008]} />
             <meshStandardMaterial color="#f2ecd8" />
           </mesh>
-          {/* pickups + knobs */}
-          <mesh position={[0, 0.3, 0.04]}>
-            <boxGeometry args={[0.09, 0.025, 0.012]} />
+          <mesh position={[0.016, 0.27, 0.032]}>
+            <boxGeometry args={[0.016, 0.33, 0.008]} />
+            <meshStandardMaterial color="#f2ecd8" />
+          </mesh>
+          {/* angular cream pickguard on the treble side */}
+          <mesh position={[0.075, 0.3, 0.031]} rotation={[0, 0, -0.5]}>
+            <boxGeometry args={[0.1, 0.15, 0.008]} />
+            <meshStandardMaterial color="#efe6cc" />
+          </mesh>
+          {/* two humbuckers with cream surrounds */}
+          {[0.35, 0.26].map((y) => (
+            <group key={y}>
+              <mesh position={[0, y, 0.036]}>
+                <boxGeometry args={[0.115, 0.05, 0.008]} />
+                <meshStandardMaterial color="#efe6cc" />
+              </mesh>
+              <mesh position={[0, y, 0.042]}>
+                <boxGeometry args={[0.095, 0.034, 0.008]} />
+                <meshStandardMaterial color="#17171f" />
+              </mesh>
+            </group>
+          ))}
+          {/* bridge + tailpiece */}
+          <mesh position={[0, 0.195, 0.04]}>
+            <boxGeometry args={[0.1, 0.02, 0.01]} />
             <meshStandardMaterial color="#22222c" />
           </mesh>
-          <mesh position={[0.01, 0.2, 0.04]}>
-            <boxGeometry args={[0.09, 0.025, 0.012]} />
+          <mesh position={[0, 0.15, 0.04]}>
+            <boxGeometry args={[0.085, 0.017, 0.01]} />
             <meshStandardMaterial color="#22222c" />
           </mesh>
-          <mesh position={[0.11, 0.15, 0.04]}>
-            <cylinderGeometry args={[0.014, 0.014, 0.02, 6]} />
-            <meshStandardMaterial color="#c9b088" />
+          {/* control knobs */}
+          <mesh position={[0.095, 0.17, 0.038]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.016, 0.016, 0.014, 8]} />
+            <meshStandardMaterial color="#17171f" />
           </mesh>
-          {/* slim neck */}
-          <mesh position={[-0.02, 0.72, 0.02]}>
-            <boxGeometry args={[0.04, 0.55, 0.025]} />
-            <meshStandardMaterial color="#6b4128" />
+          <mesh position={[0.115, 0.115, 0.038]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.016, 0.016, 0.014, 8]} />
+            <meshStandardMaterial color="#17171f" />
           </mesh>
-          {/* 6-inline headstock */}
-          <mesh position={[-0.045, 1.04, 0.02]}>
-            <boxGeometry args={[0.075, 0.11, 0.03]} />
-            <meshStandardMaterial color="#4f8a80" />
+          {/* dark rosewood neck with dot inlays */}
+          <mesh position={[0, 0.66, 0.02]}>
+            <boxGeometry args={[0.045, 0.44, 0.025]} />
+            <meshStandardMaterial color="#3a2f28" />
           </mesh>
-          {[0, 1, 2, 3, 4, 5].map((i) => (
-            <mesh key={i} position={[-0.085, 0.995 + i * 0.018, 0.02]}>
-              <boxGeometry args={[0.016, 0.012, 0.012]} />
-              <meshStandardMaterial color="#c9b088" />
+          {[0.55, 0.66, 0.77].map((y) => (
+            <mesh key={y} position={[0, y, 0.034]}>
+              <boxGeometry args={[0.012, 0.012, 0.004]} />
+              <meshStandardMaterial color="#f2ecd8" />
             </mesh>
           ))}
+          {/* black headstock, 3+3 cream tuners */}
+          <mesh position={[0, 0.945, 0.02]}>
+            <boxGeometry args={[0.085, 0.14, 0.03]} />
+            <meshStandardMaterial color="#17171f" />
+          </mesh>
+          {[-1, 1].map((s) =>
+            [0, 1, 2].map((i) => (
+              <mesh key={`${s}-${i}`} position={[s * 0.055, 0.9 + i * 0.036, 0.02]}>
+                <boxGeometry args={[0.018, 0.015, 0.015]} />
+                <meshStandardMaterial color="#f2ecd8" />
+              </mesh>
+            ))
+          )}
           {/* strings */}
-          <mesh position={[-0.01, 0.58, 0.042]}>
-            <boxGeometry args={[0.024, 0.82, 0.004]} />
+          <mesh position={[0, 0.54, 0.045]}>
+            <boxGeometry args={[0.024, 0.72, 0.004]} />
             <meshStandardMaterial color="#f2ecd8" emissive="#f2ecd8" emissiveIntensity={0.12} />
           </mesh>
         </group>
