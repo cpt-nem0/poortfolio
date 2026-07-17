@@ -3,23 +3,33 @@
  * Both take an explicit destination so they route through the master gain.
  */
 
-/** Short filtered-noise thump+hiss: the needle landing on a record. */
+/**
+ * The stylus touching vinyl: a light, papery friction hiss with a couple of
+ * faint pops — deliberately NO low end (the old version had a bass spike
+ * that read as a thump; style-gate feedback asked for a soft touch sound).
+ */
 export function playNeedleDrop(ctx: AudioContext, dest: AudioNode): void {
-  const dur = 0.22;
+  const dur = 0.35;
   const buffer = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
   const data = buffer.getChannelData(0);
   for (let i = 0; i < data.length; i++) {
     const t = i / data.length;
-    data[i] = (Math.random() * 2 - 1) * Math.exp(-6 * t) * (t < 0.02 ? 2.5 : 0.6);
+    const fade = Math.exp(-5 * t);
+    let v = (Math.random() * 2 - 1) * 0.35 * fade; // soft friction hiss
+    if (Math.random() < 0.004) v += (Math.random() * 2 - 1) * 0.5 * fade; // faint pops
+    data[i] = v;
   }
   const src = ctx.createBufferSource();
   src.buffer = buffer;
+  const hp = ctx.createBiquadFilter();
+  hp.type = "highpass";
+  hp.frequency.value = 1200; // kills any thump
   const lp = ctx.createBiquadFilter();
   lp.type = "lowpass";
-  lp.frequency.value = 1200;
+  lp.frequency.value = 4800; // keeps it gentle, not screechy
   const gain = ctx.createGain();
-  gain.gain.value = 0.5;
-  src.connect(lp).connect(gain).connect(dest);
+  gain.gain.value = 0.35;
+  src.connect(hp).connect(lp).connect(gain).connect(dest);
   src.start();
 }
 
