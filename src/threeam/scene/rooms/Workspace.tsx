@@ -16,6 +16,25 @@ const WALL_VARIANTS = [
   { label: "dusty plum", path: "/3am/tex/wall-plum.png", ry: WALL_H },
   { label: "vintage stripes", path: "/3am/tex/wall-stripes.png", ry: WALL_H },
 ];
+/* corkboard pin positions (board-local), one per site.experience entry.
+   The red string is DERIVED from these so its endpoints land exactly on
+   the pin centers — never hand-tune the string separately. */
+const PINS = site.experience.map((_, i) => ({
+  x: -0.45 + i * 0.9,
+  y: 0.3 - (i % 2) * 0.35,
+}));
+const PIN_R = 0.02;
+const PIN_Z = 0.045; // note group z (0.035) + pin-local z (0.01)
+const PIN_A = PINS[0];
+const PIN_B = PINS[PINS.length - 1];
+const STRING = {
+  x: (PIN_A.x + PIN_B.x) / 2,
+  y: (PIN_A.y + PIN_B.y) / 2,
+  z: PIN_Z + PIN_R + 0.004, // just proud of the pin heads (4mm convention)
+  len: Math.hypot(PIN_B.x - PIN_A.x, PIN_B.y - PIN_A.y),
+  rot: Math.atan2(PIN_B.y - PIN_A.y, PIN_B.x - PIN_A.x),
+};
+
 const FLOOR_VARIANTS = [
   { label: "honey planks", path: "/3am/tex/floor-planks.png", rx: WORKSPACE.w, ry: WORKSPACE.d },
   { label: "dark walnut", path: "/3am/tex/floor-walnut.png", rx: WORKSPACE.w, ry: WORKSPACE.d },
@@ -209,13 +228,13 @@ export function Workspace() {
         </mesh>
         {/* one pinned note per job + red string connecting the pins */}
         {site.experience.map((e2, i) => (
-          <group key={e2.company} position={[-0.45 + i * 0.9, 0.15 - (i % 2) * 0.35, 0.035]}>
+          <group key={e2.company} position={[PINS[i].x, PINS[i].y - 0.15, 0.035]}>
             <mesh rotation={[0, 0, i % 2 ? 0.06 : -0.05]}>
               <planeGeometry args={[0.42, 0.34]} />
               <meshStandardMaterial color="#f2ecd8" />
             </mesh>
             <mesh position={[0, 0.15, 0.01]}>
-              <sphereGeometry args={[0.02, 6, 5]} />
+              <sphereGeometry args={[PIN_R, 6, 5]} />
               <meshStandardMaterial color="#b3475f" />
             </mesh>
             {/* scribble lines (illegible on purpose — the panel has the words) */}
@@ -227,8 +246,8 @@ export function Workspace() {
             ))}
           </group>
         ))}
-        <mesh position={[0, 0.06, 0.045]} rotation={[0, 0, -0.36]}>
-          <planeGeometry args={[1.0, 0.012]} />
+        <mesh position={[STRING.x, STRING.y, STRING.z]} rotation={[0, 0, STRING.rot]}>
+          <planeGeometry args={[STRING.len, 0.012]} />
           <meshStandardMaterial color="#c9302f" />
         </mesh>
         {/* a couple of extra empty pins for mess */}
