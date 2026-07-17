@@ -5,6 +5,7 @@ import { playerPosition } from "@/threeam/world/runtime";
 import { useThreeAm } from "@/threeam/state/store";
 import { HOUSE } from "@/threeam/world/layout";
 import type { AreaId } from "@/threeam/world/layout";
+import { STATIONS } from "@/threeam/world/stations";
 
 /**
  * Per-area camera offsets. Interiors sit closer (dollhouse view); the
@@ -23,6 +24,20 @@ const clamp = (v: number, lo: number, hi: number) =>
 export function FollowCamera() {
   useFrame(({ camera }, rawDt) => {
     const dt = Math.min(rawDt, 0.05);
+    const focus = useThreeAm.getState().focus;
+    if (focus) {
+      const station = STATIONS.find((st) => st.id === focus);
+      if (station) {
+        const t = 1 - Math.exp(-LERP * dt);
+        const [px, py, pz] = station.camera.pos;
+        const [lx, ly, lz] = station.camera.look;
+        camera.position.x += (px - camera.position.x) * t;
+        camera.position.y += (py - camera.position.y) * t;
+        camera.position.z += (pz - camera.position.z) * t;
+        camera.lookAt(lx, ly, lz);
+        return;
+      }
+    }
     const area = useThreeAm.getState().area;
     const b = HOUSE.areas[area].bounds;
     const OFFSET = AREA_CAMERA[area];
