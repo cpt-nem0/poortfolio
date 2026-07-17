@@ -8,6 +8,7 @@ import { FollowCamera } from "./FollowCamera";
 import { Effects } from "./Effects";
 import { AudioRig } from "./AudioRig";
 import { MusicNook } from "./rooms/MusicNook";
+import { Workspace } from "./rooms/Workspace";
 import { useThreeAm } from "@/threeam/state/store";
 
 /** The 3D world. Extended by House/Player/FollowCamera/Effects tasks. */
@@ -26,6 +27,7 @@ export default function Scene() {
       {area === "ground" && (
         <Suspense fallback={null}>
           <MusicNook />
+          <Workspace />
         </Suspense>
       )}
       <Player />

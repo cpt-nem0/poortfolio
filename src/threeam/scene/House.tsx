@@ -41,7 +41,7 @@ function WallBox({
 const SOUTH_STUB_H = 0.55;
 
 /** Rooms with their own art-passed surfaces skip the debug tint patch. */
-const ART_PASSED = new Set<string>(["music"]);
+const ART_PASSED = new Set<string>(["music", "workspace"]);
 
 export function House() {
   const area = useThreeAm((s) => s.area);
