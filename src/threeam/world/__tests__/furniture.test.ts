@@ -48,3 +48,19 @@ describe("music-room furniture colliders", () => {
     expect(isBlocked(ground, 20.2, 5.2)).toBe(true); // within radius of sofa
   });
 });
+
+describe("workspace furniture colliders", () => {
+  it("desk, chair, shelf and floor lamp block", () => {
+    expect(isBlocked(ground, 11, 0.75)).toBe(true); // desk
+    expect(isBlocked(ground, 11.1, 1.9)).toBe(true); // chair
+    expect(isBlocked(ground, 8.4, 4.8)).toBe(true); // shelf unit
+    expect(isBlocked(ground, 9.05, 5.45)).toBe(true); // floor lamp
+  });
+
+  it("workspace walkways stay open", () => {
+    expect(isBlocked(ground, 12, 3)).toBe(false); // room center
+    expect(isBlocked(ground, 9.7, 2.9)).toBe(false); // between chair and west door
+    expect(isBlocked(ground, 13.5, 1.1)).toBe(false); // corkboard station spot
+    expect(isBlocked(ground, 8.9, 1.2)).toBe(false); // projects station spot
+  });
+});
