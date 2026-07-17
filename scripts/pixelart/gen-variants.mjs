@@ -42,6 +42,33 @@ function wallStripes(x, y) {
   return shade(base, 0.96 + n * 0.06);
 }
 
+/* ---- wall option E: charcoal — warm dark gray plaster (32×32 tile) ---- */
+const CHARCOAL = "#4a4038";
+function wallCharcoal(x, y) {
+  const n = hash2(x, y, 231);
+  if (n > 0.97) return shade(CHARCOAL, 1.2);
+  if (n < 0.03) return shade(CHARCOAL, 0.8);
+  return shade(CHARCOAL, 0.94 + hash2(Math.floor(x / 2), Math.floor(y / 2), 232) * 0.1);
+}
+
+/* ---- wall option F: midnight — deep desaturated navy plaster (32×32 tile) ---- */
+const MIDNIGHT = "#2b2f47";
+function wallMidnight(x, y) {
+  const n = hash2(x, y, 241);
+  if (n > 0.97) return shade(MIDNIGHT, 1.2);
+  if (n < 0.03) return shade(MIDNIGHT, 0.8);
+  return shade(MIDNIGHT, 0.94 + hash2(Math.floor(x / 2), Math.floor(y / 2), 242) * 0.1);
+}
+
+/* ---- wall option G: forest — deep muted green plaster (32×32 tile) ---- */
+const FOREST = "#3a4a37";
+function wallForest(x, y) {
+  const n = hash2(x, y, 251);
+  if (n > 0.97) return shade(FOREST, 1.2);
+  if (n < 0.03) return shade(FOREST, 0.8);
+  return shade(FOREST, 0.94 + hash2(Math.floor(x / 2), Math.floor(y / 2), 252) * 0.1);
+}
+
 /* ---- rug option B: kilim bands (64×64) ---- */
 const KILIM_BANDS = [
   PALETTE.red500, PALETTE.cream100, "#c98a2e", "#1f5c55",
@@ -263,6 +290,9 @@ const JOBS = [
   ["wall-teal", 32, 80, wallTeal],
   ["wall-plum", 32, 32, wallPlum],
   ["wall-stripes", 32, 32, wallStripes],
+  ["wall-charcoal", 32, 32, wallCharcoal],
+  ["wall-midnight", 32, 32, wallMidnight],
+  ["wall-forest", 32, 32, wallForest],
   ["rug-kilim", 64, 64, rugKilim],
   ["rug-tealfield", 64, 64, rugTealField],
   ["rug-round", 64, 64, rugRound],

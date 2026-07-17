@@ -15,6 +15,9 @@ const WALL_VARIANTS = [
   { label: "teal + wainscot", path: "/3am/tex/wall-teal.png", ry: 1 },
   { label: "dusty plum", path: "/3am/tex/wall-plum.png", ry: WALL_H },
   { label: "vintage stripes", path: "/3am/tex/wall-stripes.png", ry: WALL_H },
+  { label: "charcoal", path: "/3am/tex/wall-charcoal.png", ry: WALL_H },
+  { label: "midnight", path: "/3am/tex/wall-midnight.png", ry: WALL_H },
+  { label: "forest", path: "/3am/tex/wall-forest.png", ry: WALL_H },
 ];
 /* corkboard pin positions (board-local), one per site.experience entry.
    The red string is DERIVED from these so its endpoints land exactly on
