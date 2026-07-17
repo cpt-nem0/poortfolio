@@ -51,11 +51,23 @@ describe("music-room furniture colliders", () => {
 });
 
 describe("workspace furniture colliders", () => {
-  it("desk, chair, shelf and floor lamp block", () => {
+  it("desk and chair block", () => {
     expect(isBlocked(ground, 11, 0.75)).toBe(true); // desk
     expect(isBlocked(ground, 11.1, 1.9)).toBe(true); // chair
-    expect(isBlocked(ground, 8.4, 4.8)).toBe(true); // shelf unit
-    expect(isBlocked(ground, 9.05, 5.45)).toBe(true); // floor lamp
+  });
+
+  it("the SW storage-shelf lamp blocks (replaces the old drawer + floor lamp)", () => {
+    expect(isBlocked(ground, 9.075, 5.425)).toBe(true); // storage-shelf lamp center
+  });
+
+  it("the old drawer's footprint is walkable again (drawer removed)", () => {
+    expect(isBlocked(ground, 8.5, 4.8)).toBe(false);
+  });
+
+  it("the SE full-wall bookshelf blocks", () => {
+    expect(isBlocked(ground, 15.7, 4.9)).toBe(true); // bookshelf center
+    expect(isBlocked(ground, 15.7, 4.0)).toBe(true); // near the doorway end of the shelf
+    expect(isBlocked(ground, 15.7, 5.8)).toBe(true); // near the south-wall end of the shelf
   });
 
   it("workspace walkways stay open", () => {
@@ -63,6 +75,8 @@ describe("workspace furniture colliders", () => {
     expect(isBlocked(ground, 9.7, 2.9)).toBe(false); // between chair and west door
     expect(isBlocked(ground, 13.5, 1.1)).toBe(false); // corkboard station spot
     expect(isBlocked(ground, 8.9, 1.2)).toBe(false); // projects station spot
+    expect(isBlocked(ground, 15.0, 4.9)).toBe(false); // west of the bookshelf, still walkable
+    expect(isBlocked(ground, 16, 3)).toBe(false); // doorway into the music room stays open
   });
 });
 

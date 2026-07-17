@@ -59,6 +59,149 @@ function Polaroid({ image }: { image: string }) {
   );
 }
 
+/** Segmented pothos/vine tendril cascading down from a mounting point — same
+ *  chunky style as the music nook's wall pothos (alternating leaf greens,
+ *  slight per-segment tilt), just monotonically drooping so it reads as
+ *  "draping over an edge" rather than "hanging flat against a wall". `dir`
+ *  is a small per-segment horizontal drift (not normalized — pass the axis
+ *  you want it to spill toward, e.g. [-1,0] to spill off the front, [0,1] to
+ *  spill off one side) so callers can aim it without a parent rotation. */
+function VineDrape({
+  segments,
+  dir,
+  dropPerSeg = 0.15,
+  segLen = 0.05,
+}: {
+  segments: number;
+  dir: [number, number];
+  dropPerSeg?: number;
+  segLen?: number;
+}) {
+  return (
+    <>
+      {Array.from({ length: segments }, (_, i) => (
+        <mesh
+          key={i}
+          position={[dir[0] * segLen * i, -dropPerSeg * (i + 1), dir[1] * segLen * i]}
+          rotation={[dir[1] * 0.35, 0, -dir[0] * 0.35 + ((i % 2) - 0.5) * 0.25]}
+        >
+          <boxGeometry args={[0.045, 0.2 + (i % 3) * 0.05, 0.02]} />
+          <meshStandardMaterial color={i % 2 ? "#3f8f5a" : "#2e6e54"} />
+        </mesh>
+      ))}
+    </>
+  );
+}
+
+/** One upright/leaning book spine — bookshelf filler. `y0` is the
+ *  compartment's floor y; `z` is position along the shelf's width; `tilt`
+ *  rotates about the depth axis so it leans sideways against a neighbor. */
+function Spine({
+  y0,
+  z,
+  w,
+  h,
+  d,
+  color,
+  tilt = 0,
+  x = -0.22,
+}: {
+  y0: number;
+  z: number;
+  w: number;
+  h: number;
+  d: number;
+  color: string;
+  tilt?: number;
+  x?: number;
+}) {
+  return (
+    <mesh position={[x, y0 + h / 2, z]} rotation={[tilt, 0, 0]}>
+      <boxGeometry args={[d, h, w]} />
+      <meshStandardMaterial color={color} />
+    </mesh>
+  );
+}
+
+/** A book laid flat (part of a small stacked pile). */
+function FlatBook({
+  y0,
+  z,
+  w,
+  d,
+  h = 0.035,
+  color,
+  x = -0.22,
+  rotY = 0,
+}: {
+  y0: number;
+  z: number;
+  w: number;
+  d: number;
+  h?: number;
+  color: string;
+  x?: number;
+  rotY?: number;
+}) {
+  return (
+    <mesh position={[x, y0 + h / 2, z]} rotation={[0, rotY, 0]}>
+      <boxGeometry args={[d, h, w]} />
+      <meshStandardMaterial color={color} />
+    </mesh>
+  );
+}
+
+/** Tiny decorative pieces scattered on the bookshelf — kept small and
+ *  palette-consistent so they read as clutter, not focal objects. */
+function TinyPlant({ y0, z, x = -0.22 }: { y0: number; z: number; x?: number }) {
+  return (
+    <group position={[x, y0, z]}>
+      <mesh position={[0, 0.025, 0]}>
+        <cylinderGeometry args={[0.025, 0.02, 0.05, 8]} />
+        <meshStandardMaterial color="#8a5a3d" />
+      </mesh>
+      <mesh position={[0, 0.07, 0]}>
+        <sphereGeometry args={[0.032, 8, 6]} />
+        <meshStandardMaterial color="#3f8f5a" />
+      </mesh>
+    </group>
+  );
+}
+
+function Figurine({ y0, z, x = -0.2 }: { y0: number; z: number; x?: number }) {
+  return (
+    <group position={[x, y0, z]}>
+      <mesh position={[0, 0.02, 0]}>
+        <boxGeometry args={[0.03, 0.04, 0.03]} />
+        <meshStandardMaterial color="#c98a2e" />
+      </mesh>
+      <mesh position={[0, 0.065, 0]}>
+        <sphereGeometry args={[0.02, 6, 5]} />
+        <meshStandardMaterial color="#2e2a4d" />
+      </mesh>
+    </group>
+  );
+}
+
+function Hourglass({ y0, z, x = -0.2 }: { y0: number; z: number; x?: number }) {
+  return (
+    <group position={[x, y0, z]}>
+      <mesh position={[0, 0.03, 0]} rotation={[Math.PI, 0, 0]}>
+        <coneGeometry args={[0.022, 0.05, 8]} />
+        <meshStandardMaterial color="#c9b088" transparent opacity={0.85} />
+      </mesh>
+      <mesh position={[0, 0.078, 0]}>
+        <coneGeometry args={[0.022, 0.05, 8]} />
+        <meshStandardMaterial color="#c9b088" transparent opacity={0.85} />
+      </mesh>
+      <mesh position={[0, 0.055, 0]}>
+        <cylinderGeometry args={[0.006, 0.006, 0.006, 6]} />
+        <meshStandardMaterial color="#6b4128" />
+      </mesh>
+    </group>
+  );
+}
+
 export function Workspace() {
   const R = WORKSPACE;
   const rootRef = useRef<THREE.Group>(null);
@@ -540,34 +683,57 @@ export function Workspace() {
         ))}
       </group>
 
-      {/* ── shelf unit — collider {8.15,4.3,0.55,1.1} ── */}
-      <group position={[8.425, 0, 4.85]}>
-        <mesh position={[0, 0.7, 0]}>
-          <boxGeometry args={[0.55, 1.4, 1.1]} />
+      {/* ── storage-shelf lamp — collider {8.85,5.2,0.45,0.45}. Owner: "that
+          awkward drawer on the bottom left corner — remove it; instead one
+          of those lamps which has a storage shelf in it." Replaces the old
+          drawer + floor lamp with one piece: an open 3-cubby shelf doubling
+          as the lamp's base/column, warm shade on top. Fixture-attached
+          point light only — no shadow casting (the scene's 2 soft casters,
+          the record console lamp + the neon sign, are fixed). ── */}
+      <group position={[9.075, 0, 5.425]}>
+        {/* carcass — back + side panels, open front */}
+        <mesh position={[0, 0.42, -0.18]}>
+          <boxGeometry args={[0.4, 0.84, 0.04]} />
           <meshStandardMaterial color="#6b4128" />
         </mesh>
-        {[0.35, 0.8, 1.25].map((sy, row) => (
-          <group key={sy}>
-            {[0, 1, 2, 3].map((i) => (
-              <mesh key={i} position={[0.2, sy, -0.4 + i * 0.26]} rotation={[0, 0, -0.04 + (((i + row) % 3) as number) * 0.04]}>
-                <boxGeometry args={[0.05, 0.24, 0.2]} />
-                <meshStandardMaterial
-                  color={["#5b4b8a", "#2e6e54", "#c98a2e", "#b3475f"][(i + row) % 4]}
-                />
-              </mesh>
-            ))}
-          </group>
-        ))}
-      </group>
-
-      {/* ── floor lamp — collider {8.9,5.3,0.35,0.35} ── */}
-      <group position={[9.075, 0, 5.475]}>
-        <mesh position={[0, 0.02, 0]}>
-          <cylinderGeometry args={[0.16, 0.18, 0.04, 10]} />
-          <meshStandardMaterial color="#2e2a4d" />
+        <mesh position={[-0.18, 0.42, 0]}>
+          <boxGeometry args={[0.04, 0.84, 0.4]} />
+          <meshStandardMaterial color="#6b4128" />
         </mesh>
-        <mesh position={[0, 0.8, 0]}>
-          <cylinderGeometry args={[0.02, 0.02, 1.55, 8]} />
+        <mesh position={[0.18, 0.42, 0]}>
+          <boxGeometry args={[0.04, 0.84, 0.4]} />
+          <meshStandardMaterial color="#6b4128" />
+        </mesh>
+        {/* 2 dividers → 3 open cubbies */}
+        {[0.28, 0.56].map((sy) => (
+          <mesh key={sy} position={[0, sy, 0]}>
+            <boxGeometry args={[0.32, 0.03, 0.32]} />
+            <meshStandardMaterial color="#6b4128" />
+          </mesh>
+        ))}
+        {/* top plinth — doubles as the lamp's base */}
+        <mesh position={[0, 0.855, 0]}>
+          <boxGeometry args={[0.4, 0.03, 0.4]} />
+          <meshStandardMaterial color="#6b4128" />
+        </mesh>
+
+        {/* a couple of tiny items in the cubbies */}
+        <mesh position={[-0.04, 0.035, 0.06]} rotation={[0, 0.3, 0]}>
+          <boxGeometry args={[0.16, 0.03, 0.22]} />
+          <meshStandardMaterial color="#b3475f" />
+        </mesh>
+        <mesh position={[0.05, 0.315, -0.03]}>
+          <cylinderGeometry args={[0.025, 0.022, 0.045, 8]} />
+          <meshStandardMaterial color="#c98a2e" />
+        </mesh>
+        <mesh position={[-0.05, 0.6, 0.04]}>
+          <sphereGeometry args={[0.035, 8, 6]} />
+          <meshStandardMaterial color="#2e6e54" />
+        </mesh>
+
+        {/* lamp column rising off the shelf's top, warm shade */}
+        <mesh position={[0, 1.205, 0]}>
+          <cylinderGeometry args={[0.02, 0.02, 0.7, 8]} />
           <meshStandardMaterial color="#2e2a4d" />
         </mesh>
         <mesh position={[0, 1.68, 0]}>
@@ -575,7 +741,233 @@ export function Workspace() {
           <meshStandardMaterial color="#ffd9a0" emissive="#ffd9a0" emissiveIntensity={0.9} side={2} />
         </mesh>
       </group>
-      <pointLight castShadow shadow-mapSize={[512, 512]} shadow-bias={-0.004} shadow-radius={5} shadow-intensity={0.4} position={[9.075, 1.75, 5.475]} color="#ffd9a0" intensity={9} distance={6.5} decay={1.8} />
+      <pointLight position={[9.075, 1.75, 5.425]} color="#ffd9a0" intensity={9} distance={6.5} decay={1.8} />
+
+      {/* ── full-wall bookshelf — collider {15.45,3.85,0.44,2.1}. Owner: "a
+          big shelf which covers the whole wall there, full of books and
+          some small decorative pieces, all arranged in a NON-symmetric way,
+          and a vine plant on top which drapes over the shelf." Sits against
+          the east divider's workspace-side face, south of the doorway;
+          floor to near-ceiling, 5 shelf boards / 4 compartments. Book
+          clusters are hand-placed and deliberately NOT grid-aligned. ── */}
+      <group position={[15.89, 0, 4.9]}>
+        {/* carcass */}
+        <mesh position={[-0.02, 1.3, 0]}>
+          <boxGeometry args={[0.04, 2.6, 2.1]} />
+          <meshStandardMaterial color="#6b4128" />
+        </mesh>
+        <mesh position={[-0.2, 1.3, -1.03]}>
+          <boxGeometry args={[0.4, 2.6, 0.04]} />
+          <meshStandardMaterial color="#6b4128" />
+        </mesh>
+        <mesh position={[-0.2, 1.3, 1.03]}>
+          <boxGeometry args={[0.4, 2.6, 0.04]} />
+          <meshStandardMaterial color="#6b4128" />
+        </mesh>
+        {[0.03, 0.68, 1.33, 1.98, 2.57].map((sy) => (
+          <mesh key={sy} position={[-0.2, sy, 0]}>
+            <boxGeometry args={[0.4, 0.04, 2.1]} />
+            <meshStandardMaterial color="#6b4128" />
+          </mesh>
+        ))}
+
+        {/* row 0 (floor 0.03–0.68): dense cluster north, gap, flat pile +
+            upright cluster south */}
+        <Spine y0={0.03} z={-0.95} w={0.05} h={0.42} d={0.16} color="#5b4b8a" />
+        <Spine y0={0.03} z={-0.885} w={0.05} h={0.5} d={0.16} color="#c98a2e" tilt={0.12} />
+        <Spine y0={0.03} z={-0.815} w={0.05} h={0.36} d={0.16} color="#2e6e54" />
+        <Spine y0={0.03} z={-0.75} w={0.06} h={0.46} d={0.17} color="#b3475f" tilt={-0.1} />
+        <Spine y0={0.03} z={-0.66} w={0.045} h={0.3} d={0.15} color="#8a5a3d" />
+        <TinyPlant y0={0.03} z={-0.35} />
+        <FlatBook y0={0.03} z={0.35} w={0.22} d={0.18} color="#5b4b8a" />
+        <FlatBook y0={0.068} z={0.35} w={0.19} d={0.155} color="#b3475f" />
+        <FlatBook y0={0.103} z={0.35} w={0.17} d={0.14} color="#c98a2e" rotY={0.2} />
+        <Spine y0={0.03} z={0.65} w={0.05} h={0.4} d={0.16} color="#2e6e54" />
+        <Spine y0={0.03} z={0.72} w={0.045} h={0.48} d={0.16} color="#5b4b8a" tilt={0.08} />
+        <Spine y0={0.03} z={0.9} w={0.06} h={0.34} d={0.17} color="#c98a2e" />
+
+        {/* row 1 (0.68–1.33): mostly empty north (lone figurine), dense south */}
+        <Figurine y0={0.68} z={-0.85} />
+        <Spine y0={0.68} z={0.1} w={0.05} h={0.44} d={0.16} color="#b3475f" />
+        <Spine y0={0.68} z={0.18} w={0.045} h={0.5} d={0.16} color="#2e6e54" tilt={-0.1} />
+        <Spine y0={0.68} z={0.25} w={0.05} h={0.38} d={0.16} color="#8a5a3d" />
+        <Spine y0={0.68} z={0.34} w={0.06} h={0.46} d={0.17} color="#5b4b8a" tilt={0.1} />
+        <Spine y0={0.68} z={0.62} w={0.05} h={0.4} d={0.16} color="#c98a2e" />
+        <Spine y0={0.68} z={0.7} w={0.045} h={0.3} d={0.15} color="#b3475f" />
+        <FlatBook y0={0.68} z={0.88} w={0.18} d={0.15} color="#2e6e54" />
+
+        {/* row 2 (1.33–1.98): dense north w/ hourglass, sparse middle+south */}
+        <Spine y0={1.33} z={-1.0} w={0.05} h={0.42} d={0.16} color="#5b4b8a" />
+        <Spine y0={1.33} z={-0.93} w={0.045} h={0.5} d={0.16} color="#b3475f" tilt={0.1} />
+        <Spine y0={1.33} z={-0.86} w={0.05} h={0.36} d={0.16} color="#c98a2e" />
+        <Spine y0={1.33} z={-0.78} w={0.06} h={0.46} d={0.17} color="#2e6e54" tilt={-0.08} />
+        <Hourglass y0={1.33} z={-0.55} />
+        <Spine y0={1.33} z={0.35} w={0.05} h={0.4} d={0.16} color="#8a5a3d" tilt={0.15} />
+        <Spine y0={1.33} z={0.43} w={0.045} h={0.3} d={0.15} color="#5b4b8a" />
+        <Spine y0={1.33} z={0.75} w={0.05} h={0.44} d={0.16} color="#b3475f" />
+        <Spine y0={1.33} z={0.83} w={0.06} h={0.5} d={0.17} color="#c98a2e" tilt={-0.12} />
+        <Spine y0={1.33} z={0.95} w={0.045} h={0.34} d={0.15} color="#2e6e54" />
+
+        {/* row 3 (1.98–2.57, top compartment): sparse leaning cluster, lone
+            figurine, small upright cluster */}
+        <Spine y0={1.98} z={-0.9} w={0.05} h={0.4} d={0.16} color="#c98a2e" tilt={0.18} />
+        <Spine y0={1.98} z={-0.82} w={0.045} h={0.34} d={0.15} color="#5b4b8a" tilt={0.1} />
+        <Spine y0={1.98} z={-0.7} w={0.05} h={0.44} d={0.16} color="#2e6e54" tilt={-0.06} />
+        <Figurine y0={1.98} z={0.05} />
+        <Spine y0={1.98} z={0.5} w={0.06} h={0.5} d={0.17} color="#b3475f" />
+        <Spine y0={1.98} z={0.58} w={0.045} h={0.36} d={0.15} color="#8a5a3d" tilt={0.08} />
+        <Spine y0={1.98} z={0.9} w={0.05} h={0.42} d={0.16} color="#5b4b8a" tilt={-0.1} />
+
+        {/* small brass picture-light under the top shelf — this corner is
+            otherwise unlit (same convention as the music nook's east-wall
+            sconce next to its neon sign). No shadow casting. */}
+        <group position={[-0.32, 2.52, -0.2]} rotation={[0.4, 0, 0]}>
+          <mesh>
+            <boxGeometry args={[0.05, 0.05, 0.16]} />
+            <meshStandardMaterial color="#8a7a4a" />
+          </mesh>
+          <mesh position={[0, -0.03, 0.07]}>
+            <sphereGeometry args={[0.025, 8, 6]} />
+            <meshStandardMaterial color="#ffd9a0" emissive="#ffd9a0" emissiveIntensity={1} />
+          </mesh>
+        </group>
+        <pointLight position={[-0.34, 2.28, 0.15]} color="#ffd9a0" intensity={7.5} distance={3.8} decay={1.8} />
+
+        {/* vine plant on top, draping over the front edge and the south
+            side — longer strands than the music nook's wall pothos */}
+        <group position={[-0.28, 2.6, 0.75]}>
+          <mesh position={[0, 0.045, 0]}>
+            <cylinderGeometry args={[0.07, 0.055, 0.09, 10]} />
+            <meshStandardMaterial color="#c9b088" />
+          </mesh>
+          <mesh position={[0, 0.12, 0]}>
+            <sphereGeometry args={[0.06, 8, 6]} />
+            <meshStandardMaterial color="#3f8f5a" />
+          </mesh>
+          <group position={[0, 0.06, 0]}>
+            <VineDrape segments={8} dir={[-1, 0]} dropPerSeg={0.16} />
+          </group>
+          <group position={[0.1, 0.06, 0.25]}>
+            <VineDrape segments={6} dir={[0, 1]} dropPerSeg={0.15} />
+          </group>
+        </group>
+      </group>
+
+      {/* ── floating shelf — north wall, above the desk. No collider (above
+          head height). Mounted at y=2.2 so it clears the standing-height
+          desk (top 1.15) + 32" monitor comfortably; stays clear of the
+          corkboard (x 12.65–14.35) with margin to spare. White slab, hidden
+          brackets. CENTER: katana on a two-prong stand. SIDES: draping vine
+          (front + ends). ONE side (east) also gets a small warm lamp. ── */}
+      <group position={[11.0, 2.2, 0.21]}>
+        {/* slab */}
+        <mesh position={[0, -0.025, 0]}>
+          <boxGeometry args={[2.8, 0.05, 0.32]} />
+          <meshStandardMaterial color="#e9e5d8" />
+        </mesh>
+        {/* hidden brackets — tucked under, dark to disappear against the
+            midnight wall */}
+        {[-0.9, 0.9].map((bx) => (
+          <mesh key={bx} position={[bx, -0.1, -0.12]}>
+            <boxGeometry args={[0.06, 0.15, 0.28]} />
+            <meshStandardMaterial color="#20223a" />
+          </mesh>
+        ))}
+
+        {/* katana on a two-prong dark stand, centered */}
+        {[-0.3, 0.3].map((sx) => (
+          <group key={sx} position={[sx, 0, 0]}>
+            <mesh position={[0, 0.025, 0]}>
+              <cylinderGeometry args={[0.012, 0.014, 0.05, 6]} />
+              <meshStandardMaterial color="#1a1a22" />
+            </mesh>
+            <mesh position={[0, 0.055, 0]} rotation={[0, 0, 0.32]}>
+              <boxGeometry args={[0.02, 0.05, 0.02]} />
+              <meshStandardMaterial color="#1a1a22" />
+            </mesh>
+            <mesh position={[0, 0.055, 0]} rotation={[0, 0, -0.32]}>
+              <boxGeometry args={[0.02, 0.05, 0.02]} />
+              <meshStandardMaterial color="#1a1a22" />
+            </mesh>
+          </group>
+        ))}
+        <group position={[0, 0.085, 0]}>
+          {/* scabbard — 4 segments with a slight per-segment lift = subtle curve */}
+          {[-0.42, -0.14, 0.14, 0.42].map((sx, i) => (
+            <mesh key={sx} position={[sx, i * 0.006 - 0.009, 0]}>
+              <boxGeometry args={[0.3, 0.028, 0.028]} />
+              <meshStandardMaterial color="#15151b" />
+            </mesh>
+          ))}
+          {/* accent bands */}
+          {[-0.55, -0.05, 0.45].map((sx) => (
+            <mesh key={sx} position={[sx, 0, 0]}>
+              <boxGeometry args={[0.02, 0.032, 0.032]} />
+              <meshStandardMaterial color="#c98a2e" />
+            </mesh>
+          ))}
+          {/* handle + guard */}
+          <mesh position={[-0.72, 0, 0]}>
+            <boxGeometry args={[0.05, 0.036, 0.036]} />
+            <meshStandardMaterial color="#3a2a22" />
+          </mesh>
+          <mesh position={[-0.66, 0, 0]}>
+            <boxGeometry args={[0.015, 0.05, 0.05]} />
+            <meshStandardMaterial color="#8a7a4a" />
+          </mesh>
+        </group>
+
+        {/* west end — vine only */}
+        <group position={[-1.15, 0, -0.02]}>
+          <mesh position={[0, 0.035, 0]}>
+            <cylinderGeometry args={[0.055, 0.045, 0.07, 10]} />
+            <meshStandardMaterial color="#c9b088" />
+          </mesh>
+          <mesh position={[0, 0.09, 0]}>
+            <sphereGeometry args={[0.045, 8, 6]} />
+            <meshStandardMaterial color="#3f8f5a" />
+          </mesh>
+          <group position={[0, 0.05, 0.03]}>
+            <VineDrape segments={5} dir={[0, 1]} dropPerSeg={0.13} />
+          </group>
+          <group position={[-0.03, 0.05, 0]}>
+            <VineDrape segments={4} dir={[-0.6, 0]} dropPerSeg={0.12} />
+          </group>
+        </group>
+
+        {/* east end — vine + a small warm lamp */}
+        <group position={[1.15, 0, -0.02]}>
+          <mesh position={[0, 0.035, 0]}>
+            <cylinderGeometry args={[0.055, 0.045, 0.07, 10]} />
+            <meshStandardMaterial color="#c9b088" />
+          </mesh>
+          <mesh position={[0, 0.09, 0]}>
+            <sphereGeometry args={[0.045, 8, 6]} />
+            <meshStandardMaterial color="#3f8f5a" />
+          </mesh>
+          <group position={[0, 0.05, 0.03]}>
+            <VineDrape segments={5} dir={[0, 1]} dropPerSeg={0.13} />
+          </group>
+          <group position={[0.03, 0.05, 0]}>
+            <VineDrape segments={4} dir={[0.6, 0]} dropPerSeg={0.12} />
+          </group>
+        </group>
+        <group position={[1.3, 0, 0.08]}>
+          <mesh position={[0, 0.012, 0]}>
+            <cylinderGeometry args={[0.045, 0.05, 0.024, 10]} />
+            <meshStandardMaterial color="#2e2a4d" />
+          </mesh>
+          <mesh position={[0, 0.06, 0]}>
+            <cylinderGeometry args={[0.005, 0.005, 0.09, 6]} />
+            <meshStandardMaterial color="#2e2a4d" />
+          </mesh>
+          <mesh position={[0, 0.13, 0]}>
+            <cylinderGeometry args={[0.05, 0.065, 0.09, 10, 1, true]} />
+            <meshStandardMaterial color="#ffd9a0" emissive="#ffd9a0" emissiveIntensity={0.8} side={2} />
+          </mesh>
+          <pointLight position={[0, 0.12, 0]} color="#ffd9a0" intensity={0.6} distance={1.1} decay={2} />
+        </group>
+      </group>
     </group>
   );
 }
