@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { useTexture } from "@react-three/drei";
 import * as THREE from "three";
 
@@ -15,7 +15,7 @@ export function usePixelTexture(
   offsetY = 0
 ): THREE.Texture {
   const base = useTexture(path); // suspends until loaded; shared cached instance
-  return useMemo(() => {
+  const tex = useMemo(() => {
     // Clone per consumer: the drei cache shares one instance per path, and
     // .repeat lives on the instance — two consumers with different repeats
     // would otherwise fight over it (last configure wins).
@@ -30,4 +30,13 @@ export function usePixelTexture(
     tex.needsUpdate = true;
     return tex;
   }, [base, repeatX, repeatY, offsetX, offsetY]);
+
+  useEffect(() => {
+    // GPU texture objects from clones are not auto-disposed by r3f
+    return () => {
+      tex.dispose();
+    };
+  }, [tex]);
+
+  return tex;
 }

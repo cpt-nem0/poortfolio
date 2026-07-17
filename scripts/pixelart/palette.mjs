@@ -1,6 +1,6 @@
 /**
  * Master palette for all /3am pixel art. One source of truth — the room's
- * cohesion comes from every texture/sprite drawing from these ~24 colors.
+ * cohesion comes from every texture/sprite drawing from these 25 colors.
  * Plain JS so both node generation scripts and vitest can import it.
  */
 export const PALETTE = {

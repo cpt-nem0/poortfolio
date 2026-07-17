@@ -35,4 +35,16 @@ describe("music-room furniture colliders", () => {
     expect(isBlocked(ground, 19.5, 4.3)).toBe(false); // just in front of the sofa
     expect(isBlocked(ground, 20.45, 5.2)).toBe(false); // corridor east of the sofa
   });
+
+  it("near-miss probes just outside footprints stay walkable", () => {
+    // just south of the record console's edge (z 1.2) + player radius 0.35
+    expect(isBlocked(ground, 19, 1.6)).toBe(false);
+    // just east of the sofa's AABB (x 19.9 + 0.35)
+    expect(isBlocked(ground, 20.3, 5.2)).toBe(false);
+  });
+
+  it("near-miss probes just inside blocked margins are blocked", () => {
+    expect(isBlocked(ground, 19, 1.5)).toBe(true); // within radius of console
+    expect(isBlocked(ground, 20.2, 5.2)).toBe(true); // within radius of sofa
+  });
 });
