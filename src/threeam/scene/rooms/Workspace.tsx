@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { usePixelTexture } from "../usePixelTexture";
+import { useThreeAm } from "@/threeam/state/store";
+import { site } from "@/content/site";
 
 const WALL_H = 2.8; // must match House.tsx
 export const WORKSPACE = { x: 8, z: 0, w: 8, d: 6 };
@@ -54,6 +56,7 @@ export function Workspace() {
   const wallSegE = usePixelTexture(wallV.path, 2.2, wallV.ry === 1 ? 1 : WALL_H);
   const wallStub = usePixelTexture(wallV.path, R.w, 0.2, 0, 0.5);
   const termTex = usePixelTexture("/3am/tex/terminal.png", 1, 1);
+  const corkTex = usePixelTexture("/3am/tex/cork.png", 1, 1);
 
   const segs: Array<{ x: number; rotY: number }> = [
     { x: R.x + 0.11, rotY: Math.PI / 2 }, // west divider, workspace face
@@ -188,6 +191,51 @@ export function Workspace() {
           </mesh>
         </group>
         <pointLight castShadow shadow-mapSize={[256, 256]} shadow-bias={-0.004} shadow-radius={5} shadow-intensity={0.4} position={[1.083, 1.15, -0.25]} color="#ffb35c" intensity={3} distance={3} decay={2} />
+      </group>
+
+      {/* ── corkboard (experience station) — north wall, right of the desk ── */}
+      <group
+        position={[13.5, 1.75, 0.045]}
+        onClick={(e) => {
+          e.stopPropagation();
+          useThreeAm.getState().setFocus("experience");
+        }}
+        onPointerOver={() => (document.body.style.cursor = "pointer")}
+        onPointerOut={() => (document.body.style.cursor = "auto")}
+      >
+        <mesh>
+          <boxGeometry args={[1.7, 1.15, 0.05]} />
+          <meshStandardMaterial map={corkTex} />
+        </mesh>
+        {/* one pinned note per job + red string connecting the pins */}
+        {site.experience.map((e2, i) => (
+          <group key={e2.company} position={[-0.45 + i * 0.9, 0.15 - (i % 2) * 0.35, 0.035]}>
+            <mesh rotation={[0, 0, i % 2 ? 0.06 : -0.05]}>
+              <planeGeometry args={[0.42, 0.34]} />
+              <meshStandardMaterial color="#f2ecd8" />
+            </mesh>
+            <mesh position={[0, 0.15, 0.01]}>
+              <sphereGeometry args={[0.02, 6, 5]} />
+              <meshStandardMaterial color="#b3475f" />
+            </mesh>
+            {/* scribble lines (illegible on purpose — the panel has the words) */}
+            {[0, 1, 2].map((l) => (
+              <mesh key={l} position={[0, 0.05 - l * 0.08, 0.005]}>
+                <planeGeometry args={[0.3 - l * 0.06, 0.02]} />
+                <meshStandardMaterial color="#7d729e" />
+              </mesh>
+            ))}
+          </group>
+        ))}
+        <mesh position={[0, 0.06, 0.045]} rotation={[0, 0, -0.36]}>
+          <planeGeometry args={[1.0, 0.012]} />
+          <meshStandardMaterial color="#c9302f" />
+        </mesh>
+        {/* a couple of extra empty pins for mess */}
+        <mesh position={[0.65, 0.42, 0.03]}>
+          <sphereGeometry args={[0.018, 6, 5]} />
+          <meshStandardMaterial color="#c98a2e" />
+        </mesh>
       </group>
 
       {/* ── desk chair — collider {10.7,1.5,0.8,0.8} ── */}
