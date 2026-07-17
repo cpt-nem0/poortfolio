@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { usePixelTexture } from "../usePixelTexture";
 import { useThreeAm } from "@/threeam/state/store";
@@ -8,6 +9,20 @@ import { site } from "@/content/site";
 
 const WALL_H = 2.8; // must match House.tsx
 export const WORKSPACE = { x: 8, z: 0, w: 8, d: 6 };
+
+/* Battlestation desk — motorized height toggle (owner wave B). The desktop
+   top surface height is the thing that animates; every item on the desk is
+   authored at a local y relative to that surface (0 = surface), and the
+   whole "riding" group's world y IS the animated top height. Legs live
+   OUTSIDE the riding group (they're bolted to the floor) and telescope by
+   scaling a second segment to bridge the fixed outer sleeve up to the
+   underside of the desktop each frame — see the leg refs in Workspace(). */
+const DESK_SIT_Y = 0.75; // top surface height, sitting
+const DESK_STAND_Y = 1.15; // top surface height, standing
+const DESK_TOP_THICK = 0.04;
+const LEG_OUTER_H = 0.5; // fixed lower sleeve height
+const DESK_LERP = 6; // 1/s — matches the FollowCamera/Turntable ease rate family
+const ACCENTS = ["#b3475f", "#c98a2e", "#2e6e54", "#5b4b8a"]; // wine, mustard, teal, indigo — existing palette
 
 /* Interior locked by Rohan (2026-07 style gate): midnight walls, dark
    walnut floor. Alternatives are regenerable via
@@ -56,6 +71,33 @@ export function Workspace() {
       }
     });
   }, []);
+
+  // desk height toggle: clicking the control pad flips `standing`; the
+  // actual animated value glides toward the target every frame (clamped-dt
+  // exponential ease, same family as FollowCamera/Turntable) so it's
+  // framerate-independent instead of snapping.
+  const [standing, setStanding] = useState(false);
+  const [padHover, setPadHover] = useState(false);
+  const deskYRef = useRef(DESK_SIT_Y);
+  const deskRideRef = useRef<THREE.Group>(null);
+  const legInnerRefs = useRef<(THREE.Mesh | null)[]>([null, null]);
+
+  useFrame((_, rawDt) => {
+    const dt = Math.min(rawDt, 0.05);
+    const t = 1 - Math.exp(-DESK_LERP * dt);
+    const target = standing ? DESK_STAND_Y : DESK_SIT_Y;
+    deskYRef.current += (target - deskYRef.current) * t;
+    const y = deskYRef.current;
+    if (deskRideRef.current) deskRideRef.current.position.y = y;
+    // telescope: the inner column bridges the fixed outer sleeve up to the
+    // underside of the desktop, so it grows visibly as the desk rises.
+    const legH = Math.max(0.02, y - DESK_TOP_THICK / 2 - LEG_OUTER_H);
+    for (const leg of legInnerRefs.current) {
+      if (!leg) continue;
+      leg.scale.y = legH;
+      leg.position.y = LEG_OUTER_H + legH / 2;
+    }
+  });
 
   const floor = usePixelTexture("/3am/tex/floor-walnut.png", R.w, R.d);
   const wallN = usePixelTexture("/3am/tex/wall-midnight.png", R.w, WALL_H);
@@ -118,86 +160,223 @@ export function Workspace() {
         </group>
       ))}
 
-      {/* ── desk — collider {9.7,0.3,2.6,0.9} (Task 7 shrank this from 3.0 wide;
-          desktop + everything on it scaled in on x by 13/15 to stay on the new top) ── */}
+      {/* ── desk — collider {9.7,0.3,2.6,0.9}. Motorized standing desk: the
+          top + everything sitting on it lives in one "riding" group whose
+          world y glides between sitting (0.75) and standing (1.15); the legs
+          are bolted to the floor and telescope on the same eased height each
+          frame (see deskRideRef/legInnerRefs + useFrame above). ── */}
       <group position={[11, 0, 0.75]}>
-        <mesh position={[0, 0.72, 0]}>
-          <boxGeometry args={[2.6, 0.06, 0.9]} />
-          <meshStandardMaterial color="#6b4128" />
-        </mesh>
-        {[
-          [-1.231, -0.38], [-1.231, 0.38], [1.231, -0.38], [1.231, 0.38],
-        ].map(([lx, lz], i) => (
-          <mesh key={i} position={[lx, 0.36, lz]}>
-            <boxGeometry args={[0.08, 0.72, 0.08]} />
-            <meshStandardMaterial color="#4a3a2e" />
-          </mesh>
+        {/* legs — fixed outer sleeve + telescoping inner column + foot, one per side */}
+        {[-1.15, 1.15].map((lx, i) => (
+          <group key={lx}>
+            <mesh position={[lx, 0.015, 0]}>
+              <boxGeometry args={[0.16, 0.03, 0.78]} />
+              <meshStandardMaterial color="#12121a" />
+            </mesh>
+            <mesh position={[lx, LEG_OUTER_H / 2, 0]}>
+              <boxGeometry args={[0.1, LEG_OUTER_H, 0.1]} />
+              <meshStandardMaterial color="#1a1a22" />
+            </mesh>
+            <mesh
+              ref={(m) => {
+                legInnerRefs.current[i] = m;
+              }}
+              position={[lx, LEG_OUTER_H + 0.11, 0]}
+            >
+              <boxGeometry args={[0.075, 1, 0.075]} />
+              <meshStandardMaterial color="#1a1a22" />
+            </mesh>
+          </group>
         ))}
-        {/* main monitor with glowing terminal */}
-        <group position={[-0.303, 0.75, -0.15]} rotation={[0, 0.08, 0]}>
-          <mesh position={[0, 0.34, 0]}>
-            <boxGeometry args={[0.78, 0.5, 0.05]} />
-            <meshStandardMaterial color="#22222c" />
+
+        {/* riding group — local y=0 is the desktop's top surface; every item
+            on the desk is a child here so it rides the height animation */}
+        <group ref={deskRideRef} position={[0, DESK_SIT_Y, 0]}>
+          {/* slim modern top — light, NOT chunky wood */}
+          <mesh position={[0, -DESK_TOP_THICK / 2, 0]}>
+            <boxGeometry args={[2.6, DESK_TOP_THICK, 0.9]} />
+            <meshStandardMaterial color="#e9e5d8" />
           </mesh>
-          <mesh position={[0, 0.34, 0.028]}>
-            <planeGeometry args={[0.7, 0.42]} />
-            <meshBasicMaterial map={termTex} />
+
+          {/* control pad — front edge, toggles the motor */}
+          <group
+            position={[0, -0.06, 0.454]}
+            onClick={(e) => {
+              e.stopPropagation();
+              setStanding((s) => !s);
+            }}
+            onPointerOver={() => {
+              setPadHover(true);
+              document.body.style.cursor = "pointer";
+            }}
+            onPointerOut={() => {
+              setPadHover(false);
+              document.body.style.cursor = "auto";
+            }}
+          >
+            <mesh>
+              <boxGeometry args={[0.14, 0.03, 0.05]} />
+              <meshStandardMaterial color="#20202a" />
+            </mesh>
+            <mesh position={[0, 0, 0.03]}>
+              <boxGeometry args={[0.035, 0.018, 0.008]} />
+              <meshStandardMaterial
+                color="#7cffb2"
+                emissive="#7cffb2"
+                emissiveIntensity={padHover ? 1.4 : 0.8}
+              />
+            </mesh>
+          </group>
+
+          {/* riser (warm wood) + 32" monitor + light bar — toward the wall */}
+          <group position={[0, 0, -0.15]}>
+            {[[-0.34, -0.08], [-0.34, 0.08], [0.34, -0.08], [0.34, 0.08]].map(
+              ([fx, fz], i) => (
+                <mesh key={i} position={[fx, 0.0535, fz]}>
+                  <boxGeometry args={[0.02, 0.107, 0.02]} />
+                  <meshStandardMaterial color="#1a1a22" />
+                </mesh>
+              )
+            )}
+            <mesh position={[0, 0.05, 0]}>
+              <boxGeometry args={[0.72, 0.015, 0.16]} />
+              <meshStandardMaterial color="#8b5e3c" />
+            </mesh>
+            <mesh position={[0, 0.117, 0]}>
+              <boxGeometry args={[0.8, 0.02, 0.2]} />
+              <meshStandardMaterial color="#a87b4f" />
+            </mesh>
+
+            {/* hotwheels, beside the monitor's base */}
+            {[
+              { x: -0.3, c: "#b3475f", r: 0.2 },
+              { x: -0.1, c: "#3d5a99", r: -0.15 },
+              { x: 0.1, c: "#c98a2e", r: 0.25 },
+              { x: 0.3, c: "#2e6e54", r: -0.1 },
+            ].map((car) => (
+              <group key={car.x} position={[car.x, 0.127, 0.06]} rotation={[0, car.r, 0]}>
+                <mesh position={[0, 0.01, 0]}>
+                  <boxGeometry args={[0.06, 0.02, 0.026]} />
+                  <meshStandardMaterial color={car.c} />
+                </mesh>
+                <mesh position={[-0.008, 0.027, 0]}>
+                  <boxGeometry args={[0.03, 0.014, 0.02]} />
+                  <meshStandardMaterial color="#1a1a22" />
+                </mesh>
+              </group>
+            ))}
+
+            {/* 32" monitor, centered on the riser */}
+            <group position={[0, 0.127, 0]}>
+              <mesh position={[0, 0.01, 0]}>
+                <boxGeometry args={[0.1, 0.02, 0.1]} />
+                <meshStandardMaterial color="#1c1c24" />
+              </mesh>
+              <mesh position={[0, 0.06, 0]}>
+                <boxGeometry args={[0.05, 0.08, 0.04]} />
+                <meshStandardMaterial color="#1c1c24" />
+              </mesh>
+              <mesh position={[0, 0.3025, 0]}>
+                <boxGeometry args={[0.72, 0.405, 0.035]} />
+                <meshStandardMaterial color="#1c1c24" />
+              </mesh>
+              <mesh position={[0, 0.3025, 0.024]}>
+                <planeGeometry args={[0.68, 0.375]} />
+                <meshBasicMaterial map={termTex} />
+              </mesh>
+              {/* light bar — visible fixture, subtle downward glow, no shadow */}
+              <mesh position={[0, 0.52, -0.005]}>
+                <boxGeometry args={[0.66, 0.03, 0.045]} />
+                <meshStandardMaterial color="#141419" />
+              </mesh>
+              <pointLight position={[0, 0.49, 0.06]} color="#ffcf9e" intensity={0.9} distance={1.4} decay={2} />
+            </group>
+          </group>
+
+          {/* desk mat + white mechanical keyboard + mouse — front-center */}
+          <mesh position={[0, 0.004, 0.15]}>
+            <boxGeometry args={[1.05, 0.008, 0.55]} />
+            <meshStandardMaterial color="#1c1a22" />
           </mesh>
-          <mesh position={[0, 0.05, 0]}>
-            <boxGeometry args={[0.1, 0.12, 0.08]} />
-            <meshStandardMaterial color="#22222c" />
+          <mesh position={[-0.12, 0.017, 0.2]}>
+            <boxGeometry args={[0.42, 0.018, 0.15]} />
+            <meshStandardMaterial color="#eceae2" />
           </mesh>
+          {Array.from({ length: 4 }, (_, row) =>
+            Array.from({ length: 8 }, (_, col) => {
+              const idx = row * 8 + col;
+              const accent = [2, 6, 10, 15, 19, 23, 28].includes(idx);
+              return (
+                <mesh
+                  key={idx}
+                  position={[-0.288 + col * 0.048, 0.0315, 0.155 + row * 0.03]}
+                >
+                  <boxGeometry args={[0.038, 0.011, 0.024]} />
+                  <meshStandardMaterial
+                    color={accent ? ACCENTS[idx % ACCENTS.length] : "#d9d6cc"}
+                  />
+                </mesh>
+              );
+            })
+          )}
+          <mesh position={[0.22, 0.019, 0.2]}>
+            <boxGeometry args={[0.045, 0.022, 0.075]} />
+            <meshStandardMaterial color="#eceae2" />
+          </mesh>
+
+          {/* pixar-style articulated lamp — back-left corner, head angled down.
+              Fixture-attached point light only (no shadow casting — the
+              soft-shadow caster budget is fixed). */}
+          <group position={[-1.05, 0, -0.3]}>
+            <mesh position={[0, 0.015, 0]}>
+              <cylinderGeometry args={[0.09, 0.1, 0.03, 12]} />
+              <meshStandardMaterial color="#e6e3d9" />
+            </mesh>
+            <group position={[0, 0.03, 0]} rotation={[0.55, 0, 0]}>
+              <mesh position={[0, 0.16, 0]}>
+                <boxGeometry args={[0.03, 0.32, 0.035]} />
+                <meshStandardMaterial color="#d8d6ce" />
+              </mesh>
+              <mesh>
+                <sphereGeometry args={[0.032, 8, 6]} />
+                <meshStandardMaterial color="#b7b5ac" />
+              </mesh>
+              <group position={[0, 0.32, 0]} rotation={[-1.05, 0, 0]}>
+                <mesh position={[0, 0.13, 0]}>
+                  <boxGeometry args={[0.028, 0.26, 0.032]} />
+                  <meshStandardMaterial color="#d8d6ce" />
+                </mesh>
+                <mesh>
+                  <sphereGeometry args={[0.03, 8, 6]} />
+                  <meshStandardMaterial color="#b7b5ac" />
+                </mesh>
+                <group position={[0, 0.26, 0]} rotation={[-0.7, 0, 0]}>
+                  <mesh>
+                    <boxGeometry args={[0.09, 0.05, 0.11]} />
+                    <meshStandardMaterial color="#c7c5bd" />
+                  </mesh>
+                  <pointLight position={[0, -0.03, 0.04]} color="#ffd9a0" intensity={0.8} distance={1.3} decay={2} />
+                </group>
+              </group>
+            </group>
+          </group>
+
+          {/* potted plant — front-right corner */}
+          <group position={[1.05, 0, 0.32]}>
+            <mesh position={[0, 0.035, 0]}>
+              <cylinderGeometry args={[0.045, 0.035, 0.07, 10]} />
+              <meshStandardMaterial color="#8a5a3d" />
+            </mesh>
+            <mesh position={[0, 0.1, 0]}>
+              <sphereGeometry args={[0.05, 8, 6]} />
+              <meshStandardMaterial color="#2e6e54" />
+            </mesh>
+            <mesh position={[0, 0.15, 0]}>
+              <sphereGeometry args={[0.035, 8, 6]} />
+              <meshStandardMaterial color="#3c8a68" />
+            </mesh>
+          </group>
         </group>
-        {/* second monitor, vertical, slightly angled */}
-        <group position={[0.477, 0.75, -0.12]} rotation={[0, -0.18, 0]}>
-          <mesh position={[0, 0.36, 0]}>
-            <boxGeometry args={[0.42, 0.56, 0.05]} />
-            <meshStandardMaterial color="#22222c" />
-          </mesh>
-          <mesh position={[0, 0.36, 0.028]} rotation={[0, 0, Math.PI / 2]}>
-            <planeGeometry args={[0.48, 0.34]} />
-            <meshBasicMaterial map={termTex} />
-          </mesh>
-          <mesh position={[0, 0.05, 0]}>
-            <boxGeometry args={[0.09, 0.1, 0.08]} />
-            <meshStandardMaterial color="#22222c" />
-          </mesh>
-        </group>
-        {/* screen glow — attached to the visible screens */}
-        <pointLight position={[0, 1.15, 0.2]} color="#7cffb2" intensity={1.6} distance={2.2} decay={2} />
-        {/* keyboard, mouse, mug, paper mess */}
-        <mesh position={[-0.26, 0.77, 0.22]}>
-          <boxGeometry args={[0.55, 0.03, 0.18]} />
-          <meshStandardMaterial color="#3a3244" />
-        </mesh>
-        <mesh position={[0.104, 0.765, 0.24]}>
-          <boxGeometry args={[0.09, 0.025, 0.13]} />
-          <meshStandardMaterial color="#3a3244" />
-        </mesh>
-        <mesh position={[0.91, 0.81, 0.15]}>
-          <cylinderGeometry args={[0.05, 0.045, 0.12, 8]} />
-          <meshStandardMaterial color="#b3475f" />
-        </mesh>
-        <mesh position={[-0.91, 0.755, 0.2]} rotation={[0, 0.35, 0]}>
-          <boxGeometry args={[0.3, 0.01, 0.22]} />
-          <meshStandardMaterial color="#e8e2d0" />
-        </mesh>
-        {/* desk lamp (visible fixture, warm) — light is desk-group-local */}
-        <group position={[1.083, 0.75, -0.25]}>
-          <mesh position={[0, 0.02, 0]}>
-            <cylinderGeometry args={[0.07, 0.09, 0.04, 8]} />
-            <meshStandardMaterial color="#2e2a4d" />
-          </mesh>
-          <mesh position={[0, 0.18, 0]} rotation={[0, 0, 0.35]}>
-            <cylinderGeometry args={[0.015, 0.015, 0.3, 6]} />
-            <meshStandardMaterial color="#2e2a4d" />
-          </mesh>
-          <mesh position={[-0.09, 0.33, 0]} rotation={[0, 0, 1.1]}>
-            <coneGeometry args={[0.06, 0.1, 8, 1, true]} />
-            <meshStandardMaterial color="#ffb35c" emissive="#ffb35c" emissiveIntensity={0.9} side={2} />
-          </mesh>
-        </group>
-        <pointLight castShadow shadow-mapSize={[256, 256]} shadow-bias={-0.004} shadow-radius={5} shadow-intensity={0.4} position={[1.083, 1.15, -0.25]} color="#ffb35c" intensity={3} distance={3} decay={2} />
       </group>
 
       {/* ── corkboard (experience station) — north wall, right of the desk ── */}
@@ -279,29 +458,86 @@ export function Workspace() {
         })}
       </group>
 
-      {/* ── desk chair — collider {10.7,1.5,0.8,0.8} ── */}
+      {/* ── gaming chair — collider {10.7,1.5,0.8,0.8}. All black w/ gray
+          piping + lumbar accent; full-height backrest + headrest. ── */}
       <group position={[11.1, 0, 1.9]} rotation={[0, 0.25, 0]}>
-        <mesh position={[0, 0.44, 0]}>
-          <boxGeometry args={[0.5, 0.07, 0.48]} />
-          <meshStandardMaterial color="#22222c" />
-        </mesh>
-        <mesh position={[0, 0.75, -0.22]} rotation={[-0.1, 0, 0]}>
-          <boxGeometry args={[0.48, 0.6, 0.07]} />
-          <meshStandardMaterial color="#22222c" />
-        </mesh>
+        {/* base + gas cylinder */}
         <mesh position={[0, 0.22, 0]}>
           <cylinderGeometry args={[0.035, 0.035, 0.44, 6]} />
-          <meshStandardMaterial color="#3a3244" />
+          <meshStandardMaterial color="#15151b" />
         </mesh>
         {[0, 1, 2, 3, 4].map((i) => {
           const a = (i / 5) * Math.PI * 2;
           return (
             <mesh key={i} position={[Math.sin(a) * 0.2, 0.03, Math.cos(a) * 0.2]} rotation={[0, a, 0]}>
               <boxGeometry args={[0.06, 0.04, 0.24]} />
-              <meshStandardMaterial color="#3a3244" />
+              <meshStandardMaterial color="#3a3a42" />
             </mesh>
           );
         })}
+        {/* seat cushion */}
+        <mesh position={[0, 0.44, 0]}>
+          <boxGeometry args={[0.5, 0.07, 0.48]} />
+          <meshStandardMaterial color="#17171d" />
+        </mesh>
+        {/* seat piping (gray edge trim) */}
+        <mesh position={[0, 0.475, 0.235]}>
+          <boxGeometry args={[0.5, 0.012, 0.018]} />
+          <meshStandardMaterial color="#8b8b94" />
+        </mesh>
+        <mesh position={[0.245, 0.475, 0]}>
+          <boxGeometry args={[0.018, 0.012, 0.48]} />
+          <meshStandardMaterial color="#8b8b94" />
+        </mesh>
+        <mesh position={[-0.245, 0.475, 0]}>
+          <boxGeometry args={[0.018, 0.012, 0.48]} />
+          <meshStandardMaterial color="#8b8b94" />
+        </mesh>
+        {/* backrest — full height, with side bolsters (gaming-chair wings) */}
+        <mesh position={[0, 0.97, -0.24]} rotation={[-0.08, 0, 0]}>
+          <boxGeometry args={[0.48, 1.05, 0.09]} />
+          <meshStandardMaterial color="#17171d" />
+        </mesh>
+        <mesh position={[0.21, 0.97, -0.21]} rotation={[-0.08, 0, 0]}>
+          <boxGeometry args={[0.07, 1.05, 0.13]} />
+          <meshStandardMaterial color="#1e1e26" />
+        </mesh>
+        <mesh position={[-0.21, 0.97, -0.21]} rotation={[-0.08, 0, 0]}>
+          <boxGeometry args={[0.07, 1.05, 0.13]} />
+          <meshStandardMaterial color="#1e1e26" />
+        </mesh>
+        {/* backrest piping — center racing stripe */}
+        <mesh position={[0, 0.97, -0.194]} rotation={[-0.08, 0, 0]}>
+          <boxGeometry args={[0.05, 0.95, 0.012]} />
+          <meshStandardMaterial color="#8b8b94" />
+        </mesh>
+        {/* gray lumbar pad */}
+        <mesh position={[0, 0.64, -0.2]} rotation={[-0.08, 0, 0]}>
+          <boxGeometry args={[0.28, 0.18, 0.04]} />
+          <meshStandardMaterial color="#8b8b94" />
+        </mesh>
+        {/* headrest */}
+        <mesh position={[0, 1.53, -0.3]} rotation={[-0.15, 0, 0]}>
+          <boxGeometry args={[0.32, 0.22, 0.09]} />
+          <meshStandardMaterial color="#17171d" />
+        </mesh>
+        <mesh position={[0, 1.53, -0.255]} rotation={[-0.15, 0, 0]}>
+          <boxGeometry args={[0.16, 0.14, 0.012]} />
+          <meshStandardMaterial color="#8b8b94" />
+        </mesh>
+        {/* armrests */}
+        {[-0.29, 0.29].map((ax) => (
+          <group key={ax}>
+            <mesh position={[ax, 0.42, 0.05]}>
+              <boxGeometry args={[0.06, 0.28, 0.06]} />
+              <meshStandardMaterial color="#17171d" />
+            </mesh>
+            <mesh position={[ax, 0.57, 0.05]}>
+              <boxGeometry args={[0.09, 0.04, 0.22]} />
+              <meshStandardMaterial color="#8b8b94" />
+            </mesh>
+          </group>
+        ))}
       </group>
 
       {/* ── shelf unit — collider {8.15,4.3,0.55,1.1} ── */}
