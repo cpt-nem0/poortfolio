@@ -46,15 +46,25 @@ export function Sofa() {
         <boxGeometry args={[0.7, 0.34, 0.14]} />
         <meshStandardMaterial color="#585486" />
       </mesh>
-      {/* throw blanket folded flat over one armrest (kept subtle so the
-          arms still read as twins) */}
-      <mesh position={[-0.89, 0.545, 0]}>
-        <boxGeometry args={[0.24, 0.045, 0.62]} />
-        <meshStandardMaterial color="#c98a2e" />
+      {/* brick-red throw, casually draped over the right backrest corner and
+          spilling onto the seat — "someone just got up" (kilim's red;
+          swap color to #c98a2e to go back to the old mustard) */}
+      <mesh position={[-0.55, 0.72, -0.26]} rotation={[-0.16, 0.06, 0.04]}>
+        <boxGeometry args={[0.5, 0.045, 0.24]} />
+        <meshStandardMaterial color="#b3475f" />
       </mesh>
-      <mesh position={[-1.005, 0.42, 0]}>
-        <boxGeometry args={[0.035, 0.3, 0.56]} />
-        <meshStandardMaterial color="#b87d26" />
+      <mesh position={[-0.5, 0.52, -0.02]} rotation={[-0.5, 0.05, 0]}>
+        <boxGeometry args={[0.44, 0.04, 0.42]} />
+        <meshStandardMaterial color="#a8415a" />
+      </mesh>
+      <mesh position={[-0.45, 0.455, 0.24]} rotation={[-0.1, 0, 0.03]}>
+        <boxGeometry args={[0.38, 0.035, 0.24]} />
+        <meshStandardMaterial color="#b3475f" />
+      </mesh>
+      {/* folded hem line */}
+      <mesh position={[-0.45, 0.475, 0.3]}>
+        <boxGeometry args={[0.36, 0.012, 0.05]} />
+        <meshStandardMaterial color="#8f3049" />
       </mesh>
       {/* short wooden feet */}
       {[
