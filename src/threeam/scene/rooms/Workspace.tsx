@@ -42,6 +42,19 @@ const FLOOR_VARIANTS = [
   { label: "gray-washed", path: "/3am/tex/floor-graywash.png", rx: WORKSPACE.w, ry: WORKSPACE.d },
 ];
 
+/** One taped polaroid; the texture hook lives here so the projects loop stays
+ *  hook-legal. Photo sits 5mm proud of the frame face (≥4mm convention —
+ *  anything closer flickers, per the album-art z-fighting bug). */
+function Polaroid({ image }: { image: string }) {
+  const tex = usePixelTexture(image.replace("/projects/", "/3am/projects/"), 1, 1);
+  return (
+    <mesh position={[0, 0.035, 0.005]}>
+      <planeGeometry args={[0.44, 0.33]} />
+      <meshStandardMaterial map={tex} />
+    </mesh>
+  );
+}
+
 export function Workspace() {
   const R = WORKSPACE;
   const rootRef = useRef<THREE.Group>(null);
@@ -255,6 +268,40 @@ export function Workspace() {
           <sphereGeometry args={[0.018, 6, 5]} />
           <meshStandardMaterial color="#c98a2e" />
         </mesh>
+      </group>
+
+      {/* ── project polaroids (projects station) — west divider, north segment ── */}
+      <group
+        onClick={(e) => {
+          e.stopPropagation();
+          useThreeAm.getState().setFocus("projects");
+        }}
+        onPointerOver={() => (document.body.style.cursor = "pointer")}
+        onPointerOut={() => (document.body.style.cursor = "auto")}
+      >
+        {site.projects.map((p, i) => {
+          const col = i % 2;
+          const row = Math.floor(i / 2);
+          return (
+            <group
+              key={p.title}
+              position={[8.12, 2.25 - row * 0.62, 0.55 + col * 0.62 + (row % 2) * 0.3]}
+              rotation={[0, Math.PI / 2, (i % 3) * 0.045 - 0.045]}
+            >
+              {/* white polaroid frame */}
+              <mesh>
+                <planeGeometry args={[0.5, 0.46]} />
+                <meshStandardMaterial color="#f2ecd8" />
+              </mesh>
+              <Polaroid image={p.image} />
+              {/* tape — 10mm proud of the frame, clear of the photo's 5mm */}
+              <mesh position={[0, 0.235, 0.01]} rotation={[0, 0, 0.15]}>
+                <planeGeometry args={[0.16, 0.05]} />
+                <meshStandardMaterial color="#f2ecd8" opacity={0.6} transparent />
+              </mesh>
+            </group>
+          );
+        })}
       </group>
 
       {/* ── desk chair — collider {10.7,1.5,0.8,0.8} ── */}
