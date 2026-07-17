@@ -1,6 +1,8 @@
 "use client";
 
+import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
+import { Vector3 } from "three";
 import { playerPosition } from "@/threeam/world/runtime";
 import { useThreeAm } from "@/threeam/state/store";
 import { HOUSE } from "@/threeam/world/layout";
@@ -22,37 +24,45 @@ const clamp = (v: number, lo: number, hi: number) =>
   Math.max(lo, Math.min(hi, v));
 
 export function FollowCamera() {
+  // Persistent smoothed look target: BOTH the follow rig and the station
+  // close-up steer this point each frame, so orientation eases through focus
+  // transitions in either direction (position alone easing would still snap
+  // the rotation the instant the lookAt target swaps).
+  const lookRef = useRef<Vector3 | null>(null);
+
   useFrame(({ camera }, rawDt) => {
     const dt = Math.min(rawDt, 0.05);
-    const focus = useThreeAm.getState().focus;
-    if (focus) {
-      const station = STATIONS.find((st) => st.id === focus);
-      if (station) {
-        const t = 1 - Math.exp(-LERP * dt);
-        const [px, py, pz] = station.camera.pos;
-        const [lx, ly, lz] = station.camera.look;
-        camera.position.x += (px - camera.position.x) * t;
-        camera.position.y += (py - camera.position.y) * t;
-        camera.position.z += (pz - camera.position.z) * t;
-        camera.lookAt(lx, ly, lz);
-        return;
-      }
-    }
-    const area = useThreeAm.getState().area;
-    const b = HOUSE.areas[area].bounds;
-    const OFFSET = AREA_CAMERA[area];
+    const t = 1 - Math.exp(-LERP * dt); // framerate-independent lerp
+    const s = useThreeAm.getState();
+    const b = HOUSE.areas[s.area].bounds;
+    const OFFSET = AREA_CAMERA[s.area];
 
-    // keep the framed point inside the area so edges don't show void
-    // NOTE: margins assume every area is ≥6m wide and ≥2m deep; clamp()
+    // follow-rig framing point — keep it inside the area so edges don't show
+    // void. NOTE: margins assume every area is ≥6m wide and ≥2m deep; clamp()
     // returns `lo` if lo > hi, which would pin the camera in a smaller area.
     const tx = clamp(playerPosition.x, b.x + 3, b.x + b.w - 3);
     const tz = clamp(playerPosition.z, b.z + 1, b.z + b.d - 1);
 
-    const t = 1 - Math.exp(-LERP * dt); // framerate-independent lerp
-    camera.position.x += (tx - camera.position.x) * t;
-    camera.position.y += (OFFSET.y - camera.position.y) * t;
-    camera.position.z += (tz + OFFSET.z - camera.position.z) * t;
-    camera.lookAt(tx, 0.8, tz);
+    const station = s.focus
+      ? STATIONS.find((st) => st.id === s.focus)
+      : undefined;
+
+    // desired pose: station close-up while focused, follow rig otherwise
+    const [px, py, pz] = station
+      ? station.camera.pos
+      : [tx, OFFSET.y, tz + OFFSET.z];
+    const [lx, ly, lz] = station ? station.camera.look : [tx, 0.8, tz];
+
+    camera.position.x += (px - camera.position.x) * t;
+    camera.position.y += (py - camera.position.y) * t;
+    camera.position.z += (pz - camera.position.z) * t;
+
+    // initialize to the follow target so the first frame doesn't swing
+    const look = (lookRef.current ??= new Vector3(tx, 0.8, tz));
+    look.x += (lx - look.x) * t;
+    look.y += (ly - look.y) * t;
+    look.z += (lz - look.z) * t;
+    camera.lookAt(look);
   });
   return null;
 }
