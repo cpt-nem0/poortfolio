@@ -48,13 +48,14 @@ const ART_PASSED = new Set<string>(["music", "workspace"]);
  *  flush against the north wall and climbs *toward* the room: each step is
  *  drawn as one solid block from the floor up to its own tread, so from the
  *  side the whole run reads as a single solid stringer (Eastward-style),
- *  not a see-through frame. The tallest block sits right at the wall and
- *  is nearly full wall height, so it plausibly disappears into the
- *  ceiling/floor between areas. A soft floor marker at the base (where the
- *  portal trigger actually sits) keeps the interactive spot readable
- *  without the old neon-green glare. */
+ *  not a see-through frame. The tallest block sits flush against the wall
+ *  (4mm off its face, per convention) and rises to just under WALL_H, so
+ *  the flight reads as actually arriving at the floor above — no gap. The
+ *  whole footprint is solid: a matching furniture rect in layout.ts blocks
+ *  the player, and the portal trigger sits south of it at the base. No
+ *  floor marker — the HUD [E] prompt is the affordance. */
 const STAIR_STEPS = 8;
-const STAIR_RISE = 0.325; // per-step height (8 * 0.325 = 2.6m, just under WALL_H)
+const STAIR_RISE = 0.345; // per-step height (8 * 0.345 = 2.76m ≈ WALL_H 2.8)
 const STAIR_RUN = 0.22; // per-step depth (8 * 0.22 = 1.76m total run)
 const STAIR_WIDTH = 1.0;
 const STAIR_TOTAL_RUN = STAIR_STEPS * STAIR_RUN;
@@ -114,12 +115,6 @@ function Stairs({ x, z }: { x: number; z: number }) {
           </mesh>
         );
       })}
-
-      {/* soft floor marker at the base, in front of the lowest step */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, STAIR_TOTAL_RUN + 0.2]}>
-        <circleGeometry args={[0.32, 12]} />
-        <meshStandardMaterial color="#7cffb2" emissive="#7cffb2" emissiveIntensity={0.25} transparent opacity={0.35} />
-      </mesh>
     </group>
   );
 }
@@ -175,13 +170,13 @@ export function House() {
         <WallBox key={`w${i}`} rect={rect} color="#7d6fa8" />
       ))}
 
-      {/* portal stairs: anchored flush against the north wall (z≈0 for both
-          areas); the flight runs toward the room to meet the trigger, which
-          sits at the base where the player actually stands to press E. */}
+      {/* portal stairs: anchored flush against the north wall (4mm off its
+          face, both areas); the flight runs toward the room, and the portal
+          trigger sits just south of the base where the player presses E. */}
       {HOUSE.portals
         .filter((p) => p.area === area)
         .map((p) => (
-          <Stairs key={p.id} x={p.trigger.x + p.trigger.w / 2} z={0.05} />
+          <Stairs key={p.id} x={p.trigger.x + p.trigger.w / 2} z={0.004} />
         ))}
     </group>
   );

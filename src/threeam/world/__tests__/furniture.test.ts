@@ -66,6 +66,32 @@ describe("workspace furniture colliders", () => {
   });
 });
 
+describe("staircase collider", () => {
+  const roof = HOUSE.areas.roof;
+
+  it("the flight is solid on the ground floor (no phasing through)", () => {
+    expect(isBlocked(ground, 15.2, 0.5)).toBe(true); // upper stringer
+    expect(isBlocked(ground, 15.2, 1.0)).toBe(true); // mid flight
+    expect(isBlocked(ground, 15.2, 1.7)).toBe(true); // bottom steps
+  });
+
+  it("the flight is solid on the roof too", () => {
+    expect(isBlocked(roof, 15.2, 0.5)).toBe(true);
+    expect(isBlocked(roof, 15.2, 1.7)).toBe(true);
+  });
+
+  it("the base trigger area stays walkable on both floors", () => {
+    expect(isBlocked(ground, 15.2, 2.6)).toBe(false); // trigger center
+    expect(isBlocked(roof, 15.2, 2.6)).toBe(false);
+  });
+
+  it("walkways around the flight stay open", () => {
+    expect(isBlocked(ground, 14.0, 1.0)).toBe(false); // west of the flight
+    expect(isBlocked(ground, 15.2, 2.3)).toBe(false); // just south of the base
+    expect(isBlocked(ground, 16, 3)).toBe(false); // doorway into the music nook
+  });
+});
+
 describe("station triggers vs furniture", () => {
   const intersects = (a: Rect, b: Rect) =>
     a.x < b.x + b.w && b.x < a.x + a.w && a.z < b.z + b.d && b.z < a.z + a.d;
@@ -76,6 +102,17 @@ describe("station triggers vs furniture", () => {
         expect(
           intersects(station.trigger, rect),
           `station "${station.id}" trigger overlaps furniture rect ${JSON.stringify(rect)}`
+        ).toBe(false);
+      }
+    }
+  });
+
+  it("no portal trigger overlaps any furniture rect in its area (player can stand in it)", () => {
+    for (const portal of HOUSE.portals) {
+      for (const rect of HOUSE.areas[portal.area].furniture) {
+        expect(
+          intersects(portal.trigger, rect),
+          `portal "${portal.id}" trigger overlaps furniture rect ${JSON.stringify(rect)}`
         ).toBe(false);
       }
     }

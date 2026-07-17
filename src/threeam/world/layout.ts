@@ -59,6 +59,11 @@ const GROUND: Area = {
     { x: 10.7, z: 1.5, w: 0.8, d: 0.8 }, // desk chair
     { x: 8.15, z: 4.3, w: 0.55, d: 1.1 }, // shelf unit (west wall, south of door)
     { x: 8.9, z: 5.3, w: 0.35, d: 0.35 }, // floor lamp
+    // staircase to the roof — full flight footprint (steps + handrail).
+    // Must NOT overlap the stairs-up portal trigger below: the trigger sits
+    // south of this rect plus the player radius so the prompt spot is
+    // reachable (furniture.test.ts asserts both).
+    { x: 14.65, z: 0, w: 1.1, d: 1.82 },
   ],
   rooms: [
     { id: "bedroom", rect: { x: 0, z: 0, w: 8, d: 6 } },
@@ -71,7 +76,10 @@ const ROOF: Area = {
   id: "roof",
   bounds: { x: 8, z: 0, w: 8, d: 6 },
   walls: [],
-  furniture: [],
+  furniture: [
+    // the same staircase flight emerges here — same footprint as on ground
+    { x: 14.65, z: 0, w: 1.1, d: 1.82 },
+  ],
   rooms: [{ id: "rooftop", rect: { x: 8, z: 0, w: 8, d: 6 } }],
 };
 
@@ -79,14 +87,14 @@ export const HOUSE: { areas: Record<AreaId, Area>; portals: Portal[] } = {
   areas: { ground: GROUND, roof: ROOF },
   // Both stair portals share one trigger rect on purpose: the flight occupies
   // the same footprint on both floors. If the roof layout changes, split them.
-  // The trigger sits at the BASE of the flight (the stairs climb away from
-  // the north wall toward the room; House.tsx anchors the visual at the
-  // wall and lets it run toward this trigger — see the Stairs component).
+  // The stairs are SOLID (see the staircase furniture rect, z 0..1.82), so
+  // the trigger sits just south of the collider plus the player radius
+  // (0.35): the player walks up to the base of the flight and presses E.
   portals: [
     {
       id: "stairs-up",
       area: "ground",
-      trigger: { x: 14.6, z: 1.1, w: 1.2, d: 0.9 },
+      trigger: { x: 14.6, z: 2.2, w: 1.2, d: 0.8 },
       toArea: "roof",
       toPosition: { x: 12, z: 2 },
       label: "go up the stairs",
@@ -94,7 +102,7 @@ export const HOUSE: { areas: Record<AreaId, Area>; portals: Portal[] } = {
     {
       id: "stairs-down",
       area: "roof",
-      trigger: { x: 14.6, z: 1.1, w: 1.2, d: 0.9 },
+      trigger: { x: 14.6, z: 2.2, w: 1.2, d: 0.8 },
       toArea: "ground",
       toPosition: { x: 14, z: 2 },
       label: "head downstairs",
