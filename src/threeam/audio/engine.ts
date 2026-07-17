@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { useAudioStore } from "@/threeam/state/audio";
-import { playNeedleDrop, startCrackle } from "./sfx";
+import { startCrackle } from "./sfx";
 
 const AMBIENT_URL = "/3am/audio/ambient.mp3";
 const AMBIENT_VOL = 0.35;
@@ -120,7 +120,6 @@ class Engine {
       if (token !== this.previewToken) return; // a newer click won
       if (this.preview.isPlaying) this.preview.stop();
       this.ambient.setVolume(AMBIENT_DUCKED);
-      playNeedleDrop(ctx, this.listener.getInput());
       this.preview.setBuffer(audio);
       this.preview.setLoop(false);
       this.preview.setVolume(PREVIEW_VOL);
@@ -178,8 +177,7 @@ class Engine {
       this.resumeTimer = setTimeout(() => {
         this.resumeTimer = null;
         if (useAudioStore.getState().paused || !this.listener) return;
-        playNeedleDrop(ctx, this.listener.getInput()); // starts audibly at resume
-        void ctx.resume();
+        void ctx.resume(); // music returns clean — no SFX (Rohan's call)
       }, 700);
     }
     useAudioStore.getState().setPaused(paused);
