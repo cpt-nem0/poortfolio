@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { usePixelTexture } from "../usePixelTexture";
 import { useThreeAm } from "@/threeam/state/store";
@@ -9,16 +9,9 @@ import { site } from "@/content/site";
 const WALL_H = 2.8; // must match House.tsx
 export const WORKSPACE = { x: 8, z: 0, w: 8, d: 6 };
 
-/* style-test toggles (1 walls / 2 floors) — removed once Rohan picks */
-const WALL_VARIANTS = [
-  { label: "cream plaster", path: "/3am/tex/plaster.png", ry: WALL_H },
-  { label: "teal + wainscot", path: "/3am/tex/wall-teal.png", ry: 1 },
-  { label: "dusty plum", path: "/3am/tex/wall-plum.png", ry: WALL_H },
-  { label: "vintage stripes", path: "/3am/tex/wall-stripes.png", ry: WALL_H },
-  { label: "charcoal", path: "/3am/tex/wall-charcoal.png", ry: WALL_H },
-  { label: "midnight", path: "/3am/tex/wall-midnight.png", ry: WALL_H },
-  { label: "forest", path: "/3am/tex/wall-forest.png", ry: WALL_H },
-];
+/* Interior locked by Rohan (2026-07 style gate): midnight walls, dark
+   walnut floor. Alternatives are regenerable via
+   `node scripts/pixelart/gen-variants.mjs` if the room is redecorated. */
 /* corkboard pin positions (board-local), one per site.experience entry.
    The red string is DERIVED from these so its endpoints land exactly on
    the pin centers — never hand-tune the string separately. */
@@ -38,13 +31,6 @@ const STRING = {
   rot: Math.atan2(PIN_B.y - PIN_A.y, PIN_B.x - PIN_A.x),
 };
 
-const FLOOR_VARIANTS = [
-  { label: "honey planks", path: "/3am/tex/floor-planks.png", rx: WORKSPACE.w, ry: WORKSPACE.d },
-  { label: "dark walnut", path: "/3am/tex/floor-walnut.png", rx: WORKSPACE.w, ry: WORKSPACE.d },
-  { label: "herringbone", path: "/3am/tex/floor-herringbone.png", rx: WORKSPACE.w / 2, ry: WORKSPACE.d / 2 },
-  { label: "gray-washed", path: "/3am/tex/floor-graywash.png", rx: WORKSPACE.w, ry: WORKSPACE.d },
-];
-
 /** One taped polaroid; the texture hook lives here so the projects loop stays
  *  hook-legal. Photo sits 5mm proud of the frame face (≥4mm convention —
  *  anything closer flickers, per the album-art z-fighting bug). */
@@ -61,20 +47,6 @@ function Polaroid({ image }: { image: string }) {
 export function Workspace() {
   const R = WORKSPACE;
   const rootRef = useRef<THREE.Group>(null);
-  const [wallIdx, setWallIdx] = useState(0);
-  const [floorIdx, setFloorIdx] = useState(0);
-  const wallV = WALL_VARIANTS[wallIdx];
-  const floorV = FLOOR_VARIANTS[floorIdx];
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.repeat) return;
-      if (e.code === "Digit1") setWallIdx((i) => (i + 1) % WALL_VARIANTS.length);
-      if (e.code === "Digit2") setFloorIdx((i) => (i + 1) % FLOOR_VARIANTS.length);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
 
   useEffect(() => {
     rootRef.current?.traverse((obj) => {
@@ -85,11 +57,11 @@ export function Workspace() {
     });
   }, []);
 
-  const floor = usePixelTexture(floorV.path, floorV.rx, floorV.ry);
-  const wallN = usePixelTexture(wallV.path, R.w, wallV.ry);
-  const wallSegW = usePixelTexture(wallV.path, 2.2, wallV.ry === 1 ? 1 : WALL_H);
-  const wallSegE = usePixelTexture(wallV.path, 2.2, wallV.ry === 1 ? 1 : WALL_H);
-  const wallStub = usePixelTexture(wallV.path, R.w, 0.2, 0, 0.5);
+  const floor = usePixelTexture("/3am/tex/floor-walnut.png", R.w, R.d);
+  const wallN = usePixelTexture("/3am/tex/wall-midnight.png", R.w, WALL_H);
+  const wallSegW = usePixelTexture("/3am/tex/wall-midnight.png", 2.2, WALL_H);
+  const wallSegE = usePixelTexture("/3am/tex/wall-midnight.png", 2.2, WALL_H);
+  const wallStub = usePixelTexture("/3am/tex/wall-midnight.png", R.w, 0.2, 0, 0.5);
   const termTex = usePixelTexture("/3am/tex/terminal.png", 1, 1);
   const corkTex = usePixelTexture("/3am/tex/cork.png", 1, 1);
 
