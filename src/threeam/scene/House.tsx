@@ -43,6 +43,33 @@ const SOUTH_STUB_H = 0.55;
 /** Rooms with their own art-passed surfaces skip the debug tint patch. */
 const ART_PASSED = new Set<string>(["music", "workspace"]);
 
+/** Wooden ladder standing in for a portal — leans against the north wall.
+ *  A soft, subtle floor marker keeps the interactive spot readable without
+ *  the old neon-green glare (the HUD prompt does the rest of the talking). */
+function Ladder({ x, z }: { x: number; z: number }) {
+  return (
+    <group position={[x, 0, z]}>
+      {[-0.28, 0.28].map((rx) => (
+        <mesh key={rx} position={[rx, 1.3, 0.06]} rotation={[0.22, 0, 0]}>
+          <cylinderGeometry args={[0.035, 0.035, 2.7, 6]} />
+          <meshStandardMaterial color="#8a5a3b" />
+        </mesh>
+      ))}
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <mesh key={i} position={[0, 0.35 + i * 0.42, 0.06 + (1.35 - (0.35 + i * 0.42)) * 0.22]}>
+          <boxGeometry args={[0.56, 0.05, 0.05]} />
+          <meshStandardMaterial color="#6b4128" />
+        </mesh>
+      ))}
+      {/* soft floor marker so the interactive spot still reads */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0.3]}>
+        <circleGeometry args={[0.32, 12]} />
+        <meshStandardMaterial color="#7cffb2" emissive="#7cffb2" emissiveIntensity={0.25} transparent opacity={0.35} />
+      </mesh>
+    </group>
+  );
+}
+
 export function House() {
   const area = useThreeAm((s) => s.area);
   const a = HOUSE.areas[area];
@@ -94,26 +121,11 @@ export function House() {
         <WallBox key={`w${i}`} rect={rect} color="#7d6fa8" />
       ))}
 
-      {/* portal markers */}
+      {/* portal ladders */}
       {HOUSE.portals
         .filter((p) => p.area === area)
         .map((p) => (
-          <mesh
-            key={p.id}
-            position={[
-              p.trigger.x + p.trigger.w / 2,
-              0.05,
-              p.trigger.z + p.trigger.d / 2,
-            ]}
-            rotation={[-Math.PI / 2, 0, 0]}
-          >
-            <planeGeometry args={[p.trigger.w, p.trigger.d]} />
-            <meshStandardMaterial
-              color="#7cffb2"
-              emissive="#7cffb2"
-              emissiveIntensity={0.8}
-            />
-          </mesh>
+          <Ladder key={p.id} x={p.trigger.x + p.trigger.w / 2} z={p.trigger.z + 0.1} />
         ))}
     </group>
   );
