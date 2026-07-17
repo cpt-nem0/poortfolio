@@ -77,24 +77,27 @@ const ROOF: Area = {
 
 export const HOUSE: { areas: Record<AreaId, Area>; portals: Portal[] } = {
   areas: { ground: GROUND, roof: ROOF },
-  // Both ladder portals share one trigger rect on purpose: the ladder occupies
+  // Both stair portals share one trigger rect on purpose: the flight occupies
   // the same footprint on both floors. If the roof layout changes, split them.
+  // The trigger sits at the BASE of the flight (the stairs climb away from
+  // the north wall toward the room; House.tsx anchors the visual at the
+  // wall and lets it run toward this trigger — see the Stairs component).
   portals: [
     {
-      id: "ladder-up",
+      id: "stairs-up",
       area: "ground",
-      trigger: { x: 14.6, z: 0.2, w: 1.2, d: 1.0 },
+      trigger: { x: 14.6, z: 1.1, w: 1.2, d: 0.9 },
       toArea: "roof",
       toPosition: { x: 12, z: 2 },
-      label: "climb the ladder",
+      label: "go up the stairs",
     },
     {
-      id: "ladder-down",
+      id: "stairs-down",
       area: "roof",
-      trigger: { x: 14.6, z: 0.2, w: 1.2, d: 1.0 },
+      trigger: { x: 14.6, z: 1.1, w: 1.2, d: 0.9 },
       toArea: "ground",
       toPosition: { x: 14, z: 2 },
-      label: "climb down",
+      label: "head downstairs",
     },
   ],
 };

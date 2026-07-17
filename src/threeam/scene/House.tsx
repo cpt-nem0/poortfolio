@@ -43,26 +43,80 @@ const SOUTH_STUB_H = 0.55;
 /** Rooms with their own art-passed surfaces skip the debug tint patch. */
 const ART_PASSED = new Set<string>(["music", "workspace"]);
 
-/** Wooden ladder standing in for a portal — leans against the north wall.
- *  A soft, subtle floor marker keeps the interactive spot readable without
- *  the old neon-green glare (the HUD prompt does the rest of the talking). */
-function Ladder({ x, z }: { x: number; z: number }) {
+/** Chunky pixel-art stairs standing in for a portal (replaces the old
+ *  ladder — the owner found the ladder "weird"). The flight is anchored
+ *  flush against the north wall and climbs *toward* the room: each step is
+ *  drawn as one solid block from the floor up to its own tread, so from the
+ *  side the whole run reads as a single solid stringer (Eastward-style),
+ *  not a see-through frame. The tallest block sits right at the wall and
+ *  is nearly full wall height, so it plausibly disappears into the
+ *  ceiling/floor between areas. A soft floor marker at the base (where the
+ *  portal trigger actually sits) keeps the interactive spot readable
+ *  without the old neon-green glare. */
+const STAIR_STEPS = 8;
+const STAIR_RISE = 0.325; // per-step height (8 * 0.325 = 2.6m, just under WALL_H)
+const STAIR_RUN = 0.22; // per-step depth (8 * 0.22 = 1.76m total run)
+const STAIR_WIDTH = 1.0;
+const STAIR_TOTAL_RUN = STAIR_STEPS * STAIR_RUN;
+const STAIR_TOTAL_RISE = STAIR_STEPS * STAIR_RISE;
+
+function Stairs({ x, z }: { x: number; z: number }) {
+  // Rail runs from just above the top block (near the wall) down to just
+  // above the base (near the room) — rotated to follow the slope.
+  const railLift = 0.85;
+  const railDx = STAIR_WIDTH / 2 + 0.05;
+  const railLen = Math.hypot(STAIR_TOTAL_RISE, STAIR_TOTAL_RUN);
+  const railAngle = Math.atan2(STAIR_TOTAL_RUN, -STAIR_TOTAL_RISE);
+
   return (
     <group position={[x, 0, z]}>
-      {[-0.28, 0.28].map((rx) => (
-        <mesh key={rx} position={[rx, 1.3, 0.06]} rotation={[0.22, 0, 0]}>
-          <cylinderGeometry args={[0.035, 0.035, 2.7, 6]} />
-          <meshStandardMaterial color="#8a5a3b" />
-        </mesh>
-      ))}
-      {[0, 1, 2, 3, 4, 5].map((i) => (
-        <mesh key={i} position={[0, 0.35 + i * 0.42, 0.06 + (1.35 - (0.35 + i * 0.42)) * 0.22]}>
-          <boxGeometry args={[0.56, 0.05, 0.05]} />
-          <meshStandardMaterial color="#6b4128" />
-        </mesh>
-      ))}
-      {/* soft floor marker so the interactive spot still reads */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0.3]}>
+      {Array.from({ length: STAIR_STEPS }, (_, i) => {
+        // i=0 is flush against the wall (tallest, nearly full height);
+        // i=STAIR_STEPS-1 is the lowest single step, out in the room.
+        const height = (STAIR_STEPS - i) * STAIR_RISE;
+        const zNear = i * STAIR_RUN;
+        return (
+          <group key={i}>
+            {/* solid block: floor up to this step's tread — the stringer */}
+            <mesh position={[0, height / 2, zNear + STAIR_RUN / 2]} castShadow receiveShadow>
+              <boxGeometry args={[STAIR_WIDTH, height, STAIR_RUN]} />
+              <meshStandardMaterial color="#6b4128" />
+            </mesh>
+            {/* tread cap: lighter plank, nosing proud toward the room */}
+            <mesh
+              position={[0, height + 0.025, zNear + STAIR_RUN / 2 + 0.02]}
+              castShadow
+              receiveShadow
+            >
+              <boxGeometry args={[STAIR_WIDTH + 0.04, 0.05, STAIR_RUN + 0.06]} />
+              <meshStandardMaterial color="#9c6b42" />
+            </mesh>
+          </group>
+        );
+      })}
+
+      {/* slim handrail along one side, following the slope */}
+      <mesh
+        position={[railDx, STAIR_TOTAL_RISE / 2 + railLift, STAIR_TOTAL_RUN / 2]}
+        rotation={[railAngle, 0, 0]}
+        castShadow
+      >
+        <cylinderGeometry args={[0.03, 0.03, railLen, 6]} />
+        <meshStandardMaterial color="#8a5a3b" />
+      </mesh>
+      {[0, STAIR_TOTAL_RUN].map((zPost) => {
+        const yTop =
+          (STAIR_TOTAL_RISE * (1 - zPost / STAIR_TOTAL_RUN)) + railLift;
+        return (
+          <mesh key={zPost} position={[railDx, yTop / 2, zPost]} castShadow>
+            <cylinderGeometry args={[0.025, 0.025, yTop, 6]} />
+            <meshStandardMaterial color="#8a5a3b" />
+          </mesh>
+        );
+      })}
+
+      {/* soft floor marker at the base, in front of the lowest step */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, STAIR_TOTAL_RUN + 0.2]}>
         <circleGeometry args={[0.32, 12]} />
         <meshStandardMaterial color="#7cffb2" emissive="#7cffb2" emissiveIntensity={0.25} transparent opacity={0.35} />
       </mesh>
@@ -121,11 +175,13 @@ export function House() {
         <WallBox key={`w${i}`} rect={rect} color="#7d6fa8" />
       ))}
 
-      {/* portal ladders */}
+      {/* portal stairs: anchored flush against the north wall (z≈0 for both
+          areas); the flight runs toward the room to meet the trigger, which
+          sits at the base where the player actually stands to press E. */}
       {HOUSE.portals
         .filter((p) => p.area === area)
         .map((p) => (
-          <Ladder key={p.id} x={p.trigger.x + p.trigger.w / 2} z={p.trigger.z + 0.1} />
+          <Stairs key={p.id} x={p.trigger.x + p.trigger.w / 2} z={0.05} />
         ))}
     </group>
   );

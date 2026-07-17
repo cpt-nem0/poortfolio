@@ -24,14 +24,14 @@ describe("useThreeAm store", () => {
 
   it("setRoom / setActivePortal update state", () => {
     useThreeAm.getState().setRoom("music");
-    const ladder = HOUSE.portals.find((p) => p.id === "ladder-up")!;
-    useThreeAm.getState().setActivePortal(ladder);
+    const stairs = HOUSE.portals.find((p) => p.id === "stairs-up")!;
+    useThreeAm.getState().setActivePortal(stairs);
     expect(useThreeAm.getState().room).toBe("music");
-    expect(useThreeAm.getState().activePortal?.id).toBe("ladder-up");
+    expect(useThreeAm.getState().activePortal?.id).toBe("stairs-up");
   });
 
   it("travel switches area, teleports the player, clears the portal", () => {
-    const up = HOUSE.portals.find((p) => p.id === "ladder-up")!;
+    const up = HOUSE.portals.find((p) => p.id === "stairs-up")!;
     useThreeAm.getState().setActivePortal(up);
     useThreeAm.getState().travel(up);
     const s = useThreeAm.getState();
