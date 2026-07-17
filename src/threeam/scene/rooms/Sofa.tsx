@@ -46,25 +46,46 @@ export function Sofa() {
         <boxGeometry args={[0.7, 0.34, 0.14]} />
         <meshStandardMaterial color="#585486" />
       </mesh>
-      {/* brick-red throw, casually draped over the right backrest corner and
-          spilling onto the seat — "someone just got up" (kilim's red;
-          swap color to #c98a2e to go back to the old mustard) */}
-      <mesh position={[-0.55, 0.72, -0.26]} rotation={[-0.16, 0.06, 0.04]}>
-        <boxGeometry args={[0.5, 0.045, 0.24]} />
+      {/* brick-red throw cascading over the sofa's right end (reference:
+          over the backrest top, down its face, across the seat, over the
+          front edge, and covering the armrest with an outer hang) */}
+      {/* over the backrest top + short hang behind */}
+      <mesh position={[-0.6, 0.79, -0.33]} rotation={[-0.15, 0, 0]}>
+        <boxGeometry args={[0.42, 0.045, 0.28]} />
         <meshStandardMaterial color="#b3475f" />
       </mesh>
-      <mesh position={[-0.5, 0.52, -0.02]} rotation={[-0.5, 0.05, 0]}>
-        <boxGeometry args={[0.44, 0.04, 0.42]} />
+      <mesh position={[-0.6, 0.66, -0.46]} rotation={[-0.12, 0, 0]}>
+        <boxGeometry args={[0.42, 0.28, 0.035]} />
         <meshStandardMaterial color="#a8415a" />
       </mesh>
-      <mesh position={[-0.45, 0.455, 0.24]} rotation={[-0.1, 0, 0.03]}>
-        <boxGeometry args={[0.38, 0.035, 0.24]} />
+      {/* down the backrest face */}
+      <mesh position={[-0.6, 0.6, -0.18]} rotation={[-0.62, 0, 0]}>
+        <boxGeometry args={[0.42, 0.035, 0.36]} />
         <meshStandardMaterial color="#b3475f" />
       </mesh>
-      {/* folded hem line */}
-      <mesh position={[-0.45, 0.475, 0.3]}>
-        <boxGeometry args={[0.36, 0.012, 0.05]} />
+      {/* across the seat */}
+      <mesh position={[-0.6, 0.465, 0.1]}>
+        <boxGeometry args={[0.42, 0.035, 0.44]} />
+        <meshStandardMaterial color="#ad4458" />
+      </mesh>
+      {/* over the front edge, hanging down */}
+      <mesh position={[-0.6, 0.28, 0.415]} rotation={[0.06, 0, 0]}>
+        <boxGeometry args={[0.42, 0.34, 0.035]} />
+        <meshStandardMaterial color="#b3475f" />
+      </mesh>
+      {/* tasseled hem at the bottom of the front hang */}
+      <mesh position={[-0.6, 0.105, 0.43]}>
+        <boxGeometry args={[0.4, 0.05, 0.04]} />
         <meshStandardMaterial color="#8f3049" />
+      </mesh>
+      {/* over the armrest + outer hang */}
+      <mesh position={[-0.89, 0.655, 0.02]}>
+        <boxGeometry args={[0.24, 0.035, 0.52]} />
+        <meshStandardMaterial color="#b3475f" />
+      </mesh>
+      <mesh position={[-1.005, 0.5, 0.02]}>
+        <boxGeometry args={[0.035, 0.3, 0.46]} />
+        <meshStandardMaterial color="#a8415a" />
       </mesh>
       {/* short wooden feet */}
       {[
