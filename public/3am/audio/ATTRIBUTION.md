@@ -9,5 +9,10 @@
   stated "This music is available for commercial and non-commercial purposes." No attribution required.
   Downloaded 2026-07-16.
 
+- `cupboard-magic.mp3` — "School of Magic (inspired by Harry Potter)" by Luis Humanoide, from
+  https://pixabay.com (Pixabay Content License: free for commercial and non-commercial use, no
+  attribution required — credited anyway). Original composition, not a cover. Downloaded 2026-07-18
+  for the cupboard-under-the-stairs easter egg (see easter-eggs plan).
+
 All music previews on /3am are streamed from Apple's iTunes preview API at
 runtime and are never stored in this repository.
