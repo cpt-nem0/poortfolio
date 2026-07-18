@@ -74,8 +74,9 @@ const WALL_VARIANTS = [
   { label: "midnight", path: "/3am/tex/wall-midnight.png" },
 ];
 const FLOOR_VARIANTS = [
-  { label: "walnut", path: "/3am/tex/floor-walnut.png" },
+  // oak (parallel lining) default per Rohan 2026-07-19; walnut on toggle
   { label: "oak", path: "/3am/tex/floor-oak.png" },
+  { label: "walnut", path: "/3am/tex/floor-walnut.png" },
 ];
 
 /**
