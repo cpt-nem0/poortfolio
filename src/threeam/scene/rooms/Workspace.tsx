@@ -411,6 +411,43 @@ function CoffeeMachineModel() {
 }
 useGLTF.preload("/3am/models/coffee-machine.glb");
 
+/** Pixar lamp model: "pixar lamp" by yacinebel
+ *  (https://sketchfab.com/yacinebel) via Sketchfab — CC-BY-4.0
+ *  (https://sketchfab.com/3d-models/pixar-lamp-f97d17ac89a14ff68c3e488c69340b44).
+ *  Attribution lives in the GLB's asset.extras too. Healthy file (no rig,
+ *  no animations); shipped 4.7MB of untextured geometry, optimized offline
+ *  with gltf-transform (weld/simplify/prune + KHR_mesh_quantization) to
+ *  2.0MB. Replaces the wave-B hand-built articulated desk lamp. Lives
+ *  INSIDE the desk's riding group so it glides with the motorized height
+ *  toggle; the warm point light is nested in the same group at the
+ *  model's head position (rotation-aware — moving/yawing the lamp can
+ *  never strand its light). */
+const PIXAR_LAMP_SCALE = 0.0031;
+function PixarLampModel() {
+  const { scene } = useGLTF("/3am/models/pixar-lamp.glb");
+  useEffect(() => {
+    scene.traverse((obj) => {
+      if ((obj as THREE.Mesh).isMesh) {
+        obj.castShadow = true;
+        obj.receiveShadow = true;
+        const mat = (obj as THREE.Mesh).material as THREE.MeshStandardMaterial;
+        if (mat && mat.isMeshStandardMaterial && !mat.userData.pixarTuned) {
+          mat.userData.pixarTuned = true; // traverse can re-run (HMR/remount)
+          mat.metalness = Math.min(mat.metalness, 0.2);
+          mat.roughness = Math.max(mat.roughness, 0.6);
+          // the bulb material ships full-white emissive; at close desk
+          // range + Bloom it flares into a blob that swallows the lamp's
+          // silhouette — clamp to a soft glow (the actual light in the
+          // room comes from the nested pointLight, not the emissive)
+          if (mat.emissiveIntensity > 0.45) mat.emissiveIntensity = 0.45;
+        }
+      }
+    });
+  }, [scene]);
+  return <primitive object={scene} scale={PIXAR_LAMP_SCALE} />;
+}
+useGLTF.preload("/3am/models/pixar-lamp.glb");
+
 export function Workspace() {
   const R = WORKSPACE;
   const rootRef = useRef<THREE.Group>(null);
@@ -688,41 +725,20 @@ export function Workspace() {
             <meshStandardMaterial color="#eceae2" />
           </mesh>
 
-          {/* pixar-style articulated lamp — back-left corner, head angled down.
-              Fixture-attached point light only (no shadow casting — the
-              soft-shadow caster budget is fixed). */}
-          <group position={[-1.05, 0, -0.3]}>
-            <mesh position={[0, 0.015, 0]}>
-              <cylinderGeometry args={[0.09, 0.1, 0.03, 12]} />
-              <meshStandardMaterial color="#e6e3d9" />
-            </mesh>
-            <group position={[0, 0.03, 0]} rotation={[0.55, 0, 0]}>
-              <mesh position={[0, 0.16, 0]}>
-                <boxGeometry args={[0.03, 0.32, 0.035]} />
-                <meshStandardMaterial color="#d8d6ce" />
-              </mesh>
-              <mesh>
-                <sphereGeometry args={[0.032, 8, 6]} />
-                <meshStandardMaterial color="#b7b5ac" />
-              </mesh>
-              <group position={[0, 0.32, 0]} rotation={[-1.05, 0, 0]}>
-                <mesh position={[0, 0.13, 0]}>
-                  <boxGeometry args={[0.028, 0.26, 0.032]} />
-                  <meshStandardMaterial color="#d8d6ce" />
-                </mesh>
-                <mesh>
-                  <sphereGeometry args={[0.03, 8, 6]} />
-                  <meshStandardMaterial color="#b7b5ac" />
-                </mesh>
-                <group position={[0, 0.26, 0]} rotation={[-0.7, 0, 0]}>
-                  <mesh>
-                    <boxGeometry args={[0.09, 0.05, 0.11]} />
-                    <meshStandardMaterial color="#c7c5bd" />
-                  </mesh>
-                  <pointLight position={[0, -0.03, 0.04]} color="#ffd9a0" intensity={0.8} distance={1.3} decay={2} />
-                </group>
-              </group>
-            </group>
+          {/* real pixar lamp (see PixarLampModel's attribution) — back-left
+              corner, inside the riding group so it glides with the desk's
+              height toggle. Fixture-attached point light nested in the
+              same group at the model's head (no shadow casting — the
+              soft-shadow caster budget is fixed). Own Suspense. */}
+          <group position={[-1.05, 0.076, -0.26]}>
+            <Suspense fallback={null}>
+              <PixarLampModel />
+            </Suspense>
+            {/* light hangs just below/forward of the shade's mouth (shade
+                cone tops out at local y ~0.40 overhanging +z) — inside the
+                shade it blasted the cone interior into a bloom blob, and
+                too low it burned a hot pool into the white desktop */}
+            <pointLight position={[0, 0.28, 0.2]} color="#ffd9a0" intensity={0.55} distance={1.3} decay={2} />
           </group>
 
           {/* open MacBook on a low aluminum stand — right of the monitor
