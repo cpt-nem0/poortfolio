@@ -453,11 +453,15 @@ function PixarLampModel() {
           mat.userData.pixarTuned = true; // traverse can re-run (HMR/remount)
           mat.metalness = Math.min(mat.metalness, 0.2);
           mat.roughness = Math.max(mat.roughness, 0.6);
-          // the bulb material ships full-white emissive; at close desk
-          // range + Bloom it flares into a blob that swallows the lamp's
-          // silhouette — clamp to a soft glow (the actual light in the
-          // room comes from the nested pointLight, not the emissive)
-          if (mat.emissiveIntensity > 0.45) mat.emissiveIntensity = 0.45;
+          // the bulb material ships full-white emissive AND a near-white
+          // (0.8 grey) base color; at close desk range the nested
+          // pointLight's direct diffuse hit on that same bright surface
+          // stacked with the emissive term pushed it past 1.0 into a hard
+          // (255,255,255) clipped core no Bloom halo could recover a
+          // silhouette from — clamp emissive well below the coffee-corner
+          // dome lamp's 0.55 (that fixture's bulb is a warm-tinted, not
+          // white, material, so it has more headroom before clipping)
+          if (mat.emissiveIntensity > 0.14) mat.emissiveIntensity = 0.14;
         }
       }
     });
@@ -755,8 +759,13 @@ export function Workspace() {
             {/* light hangs just below/forward of the shade's mouth (shade
                 cone tops out at local y ~0.40 overhanging +z) — inside the
                 shade it blasted the cone interior into a bloom blob, and
-                too low it burned a hot pool into the white desktop */}
-            <pointLight position={[0, 0.28, 0.2]} color="#ffd9a0" intensity={0.55} distance={1.3} decay={2} />
+                too low it burned a hot pool into the white desktop. Wave F
+                fix round: pulled further forward/up off the bulb mesh
+                (Sphere_Material.004, near-white) and intensity dropped
+                below the coffee dome's 0.9 — that fixture's light sits
+                close to its bulb too, but a warm-tinted (not white) bulb
+                material has far more headroom before clipping. */}
+            <pointLight position={[0, 0.36, 0.34]} color="#ffd9a0" intensity={0.22} distance={1.3} decay={2} />
           </group>
 
           {/* open MacBook on a low aluminum stand — right of the monitor
