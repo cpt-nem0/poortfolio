@@ -1,10 +1,22 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { useThreeAm } from "@/threeam/state/store";
 import { playerPosition } from "@/threeam/world/runtime";
 import { HOUSE, SPAWN } from "@/threeam/world/layout";
 import { STATIONS } from "@/threeam/world/stations";
 
 beforeEach(() => {
+  useThreeAm.setState({
+    area: SPAWN.area,
+    room: null,
+    activePortal: null,
+    focus: null,
+    activeStation: null,
+  });
+  playerPosition.x = SPAWN.x;
+  playerPosition.z = SPAWN.z;
+});
+
+afterEach(() => {
   useThreeAm.setState({
     area: SPAWN.area,
     room: null,
@@ -49,5 +61,14 @@ describe("useThreeAm store", () => {
     expect(useThreeAm.getState().focus).toBe("projects");
     s.setFocus(null);
     expect(useThreeAm.getState().focus).toBeNull();
+  });
+
+  it("travel clears focus and activeStation", () => {
+    const s = useThreeAm.getState();
+    s.setActiveStation(STATIONS[0]);
+    s.setFocus(STATIONS[0].id);
+    s.travel(HOUSE.portals[0]);
+    expect(useThreeAm.getState().focus).toBeNull();
+    expect(useThreeAm.getState().activeStation).toBeNull();
   });
 });
