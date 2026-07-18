@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
+import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { usePixelTexture } from "../usePixelTexture";
 import { useThreeAm } from "@/threeam/state/store";
@@ -241,6 +242,70 @@ function Hourglass({ y0, z, x = -0.2 }: { y0: number; z: number; x?: number }) {
     </group>
   );
 }
+
+/** EVA-01 model: "Neon Genesis Evangelion unit-01" by XxAugustoxX
+ *  (https://sketchfab.com/garaujoaugusto) via Sketchfab — CC-BY-4.0
+ *  (https://sketchfab.com/3d-models/neon-genesis-evangelion-unit-01-5bc7a4fd7ee64fcb8ba2bb3f4832e343).
+ *  Attribution lives in the GLB's asset.extras too. Rendered statically in bind pose
+ *  (see the rig note inside); bind space is ~1698 units tall and EVA_SCALE
+ *  brings it to ~1.4m standing on the plinth.
+ *  Wrapped in its own Suspense at the call site so the 4.5MB fetch never
+ *  blocks the rest of the room's first paint. */
+const EVA_SCALE = 0.000825;
+function EvaModel() {
+  const { scene } = useGLTF("/3am/models/eva-01.glb");
+  useEffect(() => {
+    /* This Sketchfab FBX conversion ships a broken rig: most meshes'
+       vertices live in a ~1700-unit space while the skeleton (and its
+       inverse bind matrices) live in a ~11-unit space, so GPU skinning
+       throws the body ~150x off-scale (only a few trim meshes authored in
+       skeleton space landed right). There are no animations, so the fix is
+       to drop skinning entirely and render the bind pose statically —
+       plain Meshes reusing the same geometry/materials. The few
+       skeleton-space trim meshes become sub-pixel at this scale and are
+       dropped with the rest of the skinning. */
+    const skinned: THREE.SkinnedMesh[] = [];
+    scene.traverse((o) => {
+      if ((o as THREE.SkinnedMesh).isSkinnedMesh) skinned.push(o as THREE.SkinnedMesh);
+    });
+    for (const sm of skinned) {
+      const geo = sm.geometry;
+      // skeleton-space trim (tiny bind bbox) can't join the static bake —
+      // it was authored 155x smaller; skip it (sub-pixel at figure scale)
+      geo.computeBoundingBox();
+      const bb = geo.boundingBox!;
+      const h = bb.max.y - bb.min.y;
+      if (h < 50) {
+        sm.parent?.remove(sm);
+        continue;
+      }
+      const st = new THREE.Mesh(geo, sm.material);
+      st.position.copy(sm.position);
+      st.quaternion.copy(sm.quaternion);
+      st.scale.copy(sm.scale);
+      st.castShadow = true;
+      st.receiveShadow = true;
+      const parent = sm.parent;
+      parent?.add(st);
+      parent?.remove(sm);
+    }
+    // room convention + material sanity under the warm room lighting
+    scene.traverse((obj) => {
+      if ((obj as THREE.Mesh).isMesh) {
+        obj.castShadow = true;
+        obj.receiveShadow = true;
+        const mat = (obj as THREE.Mesh).material as THREE.MeshStandardMaterial;
+        if (mat && mat.isMeshStandardMaterial && !mat.userData.evaTuned) {
+          mat.userData.evaTuned = true; // traverse can re-run (HMR/remount)
+          mat.metalness = Math.min(mat.metalness, 0.2);
+          mat.roughness = Math.max(mat.roughness, 0.6);
+        }
+      }
+    });
+  }, [scene]);
+  return <primitive object={scene} position={[0, 0.008, 0]} rotation={[Math.PI / 2, 0, 0]} scale={EVA_SCALE} />;
+}
+useGLTF.preload("/3am/models/eva-01.glb");
 
 export function Workspace() {
   const R = WORKSPACE;
@@ -750,13 +815,13 @@ export function Workspace() {
         ))}
       </group>
 
-      {/* ── EVA-01 shrine — collider {8.8,5.15,0.6,0.6}. Wave E: replaces
-          the storage-shelf lamp. Big Unit-01 figurine on a low dark plinth,
-          chunky blocky armor per the reference: purple body, neon-green
-          accent panels, orange chest V, silver shoulder pods w/ red dots,
-          single horn, green eyes. Showcased by a sunset wash: a small floor
-          can aimed up at the figure (visible fixture, spotlight attached,
-          NO shadow casting — same family as the nook's sunset lamp). ── */}
+      {/* ── EVA-01 shrine — collider {8.8,5.15,0.6,0.6}. Wave E built a
+          blocky figurine; Wave F swapped in Rohan's downloaded Sketchfab
+          model (attribution on EvaModel). Unit-01 stands on a tall dark
+          plinth, showcased by a sunset wash: a small can on the plinth
+          corner aimed up at the figure (visible fixture, spotlight
+          attached, NO shadow casting — same family as the nook's sunset
+          lamp). ── */}
       <group position={[9.1, 0, 5.45]} rotation={[0, -0.35, 0]}>
         {/* tall museum plinth — lifts the figure above the dollhouse
             south-stub cutoff (the camera can't see below y≈1.0 this deep
@@ -770,124 +835,13 @@ export function Workspace() {
           <meshStandardMaterial color="#22222c" />
         </mesh>
 
-        {/* figure (~1.5 tall at scale 1.2 ≈ 1.8 total), standing, facing
-            the room — scaled so it still reads BIG through the dollhouse
-            camera's heavy vertical foreshortening */}
-        <group position={[0, 0.42, 0]} scale={1.2}>
-          {/* feet */}
-          {[-0.09, 0.09].map((fx) => (
-            <mesh key={fx} position={[fx, 0.03, 0.02]}>
-              <boxGeometry args={[0.11, 0.06, 0.17]} />
-              <meshStandardMaterial color="#55429c" />
-            </mesh>
-          ))}
-          {/* shins + neon green shin panels */}
-          {[-0.09, 0.09].map((fx) => (
-            <group key={fx} position={[fx, 0.27, 0]}>
-              <mesh>
-                <boxGeometry args={[0.09, 0.42, 0.11]} />
-                <meshStandardMaterial color="#6a55b0" />
-              </mesh>
-              <mesh position={[0, 0.02, 0.058]}>
-                <boxGeometry args={[0.05, 0.22, 0.012]} />
-                <meshStandardMaterial color="#7cffb2" emissive="#7cffb2" emissiveIntensity={0.9} />
-              </mesh>
-            </group>
-          ))}
-          {/* thighs */}
-          {[-0.09, 0.09].map((fx) => (
-            <mesh key={fx} position={[fx, 0.63, 0]}>
-              <boxGeometry args={[0.1, 0.32, 0.12]} />
-              <meshStandardMaterial color="#55429c" />
-            </mesh>
-          ))}
-          {/* waist + green V */}
-          <mesh position={[0, 0.85, 0]}>
-            <boxGeometry args={[0.25, 0.14, 0.15]} />
-            <meshStandardMaterial color="#5b4b8a" />
-          </mesh>
-          <mesh position={[-0.05, 0.85, 0.078]} rotation={[0, 0, 0.5]}>
-            <boxGeometry args={[0.1, 0.03, 0.012]} />
-            <meshStandardMaterial color="#7cffb2" emissive="#7cffb2" emissiveIntensity={0.9} />
-          </mesh>
-          <mesh position={[0.05, 0.85, 0.078]} rotation={[0, 0, -0.5]}>
-            <boxGeometry args={[0.1, 0.03, 0.012]} />
-            <meshStandardMaterial color="#7cffb2" emissive="#7cffb2" emissiveIntensity={0.9} />
-          </mesh>
-          {/* torso */}
-          <mesh position={[0, 1.1, 0]}>
-            <boxGeometry args={[0.3, 0.36, 0.18]} />
-            <meshStandardMaterial color="#5b4b8a" />
-          </mesh>
-          {/* orange/yellow chest V */}
-          <mesh position={[-0.055, 1.16, 0.094]} rotation={[0, 0, 0.65]}>
-            <boxGeometry args={[0.16, 0.045, 0.012]} />
-            <meshStandardMaterial color="#c98a2e" />
-          </mesh>
-          <mesh position={[0.055, 1.16, 0.094]} rotation={[0, 0, -0.65]}>
-            <boxGeometry args={[0.16, 0.045, 0.012]} />
-            <meshStandardMaterial color="#ffcf6e" />
-          </mesh>
-          {/* green sternum strip */}
-          <mesh position={[0, 1.02, 0.094]}>
-            <boxGeometry args={[0.04, 0.14, 0.012]} />
-            <meshStandardMaterial color="#7cffb2" emissive="#7cffb2" emissiveIntensity={0.9} />
-          </mesh>
-          {/* silver shoulder pods + red dots */}
-          {[-0.225, 0.225].map((px) => (
-            <group key={px} position={[px, 1.26, 0]}>
-              <mesh>
-                <boxGeometry args={[0.13, 0.19, 0.17]} />
-                <meshStandardMaterial color="#b7b5ac" />
-              </mesh>
-              <mesh position={[px < 0 ? -0.068 : 0.068, 0.04, 0]}>
-                <boxGeometry args={[0.012, 0.035, 0.035]} />
-                <meshStandardMaterial color="#c9302f" />
-              </mesh>
-            </group>
-          ))}
-          {/* arms — upper + forearm w/ green panel, hanging slightly out */}
-          {[-0.21, 0.21].map((ax) => (
-            <group key={ax}>
-              <mesh position={[ax, 1.05, 0]}>
-                <boxGeometry args={[0.07, 0.24, 0.09]} />
-                <meshStandardMaterial color="#55429c" />
-              </mesh>
-              <group position={[ax, 0.8, 0.02]}>
-                <mesh>
-                  <boxGeometry args={[0.08, 0.26, 0.09]} />
-                  <meshStandardMaterial color="#5b4b8a" />
-                </mesh>
-                <mesh position={[ax < 0 ? -0.044 : 0.044, 0.02, 0]}>
-                  <boxGeometry args={[0.012, 0.14, 0.05]} />
-                  <meshStandardMaterial color="#7cffb2" emissive="#7cffb2" emissiveIntensity={0.9} />
-                </mesh>
-              </group>
-            </group>
-          ))}
-          {/* head: helmet, green eyes, single horn */}
-          <group position={[0, 1.42, 0]}>
-            <mesh>
-              <boxGeometry args={[0.13, 0.14, 0.14]} />
-              <meshStandardMaterial color="#5b4b8a" />
-            </mesh>
-            {/* jaw plate */}
-            <mesh position={[0, -0.045, 0.055]}>
-              <boxGeometry args={[0.09, 0.05, 0.04]} />
-              <meshStandardMaterial color="#55429c" />
-            </mesh>
-            {[-0.032, 0.032].map((ex) => (
-              <mesh key={ex} position={[ex, 0.015, 0.072]}>
-                <boxGeometry args={[0.026, 0.018, 0.01]} />
-                <meshStandardMaterial color="#7cffb2" emissive="#7cffb2" emissiveIntensity={1.6} />
-              </mesh>
-            ))}
-            {/* horn, sweeping up-forward off the forehead */}
-            <mesh position={[0, 0.1, 0.05]} rotation={[0.5, 0, 0]}>
-              <boxGeometry args={[0.022, 0.2, 0.022]} />
-              <meshStandardMaterial color="#d8d6ce" />
-            </mesh>
-          </group>
+        {/* real EVA-01 model (see EvaModel's attribution comment) —
+            standing on the plinth top, facing into the room. Own Suspense:
+            the GLB streams in without holding up the room. */}
+        <group position={[0, 0.42, 0]}>
+          <Suspense fallback={null}>
+            <EvaModel />
+          </Suspense>
         </group>
 
         {/* sunset can — small uplight on the plinth top's front corner (the
@@ -906,9 +860,9 @@ export function Workspace() {
       <spotLight
         position={[9.21, 0.49, 5.66]}
         target={evaTarget}
-        angle={0.5}
+        angle={0.65}
         penumbra={0.55}
-        intensity={13}
+        intensity={22}
         distance={4}
         decay={1.4}
         color="#ff7a5c"
