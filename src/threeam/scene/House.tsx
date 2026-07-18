@@ -238,7 +238,10 @@ function StairsApproach() {
       ))}
 
       {/* wall sconce — brass half-dome over the mid-flight, warm low pool
-          (fixture-attached light, no shadows — matches the nook's sconce) */}
+          (fixture-attached light, no shadows — matches the nook's sconce).
+          The pointLight lives INSIDE the group at the shade's origin so the
+          glow provably originates at the fixture (rotation-safe by
+          construction — same bug class as the f765bae picture-light fix). */}
       <group position={[WALL_FACE - 0.02, 2.32, 1.12]} rotation={[0, -Math.PI / 2, 0]}>
         <mesh position={[0, -0.09, -0.02]}>
           <boxGeometry args={[0.1, 0.05, 0.06]} />
@@ -248,8 +251,8 @@ function StairsApproach() {
           <coneGeometry args={[0.11, 0.14, 8, 1, true]} />
           <meshStandardMaterial color="#ffcf8f" emissive="#ffcf8f" emissiveIntensity={0.8} side={2} />
         </mesh>
+        <pointLight color="#ffcf8f" intensity={3} distance={3.2} decay={2} />
       </group>
-      <pointLight position={[15.68, 2.18, 1.12]} color="#ffcf8f" intensity={3} distance={3.2} decay={2} />
     </group>
   );
 }
