@@ -270,8 +270,26 @@ function Hourglass({ y0, z, x = -0.2 }: { y0: number; z: number; x?: number }) {
  *
  *  Bind space is ~1698 units tall; EVA_SCALE brings it to 1.8m standing on
  *  the plinth (bumped from 1.4m — Rohan wanted it much bigger).
- *  Wrapped in its own Suspense at the call site so the ~5.3MB fetch never
- *  blocks the rest of the room's first paint. */
+ *  Wrapped in its own Suspense at the call site so the fetch never blocks
+ *  the rest of the room's first paint.
+ *
+ *  Wave F fix round: this was the only shipped GLB that had skipped the
+ *  optimization pass its siblings got (coffee-machine, pixar-lamp).
+ *  gltf-transform weld+simplify+prune brought it 5.33MB → 3.90MB (27%)
+ *  with the bake above re-verified byte-for-byte visually identical
+ *  in-browser. KHR_mesh_quantization (the fourth step used on the other
+ *  two models) was deliberately DROPPED here: gltf-transform's per-mesh
+ *  quantization volume has no compensation path for skinned primitives
+ *  (the compensating scale it normally bakes into a node's TRS doesn't
+ *  apply to a SkinnedMesh, whose vertices are positioned by joint
+ *  matrices, not the node's own transform) — it silently collapsed every
+ *  mesh's POSITION data to a tiny normalized range with no way to recover
+ *  the original bind-pose scale, which fed straight into this component's
+ *  own bake (below) discarding EVERY mesh as sub-pixel "trim" (the exact
+ *  height-threshold check meant to drop the 4 real trim meshes). Textures
+ *  were left untouched throughout (only the coffee-machine/pixar-lamp GLBs
+ *  were pure geometry with nothing to lose there; this one ships 3 real
+ *  2048px JPEGs that quantize doesn't touch anyway). */
 const EVA_SCALE = 0.001063;
 function EvaModel() {
   const { scene } = useGLTF("/3am/models/eva-01.glb");
