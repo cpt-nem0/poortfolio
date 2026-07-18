@@ -334,9 +334,15 @@ useGLTF.preload("/3am/models/eva-01.glb");
 export function Workspace() {
   const R = WORKSPACE;
   const rootRef = useRef<THREE.Group>(null);
-  /** aim point for the EVA shrine's sunset wash (same pattern as the music
-   *  nook's sunset lamp → album wall projection) */
-  const [evaTarget] = useState(() => new THREE.Object3D());
+  /** aim points for the EVA shrine's two crossfire sunset washes (same
+   *  pattern as the music nook's sunset lamp → album wall projection).
+   *  Both live INSIDE the rotated shrine group as local-space primitives —
+   *  along with their nested spotlights — so re-rotating the shrine can
+   *  never desync fixture/beam/aim (the world-space-math version of this
+   *  bug bit twice already). Right lamp aims across to the figure's LEFT
+   *  flank, left lamp to its RIGHT: beams intersect on the EVA. */
+  const [evaTargetAcrossL] = useState(() => new THREE.Object3D()); // right lamp's aim (left flank)
+  const [evaTargetAcrossR] = useState(() => new THREE.Object3D()); // left lamp's aim (right flank)
 
   useEffect(() => {
     rootRef.current?.traverse((obj) => {
@@ -856,7 +862,16 @@ export function Workspace() {
           purple/green/orange material colors underneath were fine all
           along). Plinth height (0.4) and collider position are unchanged;
           only the width/depth grew slightly to cover the bigger figure's
-          forward-leaning footprint. ── */}
+          forward-leaning footprint.
+          Round 2b: a second matching can on the plinth's front-LEFT
+          corner — museum crossfire: each lamp aims across at the
+          figure's opposite flank, beams intersecting on the EVA. Both
+          spotlights (and their aim targets) are nested inside this
+          rotated group in local space, replacing the old hand-computed
+          world-space placement. Both cans sit on the plinth top, so no
+          new collider. Per-lamp intensity halved 5 → 2.5 so the summed
+          crossfire matches the single lamp's exposure (the emissive
+          clamp + Bloom blowout fix above still holds). ── */}
       <group position={[9.1, 0, 5.45]} rotation={[0, -0.35, 0]}>
         {/* tall museum plinth — lifts the figure above the dollhouse
             south-stub cutoff (the camera can't see below y≈1.0 this deep
@@ -879,30 +894,40 @@ export function Workspace() {
           </Suspense>
         </group>
 
-        {/* sunset can — small uplight on the plinth top's front corner (the
-            visible fixture the spotlight is attached to) */}
-        <group position={[0.18, 0.42, 0.18]}>
-          <mesh position={[0, 0.03, 0]}>
-            <cylinderGeometry args={[0.04, 0.05, 0.06, 8]} />
-            <meshStandardMaterial color="#2e2a4d" />
-          </mesh>
-          <mesh position={[0, 0.065, 0]}>
-            <cylinderGeometry args={[0.03, 0.03, 0.012, 8]} />
-            <meshStandardMaterial color="#ff7a5c" emissive="#ff6a45" emissiveIntensity={3} />
-          </mesh>
-        </group>
+        {/* sunset cans — two small uplights on the plinth top's front
+            corners (visible fixtures; each spotlight is nested INSIDE its
+            fixture group so it inherits the shrine rotation). Crossfire:
+            the right can targets the left flank and vice versa. */}
+        {[
+          { x: 0.18, target: evaTargetAcrossL }, // right can → left flank
+          { x: -0.18, target: evaTargetAcrossR }, // left can → right flank
+        ].map(({ x, target }) => (
+          <group key={x} position={[x, 0.42, 0.18]}>
+            <mesh position={[0, 0.03, 0]}>
+              <cylinderGeometry args={[0.04, 0.05, 0.06, 8]} />
+              <meshStandardMaterial color="#2e2a4d" />
+            </mesh>
+            <mesh position={[0, 0.065, 0]}>
+              <cylinderGeometry args={[0.03, 0.03, 0.012, 8]} />
+              <meshStandardMaterial color="#ff7a5c" emissive="#ff6a45" emissiveIntensity={3} />
+            </mesh>
+            <spotLight
+              position={[0, 0.07, 0]}
+              target={target}
+              angle={0.75}
+              penumbra={0.55}
+              intensity={2.5}
+              distance={4}
+              decay={1.4}
+              color="#ff7a5c"
+            />
+          </group>
+        ))}
+        {/* crossfire aim points — shrine-local (rotation-safe), upper
+            torso height so both beams cover chest→head of the 1.8m figure */}
+        <primitive object={evaTargetAcrossL} position={[-0.16, 1.85, -0.02]} />
+        <primitive object={evaTargetAcrossR} position={[0.16, 1.85, -0.02]} />
       </group>
-      <spotLight
-        position={[9.21, 0.49, 5.66]}
-        target={evaTarget}
-        angle={0.75}
-        penumbra={0.55}
-        intensity={5}
-        distance={4}
-        decay={1.4}
-        color="#ff7a5c"
-      />
-      <primitive object={evaTarget} position={[9.05, 2.0, 5.4]} />
 
       {/* ── tripod floor lamp — collider {13.55,5.3,0.5,0.5}. Wave E: the
           relocated "lamp with a shelf in it" ask — three wooden legs, a
