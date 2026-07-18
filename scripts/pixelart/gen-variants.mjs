@@ -322,24 +322,17 @@ function neonShipped(x, y) {
   return [0, 0, 0, 0];
 }
 
+/* Only textures referenced by src/ belong here — a JOBS entry for a deleted
+   PNG silently resurrects it on the next generator run. Prune both together.
+   (Variant fns for rejected style-gate options are kept below for reference.) */
 const JOBS = [
   ["neon-3am", 40, 16, neonSign],
   ["neon-shipped", 62, 22, neonShipped],
   ["wall-teal", 32, 80, wallTeal],
-  ["wall-plum", 32, 32, wallPlum],
-  ["wall-stripes", 32, 32, wallStripes],
-  ["wall-charcoal", 32, 32, wallCharcoal],
   ["wall-midnight", 32, 32, wallMidnight],
-  ["wall-forest", 32, 32, wallForest],
   ["rug-kilim", 64, 64, rugKilim],
-  ["rug-tealfield", 64, 64, rugTealField],
-  ["rug-round", 64, 64, rugRound],
   ["rug-persian", 64, 64, rugPersian],
-  ["rug-berber", 64, 64, rugBerber],
   ["floor-walnut", 32, 32, floorWalnut],
-  ["floor-herringbone", 64, 64, floorHerringbone],
-  ["floor-graywash", 32, 32, floorGraywash],
-  ["floor-checker", 32, 32, floorChecker],
   ["poster-gig", 32, 88, posterGig],
   ["poster-wave", 40, 56, posterWave],
   ["poster-moons", 40, 56, posterMoons],

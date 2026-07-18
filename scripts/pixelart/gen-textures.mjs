@@ -52,11 +52,10 @@ function rug(x, y) {
   return shade(PALETTE.purple500, 0.92 + w * 0.12);
 }
 
+/* Only textures referenced by src/ belong here — a JOBS entry for a deleted
+   PNG silently resurrects it on the next generator run. Prune both together. */
 const TILES = [
-  { name: "floor-planks", size: 32, fn: floorPlanks },
-  { name: "plaster", size: 32, fn: plaster },
   { name: "cabinet-wood", size: 16, fn: cabinetWood },
-  { name: "rug", size: 64, fn: rug },
 ];
 
 for (const t of TILES) {
