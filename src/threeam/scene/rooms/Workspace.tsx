@@ -380,6 +380,37 @@ function KatanaModel() {
 }
 useGLTF.preload("/3am/models/katana.glb");
 
+/** Coffee machine model: "Coffee machine" by vervoortward
+ *  (https://sketchfab.com/vervoortward) via Sketchfab — CC-BY-4.0
+ *  (https://sketchfab.com/3d-models/coffee-machine-5aee9b1f39f3400f890040c710467fdf).
+ *  Attribution lives in the GLB's asset.extras too. Healthy file (no rig,
+ *  no animations); the shipped 18MB was pure geometry (zero textures), so
+ *  it was optimized offline with gltf-transform (weld/simplify/prune +
+ *  KHR_mesh_quantization — natively supported by three's GLTFLoader, no
+ *  decoder needed) down to 2.3MB. COFFEE_SCALE sizes it to ~0.29m tall on
+ *  the counter (sized by DEPTH — the model is deeper than tall and must
+ *  fit the 0.44 counter top). */
+const COFFEE_SCALE = 0.28;
+function CoffeeMachineModel() {
+  const { scene } = useGLTF("/3am/models/coffee-machine.glb");
+  useEffect(() => {
+    scene.traverse((obj) => {
+      if ((obj as THREE.Mesh).isMesh) {
+        obj.castShadow = true;
+        obj.receiveShadow = true;
+        const mat = (obj as THREE.Mesh).material as THREE.MeshStandardMaterial;
+        if (mat && mat.isMeshStandardMaterial && !mat.userData.coffeeTuned) {
+          mat.userData.coffeeTuned = true; // traverse can re-run (HMR/remount)
+          mat.metalness = Math.min(mat.metalness, 0.2);
+          mat.roughness = Math.max(mat.roughness, 0.6);
+        }
+      }
+    });
+  }, [scene]);
+  return <primitive object={scene} scale={COFFEE_SCALE} />;
+}
+useGLTF.preload("/3am/models/coffee-machine.glb");
+
 export function Workspace() {
   const R = WORKSPACE;
   const rootRef = useRef<THREE.Group>(null);
@@ -978,41 +1009,147 @@ export function Workspace() {
         <primitive object={evaTargetAcrossR} position={[0.16, 1.85, -0.02]} />
       </group>
 
-      {/* ── tripod floor lamp — collider {13.55,5.3,0.5,0.5}. Wave E: the
-          relocated "lamp with a shelf in it" ask — three wooden legs, a
-          small triangular shelf nested mid-height between them (with a
-          trinket), round warm shade. Main south-side light source
-          (fixture-attached point light, NO shadow casting). ── */}
-      <group position={[13.8, 0, 5.55]} rotation={[0, 0.4, 0]}>
-        {[0, 1, 2].map((i) => (
-          <group key={i} rotation={[0, (i / 3) * Math.PI * 2, 0]}>
-            <mesh position={[0, 0.62, 0.13]} rotation={[0.22, 0, 0]}>
-              <cylinderGeometry args={[0.018, 0.022, 1.3, 7]} />
-              <meshStandardMaterial color="#8a5a3b" />
+      {/* ── coffee counter — collider {11.3,5.54,1.4,0.44}. Wave F: coffee
+          setup centered on the south stub wall. Sideboard-style counter
+          (chunky walnut body, warm wood top), the real coffee-machine GLB
+          on top FACING NORTH into the room, a mug rack + small dome lamp
+          to its right (screen-right from the walking camera = +x). The
+          dome lamp is the only light here (fixture-attached, NO shadow
+          casting); the paper-lantern floor lamp to the east pools over
+          the whole corner. ── */}
+      <group position={[12, 0, 5.76]}>
+        {/* feet */}
+        {[-0.62, 0.62].map((lx) => (
+          <mesh key={lx} position={[lx, 0.045, 0]}>
+            <boxGeometry args={[0.08, 0.09, 0.34]} />
+            <meshStandardMaterial color="#1a1a22" />
+          </mesh>
+        ))}
+        {/* body */}
+        <mesh position={[0, 0.5, 0.01]}>
+          <boxGeometry args={[1.4, 0.82, 0.36]} />
+          <meshStandardMaterial color="#6b4128" />
+        </mesh>
+        {/* front door panels + handles (north face, toward the room) */}
+        {[-0.34, 0.34].map((dx) => (
+          <group key={dx}>
+            <mesh position={[dx, 0.48, -0.175]}>
+              <boxGeometry args={[0.58, 0.6, 0.02]} />
+              <meshStandardMaterial color="#7d4e30" />
+            </mesh>
+            <mesh position={[dx + (dx < 0 ? 0.22 : -0.22), 0.52, -0.19]}>
+              <boxGeometry args={[0.02, 0.1, 0.014]} />
+              <meshStandardMaterial color="#c9b088" />
             </mesh>
           </group>
         ))}
-        {/* hub where the legs meet */}
-        <mesh position={[0, 1.27, 0]}>
-          <cylinderGeometry args={[0.045, 0.045, 0.07, 8]} />
-          <meshStandardMaterial color="#6b4128" />
+        {/* counter top slab */}
+        <mesh position={[0, 0.935, 0]}>
+          <boxGeometry args={[1.48, 0.05, 0.44]} />
+          <meshStandardMaterial color="#a87b4f" />
         </mesh>
-        {/* triangular mid-shelf nested between the legs */}
-        <mesh position={[0, 0.6, 0]} rotation={[0, Math.PI / 3, 0]}>
-          <cylinderGeometry args={[0.21, 0.21, 0.025, 3]} />
-          <meshStandardMaterial color="#8b5e3c" />
+
+        {/* coffee machine (see CoffeeMachineModel's attribution) — facing
+            north, the reasonable way to make coffee. Own Suspense. The
+            offsets compensate the model's off-center origin (measured
+            in-browser): feet exactly on the slab top, footprint inside
+            the slab, back edge ~8mm clear of the stub wall plane. */}
+        <group position={[-0.276, 0.9112, 0.015]} rotation={[0, Math.PI, 0]}>
+          <Suspense fallback={null}>
+            <CoffeeMachineModel />
+          </Suspense>
+        </group>
+
+        {/* mug rack — two-tier stand, mugs in the room's warm palette */}
+        <group position={[0.24, 0.96, 0]}>
+          <mesh position={[0, 0.006, 0]}>
+            <boxGeometry args={[0.2, 0.012, 0.14]} />
+            <meshStandardMaterial color="#8b5e3c" />
+          </mesh>
+          {[-0.085, 0.085].map((px) => (
+            <mesh key={px} position={[px, 0.06, -0.05]}>
+              <boxGeometry args={[0.016, 0.11, 0.016]} />
+              <meshStandardMaterial color="#8b5e3c" />
+            </mesh>
+          ))}
+          <mesh position={[0, 0.115, -0.05]}>
+            <boxGeometry args={[0.2, 0.012, 0.09]} />
+            <meshStandardMaterial color="#8b5e3c" />
+          </mesh>
+          {/* mugs: two on the base, one on the upper tier */}
+          {[
+            { x: -0.05, y: 0.012, z: 0.025, c: "#b3475f" },
+            { x: 0.055, y: 0.012, z: 0.02, c: "#2e6e54" },
+            { x: 0, y: 0.121, z: -0.05, c: "#c98a2e" },
+          ].map((m) => (
+            <group key={m.c} position={[m.x, m.y, m.z]}>
+              <mesh position={[0, 0.026, 0]}>
+                <cylinderGeometry args={[0.026, 0.024, 0.052, 8]} />
+                <meshStandardMaterial color={m.c} />
+              </mesh>
+              <mesh position={[0.03, 0.028, 0]}>
+                <boxGeometry args={[0.012, 0.028, 0.01]} />
+                <meshStandardMaterial color={m.c} />
+              </mesh>
+            </group>
+          ))}
+        </group>
+
+        {/* small dome lamp — right end of the counter (visible fixture,
+            fixture-attached warm light, NO shadow casting) */}
+        <group position={[0.58, 0.96, 0.02]}>
+          <mesh position={[0, 0.014, 0]}>
+            <cylinderGeometry args={[0.04, 0.048, 0.028, 10]} />
+            <meshStandardMaterial color="#2e2a4d" />
+          </mesh>
+          <mesh position={[0, 0.07, 0]}>
+            <cylinderGeometry args={[0.008, 0.008, 0.09, 6]} />
+            <meshStandardMaterial color="#2e2a4d" />
+          </mesh>
+          <mesh position={[0, 0.125, 0]} rotation={[Math.PI, 0, 0]}>
+            <sphereGeometry args={[0.055, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2]} />
+            <meshStandardMaterial color="#ffd9a0" emissive="#ffd9a0" emissiveIntensity={0.55} side={2} />
+          </mesh>
+          <pointLight position={[0, 0.11, 0]} color="#ffd9a0" intensity={0.9} distance={1.8} decay={2} />
+        </group>
+      </group>
+
+      {/* ── paper-lantern floor lamp — collider {13.55,5.3,0.5,0.5}. Wave F
+          replaces the wave-E tripod (Rohan wanted a different design next
+          to the new coffee counter): slim dark pole on a round base, a big
+          warm paper lantern with wooden ribs near the top. Distinct from
+          every other fixture in the house; keeps the tripod's exact light
+          budget (main south-side source, fixture-attached point light, NO
+          shadow casting). ── */}
+      <group position={[13.8, 0, 5.55]}>
+        <mesh position={[0, 0.025, 0]}>
+          <cylinderGeometry args={[0.14, 0.17, 0.05, 12]} />
+          <meshStandardMaterial color="#1a1a22" />
         </mesh>
-        {/* trinket on the shelf — tiny teal bottle */}
-        <mesh position={[0.04, 0.66, 0.02]}>
-          <cylinderGeometry args={[0.025, 0.03, 0.09, 7]} />
-          <meshStandardMaterial color="#2e6e54" />
+        <mesh position={[0, 0.65, 0]}>
+          <cylinderGeometry args={[0.016, 0.016, 1.2, 8]} />
+          <meshStandardMaterial color="#1a1a22" />
         </mesh>
-        {/* round warm shade */}
-        <mesh position={[0, 1.44, 0]}>
-          <cylinderGeometry args={[0.17, 0.23, 0.3, 12, 1, true]} />
-          <meshStandardMaterial color="#ffd9a0" emissive="#ffd9a0" emissiveIntensity={0.9} side={2} />
-        </mesh>
-        <pointLight position={[0, 1.44, 0]} color="#ffd9a0" intensity={10} distance={7} decay={1.8} />
+        {/* lantern — warm glowing paper sphere */}
+        <group position={[0, 1.34, 0]}>
+          <mesh>
+            <sphereGeometry args={[0.23, 12, 10]} />
+            <meshStandardMaterial color="#ffe8c4" emissive="#ffd9a0" emissiveIntensity={0.85} />
+          </mesh>
+          {/* wooden ribs */}
+          {[-0.08, 0, 0.08].map((ry) => (
+            <mesh key={ry} position={[0, ry, 0]} rotation={[Math.PI / 2, 0, 0]}>
+              <torusGeometry args={[Math.sqrt(0.23 * 0.23 - ry * ry) + 0.004, 0.006, 6, 20]} />
+              <meshStandardMaterial color="#8a5a3b" />
+            </mesh>
+          ))}
+          {/* top cap */}
+          <mesh position={[0, 0.24, 0]}>
+            <cylinderGeometry args={[0.03, 0.05, 0.03, 8]} />
+            <meshStandardMaterial color="#1a1a22" />
+          </mesh>
+        </group>
+        <pointLight position={[0, 1.34, 0]} color="#ffd9a0" intensity={10} distance={7} decay={1.8} />
       </group>
 
       {/* ── neon "shipped" — north wall, west end, right next to the

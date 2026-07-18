@@ -58,7 +58,8 @@ const GROUND: Area = {
     { x: 9.7, z: 0.3, w: 2.6, d: 0.9 }, // desk
     { x: 10.4, z: 1.5, w: 0.8, d: 0.8 }, // desk chair (shifted west so the desk front reads clear)
     { x: 8.8, z: 5.15, w: 0.65, d: 0.7 }, // EVA-01 shrine (SW corner) — figure + plinth; widened wave F round 2 (1.8m figure's forward-leaning footprint measures ~8.80-9.41 x, 5.20-5.82 z in-browser)
-    { x: 13.55, z: 5.3, w: 0.5, d: 0.5 }, // tripod floor lamp w/ mid-shelf (south wall, center)
+    { x: 11.3, z: 5.54, w: 1.4, d: 0.44 }, // coffee counter (south wall, center) — machine + mug rack + lamp on top
+    { x: 13.55, z: 5.3, w: 0.5, d: 0.5 }, // paper-lantern floor lamp (south wall, right of the coffee counter — same rect as the old tripod it replaced)
     { x: 15.45, z: 3.85, w: 0.44, d: 2.1 }, // full-wall bookshelf (east divider, workspace face, south of doorway — SE corner)
     // staircase to the roof — full flight footprint (shallow 10-step run
     // along the east divider). Depth is capped so the expanded blocking

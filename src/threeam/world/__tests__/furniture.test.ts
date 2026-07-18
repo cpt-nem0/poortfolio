@@ -64,13 +64,23 @@ describe("workspace furniture colliders", () => {
     expect(isBlocked(ground, 9.1, 5.45)).toBe(true); // plinth center
   });
 
-  it("the tripod floor lamp blocks (south wall, center)", () => {
-    expect(isBlocked(ground, 13.8, 5.55)).toBe(true); // tripod center
+  it("the coffee counter blocks (south wall, center)", () => {
+    // probes sit north of the wall's own bounds margin (z + 0.35 < 6) so
+    // they only pass if the counter rect itself blocks
+    expect(isBlocked(ground, 12, 5.6)).toBe(true); // front face, center
+    expect(isBlocked(ground, 11.4, 5.6)).toBe(true); // west end
+    expect(isBlocked(ground, 12.6, 5.6)).toBe(true); // east end
   });
 
-  it("the south walkway around the tripod lamp stays open", () => {
-    expect(isBlocked(ground, 11.5, 5.3)).toBe(false); // between shrine and tripod
-    expect(isBlocked(ground, 14.75, 5.5)).toBe(false); // between tripod and bookshelf
+  it("the paper-lantern floor lamp blocks (south wall, right of the counter)", () => {
+    expect(isBlocked(ground, 13.8, 5.55)).toBe(true); // lamp center (same rect as the old tripod)
+  });
+
+  it("the south walkway around the coffee corner stays open", () => {
+    expect(isBlocked(ground, 11.5, 5.15)).toBe(false); // between shrine and counter front
+    expect(isBlocked(ground, 12, 5.1)).toBe(false); // in front of the counter (coffee-making spot)
+    expect(isBlocked(ground, 13.15, 5.5)).toBe(false); // between counter and lantern lamp
+    expect(isBlocked(ground, 14.75, 5.5)).toBe(false); // between lamp and bookshelf
   });
 
   it("the old drawer's footprint is walkable again (drawer removed)", () => {
