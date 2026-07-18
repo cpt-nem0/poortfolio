@@ -331,6 +331,55 @@ function EvaModel() {
 }
 useGLTF.preload("/3am/models/eva-01.glb");
 
+/** Katana model: "Katana" by aneeqayounas
+ *  (https://sketchfab.com/aneeqayounas) via Sketchfab — CC-BY-4.0
+ *  (https://sketchfab.com/3d-models/katana-b061754e94ce434cbe1396b3bb6d8abc).
+ *  Attribution lives in the GLB's asset.extras too. Replaces the wave-E
+ *  hand-built blade + prong stand ("looks pink" — the emissive sheen).
+ *  Healthy file (no rig, 2 meshes, 1 material), ships its OWN stand.
+ *  Native size is ~5.9m long; KATANA_SCALE brings it to ~1.1m — the
+ *  shelf's centerpiece, sized for legibility under the locked pixel
+ *  filter (the identifiable cues at walking distance are the long
+ *  silhouette, the teal edge glow baked into the emissive map, and the
+ *  gold fittings). Textures keep their native linear filtering. */
+const KATANA_SCALE = 0.185;
+function KatanaModel() {
+  const { scene } = useGLTF("/3am/models/katana.glb");
+  useEffect(() => {
+    scene.traverse((obj) => {
+      if ((obj as THREE.Mesh).isMesh) {
+        obj.castShadow = true;
+        obj.receiveShadow = true;
+        const mat = (obj as THREE.Mesh).material as THREE.MeshStandardMaterial;
+        if (mat && mat.isMeshStandardMaterial && !mat.userData.katanaTuned) {
+          mat.userData.katanaTuned = true; // traverse can re-run (HMR/remount)
+          mat.metalness = Math.min(mat.metalness, 0.2);
+          mat.roughness = Math.max(mat.roughness, 0.6);
+          // same 2.2x color lift as the EVA: the albedo is authored for a
+          // brighter scene; without it the silver blade reads near-black
+          // under the room's dim warm light (the baked teal edge-glow in
+          // the emissive map is left at its authored intensity — it's the
+          // model's own look, not a sheen hack).
+          mat.color.multiplyScalar(2.2);
+        }
+      }
+    });
+  }, [scene]);
+  // +0.151 lifts the model's lowest point (the stand feet) up to exactly
+  // the shelf slab's top surface (local y 0) — measured in-browser at this
+  // scale. The slight yaw angles the blade across the shelf depth so the
+  // walking camera sees more than a pure edge-on line.
+  return (
+    <primitive
+      object={scene}
+      position={[0, 0.151, 0]}
+      rotation={[0, 0.15, 0]}
+      scale={KATANA_SCALE}
+    />
+  );
+}
+useGLTF.preload("/3am/models/katana.glb");
+
 export function Workspace() {
   const R = WORKSPACE;
   const rootRef = useRef<THREE.Group>(null);
@@ -1121,53 +1170,12 @@ export function Workspace() {
           </mesh>
         ))}
 
-        {/* katana on a two-prong dark stand — taller prongs so the sword
-            sits proud of the shelf */}
-        {[-0.3, 0.3].map((sx) => (
-          <group key={sx} position={[sx, 0, 0]}>
-            <mesh position={[0, 0.008, 0]}>
-              <boxGeometry args={[0.07, 0.016, 0.09]} />
-              <meshStandardMaterial color="#1a1a22" />
-            </mesh>
-            <mesh position={[0, 0.06, 0]}>
-              <cylinderGeometry args={[0.016, 0.02, 0.1, 6]} />
-              <meshStandardMaterial color="#1a1a22" />
-            </mesh>
-            <mesh position={[0.035, 0.13, 0]} rotation={[0, 0, -0.5]}>
-              <boxGeometry args={[0.026, 0.09, 0.026]} />
-              <meshStandardMaterial color="#1a1a22" />
-            </mesh>
-            <mesh position={[-0.035, 0.13, 0]} rotation={[0, 0, 0.5]}>
-              <boxGeometry args={[0.026, 0.09, 0.026]} />
-              <meshStandardMaterial color="#1a1a22" />
-            </mesh>
-          </group>
-        ))}
-        <group position={[0, 0.175, 0]}>
-          {/* scabbard — deep red, 4 segments with per-segment lift = curve */}
-          {[-0.42, -0.14, 0.14, 0.42].map((sx, i) => (
-            <mesh key={sx} position={[sx, i * 0.014 - 0.021, 0]}>
-              <boxGeometry args={[0.3, 0.085, 0.085]} />
-              <meshStandardMaterial color="#b3475f" emissive="#b3475f" emissiveIntensity={0.45} />
-            </mesh>
-          ))}
-          {/* darker bands */}
-          {[-0.55, -0.05, 0.45].map((sx, i) => (
-            <mesh key={sx} position={[sx, i * 0.014 - 0.028, 0]}>
-              <boxGeometry args={[0.045, 0.095, 0.095]} />
-              <meshStandardMaterial color="#26141c" />
-            </mesh>
-          ))}
-          {/* handle (pale bone wrap) + gold guard */}
-          <mesh position={[-0.73, -0.028, 0]}>
-            <boxGeometry args={[0.17, 0.07, 0.07]} />
-            <meshStandardMaterial color="#e8ddc4" emissive="#e8ddc4" emissiveIntensity={0.18} />
-          </mesh>
-          <mesh position={[-0.63, -0.026, 0]}>
-            <boxGeometry args={[0.025, 0.11, 0.11]} />
-            <meshStandardMaterial color="#8a7a4a" />
-          </mesh>
-        </group>
+        {/* real katana on its own stand (see KatanaModel's attribution) —
+            centered display piece, stand feet on the slab top (local y 0).
+            Own Suspense: the GLB streams in without holding up the shelf. */}
+        <Suspense fallback={null}>
+          <KatanaModel />
+        </Suspense>
 
         {/* west end — vine pot, strands spilling front + off the end */}
         <group position={[-1.15, 0, -0.02]}>
@@ -1210,7 +1218,11 @@ export function Workspace() {
             <VineStrand dir={[-0.2, 1]} segments={4} segLen={0.07} phase={2} />
           </group>
         </group>
-        <group position={[1.3, 0, 0.08]}>
+        {/* shifted 1.3 → 0.78 and brightened a step (wave F: the real
+            katana's black scabbard/stand vanished against the midnight
+            wall at the old reach — the closer warm rake picks out the
+            silver blade + gold fittings; no new lights added) */}
+        <group position={[0.85, 0, 0.12]}>
           <mesh position={[0, 0.012, 0]}>
             <cylinderGeometry args={[0.045, 0.05, 0.024, 10]} />
             <meshStandardMaterial color="#2e2a4d" />
@@ -1223,7 +1235,7 @@ export function Workspace() {
             <cylinderGeometry args={[0.05, 0.065, 0.09, 10, 1, true]} />
             <meshStandardMaterial color="#ffd9a0" emissive="#ffd9a0" emissiveIntensity={0.8} side={2} />
           </mesh>
-          <pointLight position={[0, 0.12, 0]} color="#ffd9a0" intensity={0.8} distance={1.2} decay={2} />
+          <pointLight position={[0, 0.14, 0.04]} color="#ffd9a0" intensity={1.3} distance={1.9} decay={2} />
         </group>
       </group>
     </group>
