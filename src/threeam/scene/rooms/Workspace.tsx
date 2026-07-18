@@ -830,8 +830,9 @@ export function Workspace() {
             <sphereGeometry args={[0.025, 8, 6]} />
             <meshStandardMaterial color="#ffd9a0" emissive="#ffd9a0" emissiveIntensity={1} />
           </mesh>
+          {/* light emits from the visible bulb (fixture-attached, no shadow) */}
+          <pointLight position={[0, -0.05, 0.08]} color="#ffd9a0" intensity={7.5} distance={3.8} decay={1.8} />
         </group>
-        <pointLight position={[-0.34, 2.28, 0.15]} color="#ffd9a0" intensity={7.5} distance={3.8} decay={1.8} />
 
         {/* vine plant on top, draping over the front edge and the south
             side — longer strands than the music nook's wall pothos */}
@@ -854,8 +855,9 @@ export function Workspace() {
       </group>
 
       {/* ── floating shelf — north wall, above the desk. No collider (above
-          head height). Mounted at y=2.2 so it clears the standing-height
-          desk (top 1.15) + 32" monitor comfortably; stays clear of the
+          head height). Mounted at y=2.2 (slab underside 2.15) so it clears
+          the standing-height desk's tallest point — the light bar atop the
+          monitor, ≈1.81 — by ~0.34m; stays clear of the
           corkboard (x 12.65–14.35) with margin to spare. White slab, hidden
           brackets. CENTER: katana on a two-prong stand. SIDES: draping vine
           (front + ends). ONE side (east) also gets a small warm lamp. ── */}
