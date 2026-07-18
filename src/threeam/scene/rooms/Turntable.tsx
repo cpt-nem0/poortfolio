@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
-import type { Group } from "three";
+import type { Group, Mesh } from "three";
 import { audioEngine } from "@/threeam/audio/engine";
 import { useAudioStore } from "@/threeam/state/audio";
 import { TURNTABLE_POS } from "./musicNook.constants";
@@ -18,6 +18,7 @@ const PLAY_Y = 0.55; // arm yaw when the needle sits on the record
 export function Turntable() {
   const vinylRef = useRef<Group>(null);
   const armRef = useRef<Group>(null);
+  const glassRef = useRef<Mesh>(null);
   const [hover, setHover] = useState(false);
   const muted = useAudioStore((s) => s.muted);
   const paused = useAudioStore((s) => s.paused);
@@ -28,6 +29,13 @@ export function Turntable() {
     // clamp: ctx.resume()/suspend() can stall a frame — an unclamped dt
     // would make the exponential glide teleport (looked like a glitch)
     const dt = Math.min(rawDt, 0.05);
+    // The glass lid must never cast a shadow (a transparent pane throwing
+    // a solid shadow from the console lamp reads as a bug). MusicNook's
+    // mount traverse flips castShadow on for every descendant mesh AFTER
+    // this component's own effects run, so re-assert it here instead.
+    if (glassRef.current && glassRef.current.castShadow) {
+      glassRef.current.castShadow = false;
+    }
     if (armRef.current) {
       // glide the tonearm toward its target pose: over the record when
       // playing; swung right, flat and parallel to the deck's right edge
@@ -113,6 +121,42 @@ export function Turntable() {
         <boxGeometry args={[0.02, 0.02, 0.02]} />
         <meshStandardMaterial color="#7cffb2" emissive="#7cffb2" emissiveIntensity={2} />
       </mesh>
+
+      {/* glass lid — always open, hinged at the plinth's back edge (4mm
+          behind it, per convention) and tilted ~20° past vertical so it
+          leans back the way a real friction-hinge lid rests. Thin cool-
+          tinted transparent pane + dark frame strips so it reads as glass
+          at pixel scale. Top edge lands at z≈0.19 world — clear of the
+          album wall (z 0.035) and the north wall plaster (z 0.01).
+          castShadow is forced off in useFrame above. */}
+      <group position={[0, 0.064, -0.254]} rotation={[-1.92, 0, 0]}>
+        <mesh ref={glassRef} position={[0, 0, 0.235]}>
+          <boxGeometry args={[0.64, 0.006, 0.45]} />
+          <meshStandardMaterial color="#a8c8d8" transparent opacity={0.22} />
+        </mesh>
+        {/* frame outline: hinge-side, top edge, two sides */}
+        <mesh position={[0, 0, 0.012]}>
+          <boxGeometry args={[0.66, 0.016, 0.025]} />
+          <meshStandardMaterial color="#22222c" />
+        </mesh>
+        <mesh position={[0, 0, 0.458]}>
+          <boxGeometry args={[0.66, 0.016, 0.025]} />
+          <meshStandardMaterial color="#22222c" />
+        </mesh>
+        {[-0.318, 0.318].map((fx) => (
+          <mesh key={fx} position={[fx, 0, 0.235]}>
+            <boxGeometry args={[0.025, 0.016, 0.47]} />
+            <meshStandardMaterial color="#22222c" />
+          </mesh>
+        ))}
+        {/* hinge nubs at the back corners */}
+        {[-0.24, 0.24].map((hx) => (
+          <mesh key={hx} position={[hx, 0, -0.005]}>
+            <boxGeometry args={[0.05, 0.03, 0.03]} />
+            <meshStandardMaterial color="#15151b" />
+          </mesh>
+        ))}
+      </group>
     </group>
   );
 }

@@ -56,8 +56,9 @@ const GROUND: Area = {
     { x: 20.9, z: 4.85, w: 0.6, d: 0.6 }, // guitar corner (cutaway acoustic + electric)
     // workspace
     { x: 9.7, z: 0.3, w: 2.6, d: 0.9 }, // desk
-    { x: 10.7, z: 1.5, w: 0.8, d: 0.8 }, // desk chair
-    { x: 8.85, z: 5.2, w: 0.45, d: 0.45 }, // storage-shelf lamp (SW corner, west wall, south of door) — replaces the old drawer + floor lamp
+    { x: 10.4, z: 1.5, w: 0.8, d: 0.8 }, // desk chair (shifted west so the desk front reads clear)
+    { x: 8.8, z: 5.15, w: 0.6, d: 0.6 }, // EVA-01 shrine (SW corner) — figure + plinth, replaces the storage-shelf lamp
+    { x: 13.55, z: 5.3, w: 0.5, d: 0.5 }, // tripod floor lamp w/ mid-shelf (south wall, center)
     { x: 15.45, z: 3.85, w: 0.44, d: 2.1 }, // full-wall bookshelf (east divider, workspace face, south of doorway — SE corner)
     // staircase to the roof — full flight footprint (shallow 10-step run
     // along the east divider). Depth is capped so the expanded blocking

@@ -285,8 +285,46 @@ function neonSign(x, y) {
   return [0, 0, 0, 0];
 }
 
+/* ---- neon "shipped" sign 62×22: red lowercase tubes, dim halo, transparent
+   bg — same construction as neon-3am. Glyphs are 3×N on an 8-row grid
+   (rows 0-1 ascenders, 2-6 x-height, 6-7 descenders), 1-col gaps, then
+   upscaled 2x at render so the tube strokes stay bold enough to survive
+   the scene's bloom at walking distance. ---- */
+const SHIPPED_GLYPHS = {
+  s: { top: 2, rows: ["111", "100", "111", "001", "111"] },
+  h: { top: 0, rows: ["100", "100", "111", "101", "101", "101", "101"] },
+  i: { top: 0, rows: ["010", "000", "010", "010", "010", "010", "010"] },
+  p: { top: 2, rows: ["111", "101", "101", "111", "100", "100"] },
+  e: { top: 2, rows: ["111", "101", "111", "100", "111"] },
+  d: { top: 0, rows: ["001", "001", "111", "101", "101", "101", "111"] },
+};
+const SHIPPED_WORD = "shipped";
+function neonShipped(x, y) {
+  const ox = 4; // left margin (word is 2×27=54 cols on a 62-col canvas)
+  const oy = 3; // top margin (2×8=16 glyph rows on a 22-row canvas)
+  const lit = (px, py) => {
+    const gx = Math.floor((px - ox) / 2); // 2x upscale
+    const gy = Math.floor((py - oy) / 2);
+    if (px < ox || py < oy || gy > 7) return false;
+    const letter = SHIPPED_GLYPHS[SHIPPED_WORD[Math.floor(gx / 4)]];
+    if (!letter) return false;
+    const col = gx % 4;
+    if (col === 3) return false; // inter-letter gap
+    const row = letter.rows[gy - letter.top];
+    return !!row && row[col] === "1";
+  };
+  if (lit(x, y)) return [255, 150, 140, 255]; // bright tube core
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      if (lit(x + dx, y + dy)) return [230, 57, 50, 105]; // dim halo
+    }
+  }
+  return [0, 0, 0, 0];
+}
+
 const JOBS = [
   ["neon-3am", 40, 16, neonSign],
+  ["neon-shipped", 62, 22, neonShipped],
   ["wall-teal", 32, 80, wallTeal],
   ["wall-plum", 32, 32, wallPlum],
   ["wall-stripes", 32, 32, wallStripes],

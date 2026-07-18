@@ -59,37 +59,77 @@ function Polaroid({ image }: { image: string }) {
   );
 }
 
-/** Segmented pothos/vine tendril cascading down from a mounting point — same
- *  chunky style as the music nook's wall pothos (alternating leaf greens,
- *  slight per-segment tilt), just monotonically drooping so it reads as
- *  "draping over an edge" rather than "hanging flat against a wall". `dir`
- *  is a small per-segment horizontal drift (not normalized — pass the axis
- *  you want it to spill toward, e.g. [-1,0] to spill off the front, [0,1] to
- *  spill off one side) so callers can aim it without a parent rotation. */
-function VineDrape({
-  segments,
+/** One organic vine strand (wave E rework — the old stacked-box drape read
+ *  as "jenga blocks falling"). Short thin stem segments chained along a
+ *  curved droop: the tilt starts near-horizontal (spilling over the edge)
+ *  and eases quadratically toward hanging straight down — a catenary-ish
+ *  bend instead of a rigid diagonal. Small leaf pairs sprout at alternating
+ *  joints. `dir` is the horizontal spill direction in the parent's xz
+ *  plane; `phase` offsets the leaf pattern so neighboring strands don't
+ *  look cloned. Strand length = `segments` (vary it per strand). */
+const VINE_LEAF_GREENS = ["#3f8f5a", "#3c8a68", "#2e6e54"];
+function VineStrand({
   dir,
-  dropPerSeg = 0.15,
-  segLen = 0.05,
+  segments,
+  segLen = 0.085,
+  startTilt = 1.15,
+  phase = 0,
 }: {
-  segments: number;
   dir: [number, number];
-  dropPerSeg?: number;
+  segments: number;
   segLen?: number;
+  startTilt?: number;
+  phase?: number;
 }) {
+  const yaw = -Math.atan2(dir[1], dir[0]);
+  const joints: { x: number; y: number; tilt: number }[] = [];
+  let px = 0;
+  let py = 0;
+  for (let i = 0; i < segments; i++) {
+    const t = segments === 1 ? 1 : i / (segments - 1);
+    const tilt = startTilt * (1 - t) * (1 - t); // quadratic ease → droop
+    joints.push({
+      x: px + (Math.sin(tilt) * segLen) / 2,
+      y: py - (Math.cos(tilt) * segLen) / 2,
+      tilt,
+    });
+    px += Math.sin(tilt) * segLen;
+    py -= Math.cos(tilt) * segLen;
+  }
   return (
-    <>
-      {Array.from({ length: segments }, (_, i) => (
-        <mesh
-          key={i}
-          position={[dir[0] * segLen * i, -dropPerSeg * (i + 1), dir[1] * segLen * i]}
-          rotation={[dir[1] * 0.35, 0, -dir[0] * 0.35 + ((i % 2) - 0.5) * 0.25]}
-        >
-          <boxGeometry args={[0.045, 0.2 + (i % 3) * 0.05, 0.02]} />
-          <meshStandardMaterial color={i % 2 ? "#3f8f5a" : "#2e6e54"} />
-        </mesh>
-      ))}
-    </>
+    <group rotation={[0, yaw, 0]}>
+      {joints.map((j, i) => {
+        const leafSide = (i + phase) % 4 < 2 ? 1 : -1;
+        return (
+          <group key={i} position={[j.x, j.y, 0]} rotation={[0, 0, -j.tilt]}>
+            {/* stem segment */}
+            <mesh>
+              <boxGeometry args={[0.02, segLen + 0.012, 0.016]} />
+              <meshStandardMaterial color="#2e6e54" />
+            </mesh>
+            {/* leaf pair at alternating joints, sides swapping down the strand */}
+            {(i + phase) % 2 === 0 && (
+              <>
+                <mesh
+                  position={[0.018, 0, leafSide * 0.03]}
+                  rotation={[leafSide * 0.55, 0, -0.4]}
+                >
+                  <boxGeometry args={[0.055, 0.075, 0.012]} />
+                  <meshStandardMaterial color={VINE_LEAF_GREENS[(i + phase) % 3]} />
+                </mesh>
+                <mesh
+                  position={[-0.012, -0.02, leafSide * -0.024]}
+                  rotation={[leafSide * -0.45, 0, 0.35]}
+                >
+                  <boxGeometry args={[0.045, 0.06, 0.012]} />
+                  <meshStandardMaterial color={VINE_LEAF_GREENS[(i + phase + 1) % 3]} />
+                </mesh>
+              </>
+            )}
+          </group>
+        );
+      })}
+    </group>
   );
 }
 
@@ -205,6 +245,9 @@ function Hourglass({ y0, z, x = -0.2 }: { y0: number; z: number; x?: number }) {
 export function Workspace() {
   const R = WORKSPACE;
   const rootRef = useRef<THREE.Group>(null);
+  /** aim point for the EVA shrine's sunset wash (same pattern as the music
+   *  nook's sunset lamp → album wall projection) */
+  const [evaTarget] = useState(() => new THREE.Object3D());
 
   useEffect(() => {
     rootRef.current?.traverse((obj) => {
@@ -249,6 +292,7 @@ export function Workspace() {
   const wallStub = usePixelTexture("/3am/tex/wall-midnight.png", R.w, 0.2, 0, 0.5);
   const termTex = usePixelTexture("/3am/tex/terminal.png", 1, 1);
   const corkTex = usePixelTexture("/3am/tex/cork.png", 1, 1);
+  const neonShippedTex = usePixelTexture("/3am/tex/neon-shipped.png", 1, 1);
 
   const segs: Array<{ x: number; rotY: number }> = [
     { x: R.x + 0.11, rotY: Math.PI / 2 }, // west divider, workspace face
@@ -390,14 +434,15 @@ export function Workspace() {
               <meshStandardMaterial color="#a87b4f" />
             </mesh>
 
-            {/* hotwheels, beside the monitor's base */}
+            {/* hotwheels, beside the monitor's base — scaled 1.6x (wave E:
+                they were invisible from the walking camera) */}
             {[
               { x: -0.3, c: "#b3475f", r: 0.2 },
               { x: -0.1, c: "#3d5a99", r: -0.15 },
               { x: 0.1, c: "#c98a2e", r: 0.25 },
               { x: 0.3, c: "#2e6e54", r: -0.1 },
             ].map((car) => (
-              <group key={car.x} position={[car.x, 0.127, 0.06]} rotation={[0, car.r, 0]}>
+              <group key={car.x} position={[car.x, 0.127, 0.06]} rotation={[0, car.r, 0]} scale={1.6}>
                 <mesh position={[0, 0.01, 0]}>
                   <boxGeometry args={[0.06, 0.02, 0.026]} />
                   <meshStandardMaterial color={car.c} />
@@ -409,7 +454,8 @@ export function Workspace() {
               </group>
             ))}
 
-            {/* 32" monitor, centered on the riser */}
+            {/* monitor, centered on the riser — bumped 0.72 → 0.80 wide
+                (wave E), panel bottom stays at 0.1 so the riser fit holds */}
             <group position={[0, 0.127, 0]}>
               <mesh position={[0, 0.01, 0]}>
                 <boxGeometry args={[0.1, 0.02, 0.1]} />
@@ -419,20 +465,20 @@ export function Workspace() {
                 <boxGeometry args={[0.05, 0.08, 0.04]} />
                 <meshStandardMaterial color="#1c1c24" />
               </mesh>
-              <mesh position={[0, 0.3025, 0]}>
-                <boxGeometry args={[0.72, 0.405, 0.035]} />
+              <mesh position={[0, 0.325, 0]}>
+                <boxGeometry args={[0.8, 0.45, 0.035]} />
                 <meshStandardMaterial color="#1c1c24" />
               </mesh>
-              <mesh position={[0, 0.3025, 0.024]}>
-                <planeGeometry args={[0.68, 0.375]} />
+              <mesh position={[0, 0.325, 0.024]}>
+                <planeGeometry args={[0.76, 0.42]} />
                 <meshBasicMaterial map={termTex} />
               </mesh>
               {/* light bar — visible fixture, subtle downward glow, no shadow */}
-              <mesh position={[0, 0.52, -0.005]}>
-                <boxGeometry args={[0.66, 0.03, 0.045]} />
+              <mesh position={[0, 0.565, -0.005]}>
+                <boxGeometry args={[0.74, 0.03, 0.045]} />
                 <meshStandardMaterial color="#141419" />
               </mesh>
-              <pointLight position={[0, 0.49, 0.06]} color="#ffcf9e" intensity={0.9} distance={1.4} decay={2} />
+              <pointLight position={[0, 0.535, 0.06]} color="#ffcf9e" intensity={1.1} distance={1.5} decay={2} />
             </group>
           </group>
 
@@ -504,20 +550,39 @@ export function Workspace() {
             </group>
           </group>
 
-          {/* potted plant — front-right corner */}
-          <group position={[1.05, 0, 0.32]}>
-            <mesh position={[0, 0.035, 0]}>
-              <cylinderGeometry args={[0.045, 0.035, 0.07, 10]} />
-              <meshStandardMaterial color="#8a5a3d" />
+          {/* open MacBook on a low aluminum stand — right of the monitor
+              (wave E, replaces the desk plant; owner moved it right in the
+              live amendment). Screen is a small pale-blue emissive plane:
+              glow, not a light source. Clear of the riser edge (x 0.4)
+              and the desk's right edge (x 1.3). */}
+          <group position={[0.72, 0, -0.08]} rotation={[0, -0.35, 0]}>
+            {/* stand: two low aluminum rails + plate */}
+            {[-0.14, 0.14].map((sx) => (
+              <mesh key={sx} position={[sx, 0.025, 0]}>
+                <boxGeometry args={[0.02, 0.05, 0.2]} />
+                <meshStandardMaterial color="#b8b8c0" />
+              </mesh>
+            ))}
+            <mesh position={[0, 0.055, 0]}>
+              <boxGeometry args={[0.32, 0.012, 0.22]} />
+              <meshStandardMaterial color="#b8b8c0" />
             </mesh>
-            <mesh position={[0, 0.1, 0]}>
-              <sphereGeometry args={[0.05, 8, 6]} />
-              <meshStandardMaterial color="#2e6e54" />
+            {/* macbook base */}
+            <mesh position={[0, 0.067, 0.01]}>
+              <boxGeometry args={[0.3, 0.012, 0.2]} />
+              <meshStandardMaterial color="#c9c9d1" />
             </mesh>
-            <mesh position={[0, 0.15, 0]}>
-              <sphereGeometry args={[0.035, 8, 6]} />
-              <meshStandardMaterial color="#3c8a68" />
-            </mesh>
+            {/* tilted open screen, hinged at the base's back edge */}
+            <group position={[0, 0.073, -0.09]} rotation={[-0.32, 0, 0]}>
+              <mesh position={[0, 0.1, 0]}>
+                <boxGeometry args={[0.3, 0.2, 0.008]} />
+                <meshStandardMaterial color="#c9c9d1" />
+              </mesh>
+              <mesh position={[0, 0.1, 0.0055]}>
+                <planeGeometry args={[0.27, 0.17]} />
+                <meshStandardMaterial color="#cfe8ff" emissive="#bfe0ff" emissiveIntensity={1.2} />
+              </mesh>
+            </group>
           </group>
         </group>
       </group>
@@ -601,9 +666,11 @@ export function Workspace() {
         })}
       </group>
 
-      {/* ── gaming chair — collider {10.7,1.5,0.8,0.8}. All black w/ gray
-          piping + lumbar accent; full-height backrest + headrest. ── */}
-      <group position={[11.1, 0, 1.9]} rotation={[0, 0.25, 0]}>
+      {/* ── gaming chair — collider {10.4,1.5,0.8,0.8}. All black w/ gray
+          piping + lumbar accent; full-height backrest + headrest. Shifted
+          0.3 west (wave E) so the desk front reads unobstructed from the
+          walking camera. ── */}
+      <group position={[10.8, 0, 1.9]} rotation={[0, 0.25, 0]}>
         {/* base + gas cylinder */}
         <mesh position={[0, 0.22, 0]}>
           <cylinderGeometry args={[0.035, 0.035, 0.44, 6]} />
@@ -683,65 +750,217 @@ export function Workspace() {
         ))}
       </group>
 
-      {/* ── storage-shelf lamp — collider {8.85,5.2,0.45,0.45}. Owner: "that
-          awkward drawer on the bottom left corner — remove it; instead one
-          of those lamps which has a storage shelf in it." Replaces the old
-          drawer + floor lamp with one piece: an open 3-cubby shelf doubling
-          as the lamp's base/column, warm shade on top. Fixture-attached
-          point light only — no shadow casting (the scene's 2 soft casters,
-          the record console lamp + the neon sign, are fixed). ── */}
-      <group position={[9.075, 0, 5.425]}>
-        {/* carcass — back + side panels, open front */}
-        <mesh position={[0, 0.42, -0.18]}>
-          <boxGeometry args={[0.4, 0.84, 0.04]} />
-          <meshStandardMaterial color="#6b4128" />
+      {/* ── EVA-01 shrine — collider {8.8,5.15,0.6,0.6}. Wave E: replaces
+          the storage-shelf lamp. Big Unit-01 figurine on a low dark plinth,
+          chunky blocky armor per the reference: purple body, neon-green
+          accent panels, orange chest V, silver shoulder pods w/ red dots,
+          single horn, green eyes. Showcased by a sunset wash: a small floor
+          can aimed up at the figure (visible fixture, spotlight attached,
+          NO shadow casting — same family as the nook's sunset lamp). ── */}
+      <group position={[9.1, 0, 5.45]} rotation={[0, -0.35, 0]}>
+        {/* tall museum plinth — lifts the figure above the dollhouse
+            south-stub cutoff (the camera can't see below y≈1.0 this deep
+            into the room, so a floor-standing figure would read half-height) */}
+        <mesh position={[0, 0.2, 0]}>
+          <boxGeometry args={[0.52, 0.4, 0.52]} />
+          <meshStandardMaterial color="#15151b" />
         </mesh>
-        <mesh position={[-0.18, 0.42, 0]}>
-          <boxGeometry args={[0.04, 0.84, 0.4]} />
-          <meshStandardMaterial color="#6b4128" />
-        </mesh>
-        <mesh position={[0.18, 0.42, 0]}>
-          <boxGeometry args={[0.04, 0.84, 0.4]} />
-          <meshStandardMaterial color="#6b4128" />
-        </mesh>
-        {/* 2 dividers → 3 open cubbies */}
-        {[0.28, 0.56].map((sy) => (
-          <mesh key={sy} position={[0, sy, 0]}>
-            <boxGeometry args={[0.32, 0.03, 0.32]} />
-            <meshStandardMaterial color="#6b4128" />
-          </mesh>
-        ))}
-        {/* top plinth — doubles as the lamp's base */}
-        <mesh position={[0, 0.855, 0]}>
-          <boxGeometry args={[0.4, 0.03, 0.4]} />
-          <meshStandardMaterial color="#6b4128" />
+        <mesh position={[0, 0.41, 0]}>
+          <boxGeometry args={[0.46, 0.02, 0.46]} />
+          <meshStandardMaterial color="#22222c" />
         </mesh>
 
-        {/* a couple of tiny items in the cubbies */}
-        <mesh position={[-0.04, 0.035, 0.06]} rotation={[0, 0.3, 0]}>
-          <boxGeometry args={[0.16, 0.03, 0.22]} />
-          <meshStandardMaterial color="#b3475f" />
+        {/* figure (~1.5 tall at scale 1.2 ≈ 1.8 total), standing, facing
+            the room — scaled so it still reads BIG through the dollhouse
+            camera's heavy vertical foreshortening */}
+        <group position={[0, 0.42, 0]} scale={1.2}>
+          {/* feet */}
+          {[-0.09, 0.09].map((fx) => (
+            <mesh key={fx} position={[fx, 0.03, 0.02]}>
+              <boxGeometry args={[0.11, 0.06, 0.17]} />
+              <meshStandardMaterial color="#55429c" />
+            </mesh>
+          ))}
+          {/* shins + neon green shin panels */}
+          {[-0.09, 0.09].map((fx) => (
+            <group key={fx} position={[fx, 0.27, 0]}>
+              <mesh>
+                <boxGeometry args={[0.09, 0.42, 0.11]} />
+                <meshStandardMaterial color="#6a55b0" />
+              </mesh>
+              <mesh position={[0, 0.02, 0.058]}>
+                <boxGeometry args={[0.05, 0.22, 0.012]} />
+                <meshStandardMaterial color="#7cffb2" emissive="#7cffb2" emissiveIntensity={0.9} />
+              </mesh>
+            </group>
+          ))}
+          {/* thighs */}
+          {[-0.09, 0.09].map((fx) => (
+            <mesh key={fx} position={[fx, 0.63, 0]}>
+              <boxGeometry args={[0.1, 0.32, 0.12]} />
+              <meshStandardMaterial color="#55429c" />
+            </mesh>
+          ))}
+          {/* waist + green V */}
+          <mesh position={[0, 0.85, 0]}>
+            <boxGeometry args={[0.25, 0.14, 0.15]} />
+            <meshStandardMaterial color="#5b4b8a" />
+          </mesh>
+          <mesh position={[-0.05, 0.85, 0.078]} rotation={[0, 0, 0.5]}>
+            <boxGeometry args={[0.1, 0.03, 0.012]} />
+            <meshStandardMaterial color="#7cffb2" emissive="#7cffb2" emissiveIntensity={0.9} />
+          </mesh>
+          <mesh position={[0.05, 0.85, 0.078]} rotation={[0, 0, -0.5]}>
+            <boxGeometry args={[0.1, 0.03, 0.012]} />
+            <meshStandardMaterial color="#7cffb2" emissive="#7cffb2" emissiveIntensity={0.9} />
+          </mesh>
+          {/* torso */}
+          <mesh position={[0, 1.1, 0]}>
+            <boxGeometry args={[0.3, 0.36, 0.18]} />
+            <meshStandardMaterial color="#5b4b8a" />
+          </mesh>
+          {/* orange/yellow chest V */}
+          <mesh position={[-0.055, 1.16, 0.094]} rotation={[0, 0, 0.65]}>
+            <boxGeometry args={[0.16, 0.045, 0.012]} />
+            <meshStandardMaterial color="#c98a2e" />
+          </mesh>
+          <mesh position={[0.055, 1.16, 0.094]} rotation={[0, 0, -0.65]}>
+            <boxGeometry args={[0.16, 0.045, 0.012]} />
+            <meshStandardMaterial color="#ffcf6e" />
+          </mesh>
+          {/* green sternum strip */}
+          <mesh position={[0, 1.02, 0.094]}>
+            <boxGeometry args={[0.04, 0.14, 0.012]} />
+            <meshStandardMaterial color="#7cffb2" emissive="#7cffb2" emissiveIntensity={0.9} />
+          </mesh>
+          {/* silver shoulder pods + red dots */}
+          {[-0.225, 0.225].map((px) => (
+            <group key={px} position={[px, 1.26, 0]}>
+              <mesh>
+                <boxGeometry args={[0.13, 0.19, 0.17]} />
+                <meshStandardMaterial color="#b7b5ac" />
+              </mesh>
+              <mesh position={[px < 0 ? -0.068 : 0.068, 0.04, 0]}>
+                <boxGeometry args={[0.012, 0.035, 0.035]} />
+                <meshStandardMaterial color="#c9302f" />
+              </mesh>
+            </group>
+          ))}
+          {/* arms — upper + forearm w/ green panel, hanging slightly out */}
+          {[-0.21, 0.21].map((ax) => (
+            <group key={ax}>
+              <mesh position={[ax, 1.05, 0]}>
+                <boxGeometry args={[0.07, 0.24, 0.09]} />
+                <meshStandardMaterial color="#55429c" />
+              </mesh>
+              <group position={[ax, 0.8, 0.02]}>
+                <mesh>
+                  <boxGeometry args={[0.08, 0.26, 0.09]} />
+                  <meshStandardMaterial color="#5b4b8a" />
+                </mesh>
+                <mesh position={[ax < 0 ? -0.044 : 0.044, 0.02, 0]}>
+                  <boxGeometry args={[0.012, 0.14, 0.05]} />
+                  <meshStandardMaterial color="#7cffb2" emissive="#7cffb2" emissiveIntensity={0.9} />
+                </mesh>
+              </group>
+            </group>
+          ))}
+          {/* head: helmet, green eyes, single horn */}
+          <group position={[0, 1.42, 0]}>
+            <mesh>
+              <boxGeometry args={[0.13, 0.14, 0.14]} />
+              <meshStandardMaterial color="#5b4b8a" />
+            </mesh>
+            {/* jaw plate */}
+            <mesh position={[0, -0.045, 0.055]}>
+              <boxGeometry args={[0.09, 0.05, 0.04]} />
+              <meshStandardMaterial color="#55429c" />
+            </mesh>
+            {[-0.032, 0.032].map((ex) => (
+              <mesh key={ex} position={[ex, 0.015, 0.072]}>
+                <boxGeometry args={[0.026, 0.018, 0.01]} />
+                <meshStandardMaterial color="#7cffb2" emissive="#7cffb2" emissiveIntensity={1.6} />
+              </mesh>
+            ))}
+            {/* horn, sweeping up-forward off the forehead */}
+            <mesh position={[0, 0.1, 0.05]} rotation={[0.5, 0, 0]}>
+              <boxGeometry args={[0.022, 0.2, 0.022]} />
+              <meshStandardMaterial color="#d8d6ce" />
+            </mesh>
+          </group>
+        </group>
+
+        {/* sunset can — small uplight on the plinth top's front corner (the
+            visible fixture the spotlight is attached to) */}
+        <group position={[0.18, 0.42, 0.18]}>
+          <mesh position={[0, 0.03, 0]}>
+            <cylinderGeometry args={[0.04, 0.05, 0.06, 8]} />
+            <meshStandardMaterial color="#2e2a4d" />
+          </mesh>
+          <mesh position={[0, 0.065, 0]}>
+            <cylinderGeometry args={[0.03, 0.03, 0.012, 8]} />
+            <meshStandardMaterial color="#ff7a5c" emissive="#ff6a45" emissiveIntensity={3} />
+          </mesh>
+        </group>
+      </group>
+      <spotLight
+        position={[9.21, 0.49, 5.66]}
+        target={evaTarget}
+        angle={0.5}
+        penumbra={0.55}
+        intensity={13}
+        distance={4}
+        decay={1.4}
+        color="#ff7a5c"
+      />
+      <primitive object={evaTarget} position={[9.05, 1.7, 5.4]} />
+
+      {/* ── tripod floor lamp — collider {13.55,5.3,0.5,0.5}. Wave E: the
+          relocated "lamp with a shelf in it" ask — three wooden legs, a
+          small triangular shelf nested mid-height between them (with a
+          trinket), round warm shade. Main south-side light source
+          (fixture-attached point light, NO shadow casting). ── */}
+      <group position={[13.8, 0, 5.55]} rotation={[0, 0.4, 0]}>
+        {[0, 1, 2].map((i) => (
+          <group key={i} rotation={[0, (i / 3) * Math.PI * 2, 0]}>
+            <mesh position={[0, 0.62, 0.13]} rotation={[0.22, 0, 0]}>
+              <cylinderGeometry args={[0.018, 0.022, 1.3, 7]} />
+              <meshStandardMaterial color="#8a5a3b" />
+            </mesh>
+          </group>
+        ))}
+        {/* hub where the legs meet */}
+        <mesh position={[0, 1.27, 0]}>
+          <cylinderGeometry args={[0.045, 0.045, 0.07, 8]} />
+          <meshStandardMaterial color="#6b4128" />
         </mesh>
-        <mesh position={[0.05, 0.315, -0.03]}>
-          <cylinderGeometry args={[0.025, 0.022, 0.045, 8]} />
-          <meshStandardMaterial color="#c98a2e" />
+        {/* triangular mid-shelf nested between the legs */}
+        <mesh position={[0, 0.6, 0]} rotation={[0, Math.PI / 3, 0]}>
+          <cylinderGeometry args={[0.21, 0.21, 0.025, 3]} />
+          <meshStandardMaterial color="#8b5e3c" />
         </mesh>
-        <mesh position={[-0.05, 0.6, 0.04]}>
-          <sphereGeometry args={[0.035, 8, 6]} />
+        {/* trinket on the shelf — tiny teal bottle */}
+        <mesh position={[0.04, 0.66, 0.02]}>
+          <cylinderGeometry args={[0.025, 0.03, 0.09, 7]} />
           <meshStandardMaterial color="#2e6e54" />
         </mesh>
-
-        {/* lamp column rising off the shelf's top, warm shade */}
-        <mesh position={[0, 1.205, 0]}>
-          <cylinderGeometry args={[0.02, 0.02, 0.7, 8]} />
-          <meshStandardMaterial color="#2e2a4d" />
-        </mesh>
-        <mesh position={[0, 1.68, 0]}>
-          <cylinderGeometry args={[0.14, 0.2, 0.26, 10, 1, true]} />
+        {/* round warm shade */}
+        <mesh position={[0, 1.44, 0]}>
+          <cylinderGeometry args={[0.17, 0.23, 0.3, 12, 1, true]} />
           <meshStandardMaterial color="#ffd9a0" emissive="#ffd9a0" emissiveIntensity={0.9} side={2} />
         </mesh>
+        <pointLight position={[0, 1.44, 0]} color="#ffd9a0" intensity={10} distance={7} decay={1.8} />
       </group>
-      <pointLight position={[9.075, 1.75, 5.425]} color="#ffd9a0" intensity={9} distance={6.5} decay={1.8} />
+
+      {/* ── neon "shipped" — north wall, west end, right next to the
+          polaroid/projects wall. Red lowercase tube lettering (generated
+          texture, scripts/pixelart/gen-variants.mjs) + a low red glow.
+          The sign itself is the fixture — no shadow casting. ── */}
+      <mesh position={[8.9, 1.83, 0.045]}>
+        <planeGeometry args={[1.7, 0.6]} />
+        <meshBasicMaterial map={neonShippedTex} transparent />
+      </mesh>
+      <pointLight position={[8.9, 1.83, 0.3]} color="#ff5040" intensity={2.5} distance={2.8} decay={2} />
 
       {/* ── full-wall bookshelf — collider {15.45,3.85,0.44,2.1}. Owner: "a
           big shelf which covers the whole wall there, full of books and
@@ -834,8 +1053,8 @@ export function Workspace() {
           <pointLight position={[0, -0.05, 0.08]} color="#ffd9a0" intensity={7.5} distance={3.8} decay={1.8} />
         </group>
 
-        {/* vine plant on top, draping over the front edge and the south
-            side — longer strands than the music nook's wall pothos */}
+        {/* vine plant on top — organic strands (wave E rework) of varied
+            length, draping over the front edge and the south side */}
         <group position={[-0.28, 2.6, 0.75]}>
           <mesh position={[0, 0.045, 0]}>
             <cylinderGeometry args={[0.07, 0.055, 0.09, 10]} />
@@ -845,22 +1064,34 @@ export function Workspace() {
             <sphereGeometry args={[0.06, 8, 6]} />
             <meshStandardMaterial color="#3f8f5a" />
           </mesh>
-          <group position={[0, 0.06, 0]}>
-            <VineDrape segments={8} dir={[-1, 0]} dropPerSeg={0.16} />
+          {/* front (west) spill — the long strands over the shelf face */}
+          <group position={[-0.04, 0.07, 0]}>
+            <VineStrand dir={[-1, 0]} segments={10} phase={0} />
           </group>
-          <group position={[0.1, 0.06, 0.25]}>
-            <VineDrape segments={6} dir={[0, 1]} dropPerSeg={0.15} />
+          <group position={[-0.02, 0.07, -0.14]}>
+            <VineStrand dir={[-1, -0.25]} segments={7} segLen={0.08} phase={1} />
+          </group>
+          <group position={[-0.03, 0.07, 0.12]}>
+            <VineStrand dir={[-0.9, 0.3]} segments={8} phase={2} />
+          </group>
+          {/* south-side spill — over the shelf's end panel */}
+          <group position={[0.02, 0.07, 0.05]}>
+            <VineStrand dir={[0.1, 1]} segments={7} phase={1} />
+          </group>
+          <group position={[0.09, 0.07, 0.02]}>
+            <VineStrand dir={[0.4, 1]} segments={5} segLen={0.075} phase={0} />
           </group>
         </group>
       </group>
 
       {/* ── floating shelf — north wall, above the desk. No collider (above
-          head height). Mounted at y=2.2 (slab underside 2.15) so it clears
-          the standing-height desk's tallest point — the light bar atop the
-          monitor, ≈1.81 — by ~0.34m; stays clear of the
-          corkboard (x 12.65–14.35) with margin to spare. White slab, hidden
-          brackets. CENTER: katana on a two-prong stand. SIDES: draping vine
-          (front + ends). ONE side (east) also gets a small warm lamp. ── */}
+          head height). Mounted at y=2.2 (slab underside 2.15); the standing
+          desk's tallest point is the light bar atop the bigger wave-E
+          monitor, ≈1.86 — clearance ~0.29m. Stays clear of the corkboard
+          (x 12.65–14.35) with margin to spare. White slab, hidden brackets.
+          CENTER: katana on a two-prong stand (wave E: 2.5x girth, taller
+          prongs, deep-red scabbard so it pops off the midnight wall).
+          SIDES: organic vine strands. ONE side (east): small warm lamp. ── */}
       <group position={[11.0, 2.2, 0.21]}>
         {/* slab */}
         <mesh position={[0, -0.025, 0]}>
@@ -876,50 +1107,55 @@ export function Workspace() {
           </mesh>
         ))}
 
-        {/* katana on a two-prong dark stand, centered */}
+        {/* katana on a two-prong dark stand — taller prongs so the sword
+            sits proud of the shelf */}
         {[-0.3, 0.3].map((sx) => (
           <group key={sx} position={[sx, 0, 0]}>
-            <mesh position={[0, 0.025, 0]}>
-              <cylinderGeometry args={[0.012, 0.014, 0.05, 6]} />
+            <mesh position={[0, 0.008, 0]}>
+              <boxGeometry args={[0.07, 0.016, 0.09]} />
               <meshStandardMaterial color="#1a1a22" />
             </mesh>
-            <mesh position={[0, 0.055, 0]} rotation={[0, 0, 0.32]}>
-              <boxGeometry args={[0.02, 0.05, 0.02]} />
+            <mesh position={[0, 0.06, 0]}>
+              <cylinderGeometry args={[0.016, 0.02, 0.1, 6]} />
               <meshStandardMaterial color="#1a1a22" />
             </mesh>
-            <mesh position={[0, 0.055, 0]} rotation={[0, 0, -0.32]}>
-              <boxGeometry args={[0.02, 0.05, 0.02]} />
+            <mesh position={[0.035, 0.13, 0]} rotation={[0, 0, -0.5]}>
+              <boxGeometry args={[0.026, 0.09, 0.026]} />
+              <meshStandardMaterial color="#1a1a22" />
+            </mesh>
+            <mesh position={[-0.035, 0.13, 0]} rotation={[0, 0, 0.5]}>
+              <boxGeometry args={[0.026, 0.09, 0.026]} />
               <meshStandardMaterial color="#1a1a22" />
             </mesh>
           </group>
         ))}
-        <group position={[0, 0.085, 0]}>
-          {/* scabbard — 4 segments with a slight per-segment lift = subtle curve */}
+        <group position={[0, 0.175, 0]}>
+          {/* scabbard — deep red, 4 segments with per-segment lift = curve */}
           {[-0.42, -0.14, 0.14, 0.42].map((sx, i) => (
-            <mesh key={sx} position={[sx, i * 0.006 - 0.009, 0]}>
-              <boxGeometry args={[0.3, 0.028, 0.028]} />
-              <meshStandardMaterial color="#15151b" />
+            <mesh key={sx} position={[sx, i * 0.014 - 0.021, 0]}>
+              <boxGeometry args={[0.3, 0.085, 0.085]} />
+              <meshStandardMaterial color="#b3475f" emissive="#b3475f" emissiveIntensity={0.45} />
             </mesh>
           ))}
-          {/* accent bands */}
-          {[-0.55, -0.05, 0.45].map((sx) => (
-            <mesh key={sx} position={[sx, 0, 0]}>
-              <boxGeometry args={[0.02, 0.032, 0.032]} />
-              <meshStandardMaterial color="#c98a2e" />
+          {/* darker bands */}
+          {[-0.55, -0.05, 0.45].map((sx, i) => (
+            <mesh key={sx} position={[sx, i * 0.014 - 0.028, 0]}>
+              <boxGeometry args={[0.045, 0.095, 0.095]} />
+              <meshStandardMaterial color="#26141c" />
             </mesh>
           ))}
-          {/* handle + guard */}
-          <mesh position={[-0.72, 0, 0]}>
-            <boxGeometry args={[0.05, 0.036, 0.036]} />
-            <meshStandardMaterial color="#3a2a22" />
+          {/* handle (pale bone wrap) + gold guard */}
+          <mesh position={[-0.73, -0.028, 0]}>
+            <boxGeometry args={[0.17, 0.07, 0.07]} />
+            <meshStandardMaterial color="#e8ddc4" emissive="#e8ddc4" emissiveIntensity={0.18} />
           </mesh>
-          <mesh position={[-0.66, 0, 0]}>
-            <boxGeometry args={[0.015, 0.05, 0.05]} />
+          <mesh position={[-0.63, -0.026, 0]}>
+            <boxGeometry args={[0.025, 0.11, 0.11]} />
             <meshStandardMaterial color="#8a7a4a" />
           </mesh>
         </group>
 
-        {/* west end — vine only */}
+        {/* west end — vine pot, strands spilling front + off the end */}
         <group position={[-1.15, 0, -0.02]}>
           <mesh position={[0, 0.035, 0]}>
             <cylinderGeometry args={[0.055, 0.045, 0.07, 10]} />
@@ -929,15 +1165,18 @@ export function Workspace() {
             <sphereGeometry args={[0.045, 8, 6]} />
             <meshStandardMaterial color="#3f8f5a" />
           </mesh>
-          <group position={[0, 0.05, 0.03]}>
-            <VineDrape segments={5} dir={[0, 1]} dropPerSeg={0.13} />
+          <group position={[0, 0.06, 0.04]}>
+            <VineStrand dir={[0, 1]} segments={6} phase={0} />
           </group>
-          <group position={[-0.03, 0.05, 0]}>
-            <VineDrape segments={4} dir={[-0.6, 0]} dropPerSeg={0.12} />
+          <group position={[0.04, 0.06, 0.02]}>
+            <VineStrand dir={[0.3, 1]} segments={4} segLen={0.075} phase={1} />
+          </group>
+          <group position={[-0.04, 0.06, 0]}>
+            <VineStrand dir={[-1, 0.2]} segments={5} phase={2} />
           </group>
         </group>
 
-        {/* east end — vine + a small warm lamp */}
+        {/* east end — vine pot + a small warm lamp */}
         <group position={[1.15, 0, -0.02]}>
           <mesh position={[0, 0.035, 0]}>
             <cylinderGeometry args={[0.055, 0.045, 0.07, 10]} />
@@ -947,11 +1186,14 @@ export function Workspace() {
             <sphereGeometry args={[0.045, 8, 6]} />
             <meshStandardMaterial color="#3f8f5a" />
           </mesh>
-          <group position={[0, 0.05, 0.03]}>
-            <VineDrape segments={5} dir={[0, 1]} dropPerSeg={0.13} />
+          <group position={[0, 0.06, 0.04]}>
+            <VineStrand dir={[0.15, 1]} segments={6} phase={1} />
           </group>
-          <group position={[0.03, 0.05, 0]}>
-            <VineDrape segments={4} dir={[0.6, 0]} dropPerSeg={0.12} />
+          <group position={[0.04, 0.06, 0]}>
+            <VineStrand dir={[1, 0.25]} segments={5} phase={0} />
+          </group>
+          <group position={[-0.03, 0.06, 0.03]}>
+            <VineStrand dir={[-0.2, 1]} segments={4} segLen={0.07} phase={2} />
           </group>
         </group>
         <group position={[1.3, 0, 0.08]}>
@@ -967,7 +1209,7 @@ export function Workspace() {
             <cylinderGeometry args={[0.05, 0.065, 0.09, 10, 1, true]} />
             <meshStandardMaterial color="#ffd9a0" emissive="#ffd9a0" emissiveIntensity={0.8} side={2} />
           </mesh>
-          <pointLight position={[0, 0.12, 0]} color="#ffd9a0" intensity={0.6} distance={1.1} decay={2} />
+          <pointLight position={[0, 0.12, 0]} color="#ffd9a0" intensity={0.8} distance={1.2} decay={2} />
         </group>
       </group>
     </group>

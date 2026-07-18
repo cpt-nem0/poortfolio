@@ -53,11 +53,24 @@ describe("music-room furniture colliders", () => {
 describe("workspace furniture colliders", () => {
   it("desk and chair block", () => {
     expect(isBlocked(ground, 11, 0.75)).toBe(true); // desk
-    expect(isBlocked(ground, 11.1, 1.9)).toBe(true); // chair
+    expect(isBlocked(ground, 10.8, 1.9)).toBe(true); // chair (shifted 0.3 west, wave E)
   });
 
-  it("the SW storage-shelf lamp blocks (replaces the old drawer + floor lamp)", () => {
-    expect(isBlocked(ground, 9.075, 5.425)).toBe(true); // storage-shelf lamp center
+  it("the spot east of the shifted chair is walkable (desk front unobstructed)", () => {
+    expect(isBlocked(ground, 11.65, 1.9)).toBe(false);
+  });
+
+  it("the SW EVA-01 shrine blocks (replaces the storage-shelf lamp)", () => {
+    expect(isBlocked(ground, 9.1, 5.45)).toBe(true); // plinth center
+  });
+
+  it("the tripod floor lamp blocks (south wall, center)", () => {
+    expect(isBlocked(ground, 13.8, 5.55)).toBe(true); // tripod center
+  });
+
+  it("the south walkway around the tripod lamp stays open", () => {
+    expect(isBlocked(ground, 11.5, 5.3)).toBe(false); // between shrine and tripod
+    expect(isBlocked(ground, 14.75, 5.5)).toBe(false); // between tripod and bookshelf
   });
 
   it("the old drawer's footprint is walkable again (drawer removed)", () => {
