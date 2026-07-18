@@ -552,6 +552,68 @@ function PixarLampModel() {
 }
 useGLTF.preload("/3am/models/pixar-lamp.glb");
 
+/** Gaming chair model: "Gaming Chair - Grey Cushioned" by kanesk06
+ *  (https://sketchfab.com/kanesk06) via Sketchfab — CC-BY-4.0
+ *  (https://sketchfab.com/3d-models/gaming-chair-grey-cushioned-c39430b3f91b43f7937174a9c27998f1).
+ *  Attribution lives in the GLB's asset.extras too. Replaces the wave-E
+ *  hand-built black/gray chair.
+ *
+ *  Healthy file: no skin, no animations (confirmed via a manual GLB-chunk
+ *  probe of json.skins/json.nodes before touching it — the "GLTF drill"
+ *  step 1/2 for this one is a no-op beyond attribution). Rig/scale sanity:
+ *  the mesh is already authored in real-world meters (bbox ~0.77w × 1.36h ×
+ *  0.74d, feet at y≈0.0006 — no static bake, no lift needed), so
+ *  CHAIR_SCALE is 1.
+ *
+ *  Orientation: the file ships two Sketchfab corrective node matrices
+ *  (Z-up→Y-up and back) that exactly cancel to identity — verified
+ *  numerically, not assumed — so the model's OWN local axes are its final
+ *  axes. Probing the raw POSITION accessor by Y-band (see scratch script
+ *  used during the wave) showed the backrest/headrest mass sits at local
+ *  -Z and the open seat-front at local +Z, i.e. unrotated the chair faces
+ *  away from north. Rohan's ask is "seat toward the desk" (desk sits north
+ *  of the chair collider), so this needs a ~180° turn, not a 0° drop-in:
+ *  CHAIR_YAW is π (backrest → south, open front → north, toward the desk)
+ *  plus a small casual offset. This also happens to be why the low
+ *  seat-front — not the tall 1.36m backrest — ends up nearest the desk's
+ *  0.75m sitting-height top, so nothing clips it.
+ *
+ *  Optimization (6.6MB shipped → 891KB, target was ~1-2MB): weld → simplify
+ *  (--ratio 0.1 --error 0.01) → prune → quantize, the same pipeline as the
+ *  other props, no draco/meshopt. Unlike the coffee-machine/pixar-lamp GLBs
+ *  (pure geometry) this one ships three real 1024px PNGs (base color 1.3MB,
+ *  normal 1.2MB — photographic content saved as lossless PNG, the least
+ *  efficient combination) that dominated the file even after geometry
+ *  optimization landed at 2.81MB. Resized all three to 512px + recompressed
+ *  PNG (still lossless, gltf-transform's `resize`+`png`) to close the gap:
+ *  891KB final. The pixel-post-process hides the resolution drop; verify by
+ *  eye per the usual convention. Prune also dropped 3 unreferenced
+ *  TEXCOORD sets (1/2/3 — Sketchfab export cruft, no material slot used
+ *  them) before the geometry table even got small. KHR_mesh_quantization
+ *  is safe here (no skin to desync, unlike EVA). Native linear texture
+ *  filtering kept (no filter override below). */
+const CHAIR_SCALE = 1;
+const CHAIR_YAW = Math.PI + 0.22; // 180° (face the desk) + a slight casual turn
+function GamingChairModel() {
+  const { scene } = useGLTF("/3am/models/gaming-chair.glb");
+  useEffect(() => {
+    scene.traverse((obj) => {
+      if ((obj as THREE.Mesh).isMesh) {
+        obj.castShadow = true;
+        obj.receiveShadow = true;
+        const mat = (obj as THREE.Mesh).material as THREE.MeshStandardMaterial;
+        if (mat && mat.isMeshStandardMaterial && !mat.userData.chairTuned) {
+          mat.userData.chairTuned = true; // traverse can re-run (HMR/remount)
+          mat.metalness = Math.min(mat.metalness, 0.2);
+          mat.roughness = Math.max(mat.roughness, 0.6);
+        }
+      }
+    });
+  }, [scene]);
+  return <primitive object={scene} rotation={[0, CHAIR_YAW, 0]} scale={CHAIR_SCALE} />;
+}
+useGLTF.preload("/3am/models/gaming-chair.glb");
+
 export function Workspace() {
   const R = WORKSPACE;
   const rootRef = useRef<THREE.Group>(null);
@@ -785,7 +847,15 @@ export function Workspace() {
                 <boxGeometry args={[0.8, 0.45, 0.035]} />
                 <meshStandardMaterial color="#1c1c24" />
               </mesh>
-              <mesh position={[0, 0.325, 0.024]}>
+              {/* screen sits proud of the bezel front face (z 0.0175) by
+                  10.5mm — bumped from 6.5mm (perf pass, dpr 1 cap): that
+                  gap was already ≥ the house's old 4mm floor but too close
+                  to the new 6mm generous minimum to trust once dpr-driven
+                  supersampling stopped masking the dither at grazing walk
+                  angles. Confirmed via arithmetic, not the width bump
+                  (0.72→0.80 wide, wave E) — that only touched x, this
+                  screen offset was untouched by it. */}
+              <mesh position={[0, 0.325, 0.028]}>
                 <planeGeometry args={[0.76, 0.42]} />
                 <meshBasicMaterial map={termTex} />
               </mesh>
@@ -878,7 +948,10 @@ export function Workspace() {
                 <boxGeometry args={[0.3, 0.2, 0.008]} />
                 <meshStandardMaterial color="#c9c9d1" />
               </mesh>
-              <mesh position={[0, 0.1, 0.0055]}>
+              {/* screen was 1.5mm proud of the lid front face (z 0.004) —
+                  well under the house's 4mm z-fighting floor, the actual
+                  flicker source (perf pass, dpr 1 cap). Bumped to 8mm. */}
+              <mesh position={[0, 0.1, 0.012]}>
                 <planeGeometry args={[0.27, 0.17]} />
                 <meshStandardMaterial color="#cfe8ff" emissive="#bfe0ff" emissiveIntensity={1.2} />
               </mesh>
@@ -966,88 +1039,14 @@ export function Workspace() {
         })}
       </group>
 
-      {/* ── gaming chair — collider {10.4,1.5,0.8,0.8}. All black w/ gray
-          piping + lumbar accent; full-height backrest + headrest. Shifted
-          0.3 west (wave E) so the desk front reads unobstructed from the
-          walking camera. ── */}
-      <group position={[10.8, 0, 1.9]} rotation={[0, 0.25, 0]}>
-        {/* base + gas cylinder */}
-        <mesh position={[0, 0.22, 0]}>
-          <cylinderGeometry args={[0.035, 0.035, 0.44, 6]} />
-          <meshStandardMaterial color="#15151b" />
-        </mesh>
-        {[0, 1, 2, 3, 4].map((i) => {
-          const a = (i / 5) * Math.PI * 2;
-          return (
-            <mesh key={i} position={[Math.sin(a) * 0.2, 0.03, Math.cos(a) * 0.2]} rotation={[0, a, 0]}>
-              <boxGeometry args={[0.06, 0.04, 0.24]} />
-              <meshStandardMaterial color="#3a3a42" />
-            </mesh>
-          );
-        })}
-        {/* seat cushion */}
-        <mesh position={[0, 0.44, 0]}>
-          <boxGeometry args={[0.5, 0.07, 0.48]} />
-          <meshStandardMaterial color="#17171d" />
-        </mesh>
-        {/* seat piping (gray edge trim) */}
-        <mesh position={[0, 0.475, 0.235]}>
-          <boxGeometry args={[0.5, 0.012, 0.018]} />
-          <meshStandardMaterial color="#8b8b94" />
-        </mesh>
-        <mesh position={[0.245, 0.475, 0]}>
-          <boxGeometry args={[0.018, 0.012, 0.48]} />
-          <meshStandardMaterial color="#8b8b94" />
-        </mesh>
-        <mesh position={[-0.245, 0.475, 0]}>
-          <boxGeometry args={[0.018, 0.012, 0.48]} />
-          <meshStandardMaterial color="#8b8b94" />
-        </mesh>
-        {/* backrest — full height, with side bolsters (gaming-chair wings) */}
-        <mesh position={[0, 0.97, -0.24]} rotation={[-0.08, 0, 0]}>
-          <boxGeometry args={[0.48, 1.05, 0.09]} />
-          <meshStandardMaterial color="#17171d" />
-        </mesh>
-        <mesh position={[0.21, 0.97, -0.21]} rotation={[-0.08, 0, 0]}>
-          <boxGeometry args={[0.07, 1.05, 0.13]} />
-          <meshStandardMaterial color="#1e1e26" />
-        </mesh>
-        <mesh position={[-0.21, 0.97, -0.21]} rotation={[-0.08, 0, 0]}>
-          <boxGeometry args={[0.07, 1.05, 0.13]} />
-          <meshStandardMaterial color="#1e1e26" />
-        </mesh>
-        {/* backrest piping — center racing stripe */}
-        <mesh position={[0, 0.97, -0.194]} rotation={[-0.08, 0, 0]}>
-          <boxGeometry args={[0.05, 0.95, 0.012]} />
-          <meshStandardMaterial color="#8b8b94" />
-        </mesh>
-        {/* gray lumbar pad */}
-        <mesh position={[0, 0.64, -0.2]} rotation={[-0.08, 0, 0]}>
-          <boxGeometry args={[0.28, 0.18, 0.04]} />
-          <meshStandardMaterial color="#8b8b94" />
-        </mesh>
-        {/* headrest */}
-        <mesh position={[0, 1.53, -0.3]} rotation={[-0.15, 0, 0]}>
-          <boxGeometry args={[0.32, 0.22, 0.09]} />
-          <meshStandardMaterial color="#17171d" />
-        </mesh>
-        <mesh position={[0, 1.53, -0.255]} rotation={[-0.15, 0, 0]}>
-          <boxGeometry args={[0.16, 0.14, 0.012]} />
-          <meshStandardMaterial color="#8b8b94" />
-        </mesh>
-        {/* armrests */}
-        {[-0.29, 0.29].map((ax) => (
-          <group key={ax}>
-            <mesh position={[ax, 0.42, 0.05]}>
-              <boxGeometry args={[0.06, 0.28, 0.06]} />
-              <meshStandardMaterial color="#17171d" />
-            </mesh>
-            <mesh position={[ax, 0.57, 0.05]}>
-              <boxGeometry args={[0.09, 0.04, 0.22]} />
-              <meshStandardMaterial color="#8b8b94" />
-            </mesh>
-          </group>
-        ))}
+      {/* ── gaming chair — collider {10.4,1.5,0.8,0.8}. Real Sketchfab GLB
+          (see GamingChairModel's attribution), replacing the wave-E
+          hand-built black/gray chair. Centered on the collider; own
+          Suspense so the fetch never blocks the room's first paint. ── */}
+      <group position={[10.8, 0, 1.9]}>
+        <Suspense fallback={null}>
+          <GamingChairModel />
+        </Suspense>
       </group>
 
       {/* ── EVA-01 shrine — collider {8.8,5.15,0.65,0.7}. Wave E built a
