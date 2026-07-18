@@ -326,7 +326,9 @@ function neonShipped(x, y) {
    textures. Same seeded hash2/shade idiom as the workspace/nook set above. ---- */
 
 /* ---- wall option: sand — warm sand plaster, soft noise (bedroom default) ---- */
-const SAND = PALETTE.plaster300;
+// creamier than the original sand (Rohan, 2026-07-19: "wall color smth bit
+// creamish") — halfway between plaster300 and cream100, kept off pure white
+const SAND = "#e6d8b8";
 function wallSand(x, y) {
   const n = hash2(x, y, 301);
   if (n > 0.97) return shade(SAND, 1.08);
@@ -356,12 +358,11 @@ function wallDusk(x, y) {
    geometry (same seams/rows) so the toggle compare is apples-to-apples ---- */
 const OAK_TONES = [PALETTE.wood300, "#c9a06a", PALETTE.wood300, PALETTE.wood500];
 function floorOak(x, y) {
+  // parallel lining (Rohan, 2026-07-19): no stagger, no cross seams — clean
+  // continuous parallel board lines; per-row tone keeps boards distinct
   const row = Math.floor(y / 8);
-  const stagger = (row % 2) * 16;
-  const seg = Math.floor(((x + stagger) % 32) / 16);
-  const tone = OAK_TONES[Math.floor(hash2(seg, row, 331) * OAK_TONES.length)];
+  const tone = OAK_TONES[Math.floor(hash2(0, row, 331) * OAK_TONES.length)];
   if (y % 8 === 0) return shade(tone, 0.55);
-  if ((x + stagger) % 16 === 0) return shade(tone, 0.6);
   const grain = hash2(x, y, 332);
   if (grain > 0.93) return shade(tone, 0.8);
   if (grain < 0.04) return shade(tone, 1.15);
