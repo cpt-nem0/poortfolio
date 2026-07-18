@@ -103,6 +103,60 @@ describe("workspace furniture colliders", () => {
   });
 });
 
+describe("bedroom furniture colliders", () => {
+  it("bedroom rects are present verbatim", () => {
+    const bedroomRects = [
+      { x: 0.35, z: 2.5, w: 2.1, d: 1.7 }, // bed
+      { x: 0.35, z: 1.85, w: 0.55, d: 0.5 }, // nightstand
+      { x: 2.8, z: 0.3, w: 1.6, d: 0.55 }, // manga dresser
+      { x: 5.6, z: 0.32, w: 0.85, d: 0.5 }, // dragonslayer lean-zone
+      { x: 0.45, z: 5.1, w: 0.4, d: 0.4 }, // plant
+    ];
+
+    for (const rect of bedroomRects) {
+      const found = ground.furniture.some(
+        (f) =>
+          f.x === rect.x && f.z === rect.z && f.w === rect.w && f.d === rect.d
+      );
+      expect(
+        found,
+        `bedroom rect ${JSON.stringify(rect)} not found in furniture`
+      ).toBe(true);
+    }
+  });
+
+  it("SPAWN point with player radius stays clear of all bedroom rects", () => {
+    expect(isBlocked(ground, 4, 3)).toBe(false); // SPAWN point
+  });
+
+  it("bedroom walkway probes all walkable", () => {
+    expect(isBlocked(ground, 4.5, 3.0)).toBe(false); // center
+    expect(isBlocked(ground, 7.5, 3.0)).toBe(false); // door approach
+    expect(isBlocked(ground, 1.6, 4.6)).toBe(false); // foot of bed → rug zone
+    expect(isBlocked(ground, 3.6, 1.5)).toBe(false); // dresser front / about-station zone
+  });
+
+  it("bed blocks players standing on it", () => {
+    expect(isBlocked(ground, 0.35, 2.5)).toBe(true); // bed center
+  });
+
+  it("nightstand blocks players standing on it", () => {
+    expect(isBlocked(ground, 0.35, 1.85)).toBe(true); // nightstand center
+  });
+
+  it("manga dresser blocks players standing on it", () => {
+    expect(isBlocked(ground, 2.8, 0.3)).toBe(true); // dresser center
+  });
+
+  it("dragonslayer lean-zone blocks players standing on it", () => {
+    expect(isBlocked(ground, 5.6, 0.32)).toBe(true); // dragonslayer center
+  });
+
+  it("plant blocks players standing on it", () => {
+    expect(isBlocked(ground, 0.45, 5.1)).toBe(true); // plant center
+  });
+});
+
 describe("staircase collider", () => {
   const roof = HOUSE.areas.roof;
 
