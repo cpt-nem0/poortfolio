@@ -322,6 +322,96 @@ function neonShipped(x, y) {
   return [0, 0, 0, 0];
 }
 
+/* ---- bedroom texture set (Task 2): wall/floor toggle options + soft-furnishing
+   textures. Same seeded hash2/shade idiom as the workspace/nook set above. ---- */
+
+/* ---- wall option: sand — warm sand plaster, soft noise (bedroom default) ---- */
+const SAND = PALETTE.plaster300;
+function wallSand(x, y) {
+  const n = hash2(x, y, 301);
+  if (n > 0.97) return shade(SAND, 1.08);
+  if (n < 0.03) return shade(SAND, 0.82);
+  return shade(SAND, 0.94 + hash2(Math.floor(x / 2), Math.floor(y / 2), 302) * 0.1);
+}
+
+/* ---- wall option: sage — muted sage-green plaster (bedroom toggle) ---- */
+const SAGE = "#8b9574";
+function wallSage(x, y) {
+  const n = hash2(x, y, 311);
+  if (n > 0.97) return shade(SAGE, 1.15);
+  if (n < 0.03) return shade(SAGE, 0.82);
+  return shade(SAGE, 0.94 + hash2(Math.floor(x / 2), Math.floor(y / 2), 312) * 0.1);
+}
+
+/* ---- wall option: dusk — dusty blue-violet plaster (bedroom toggle) ---- */
+const DUSK = "#5f6a8c";
+function wallDusk(x, y) {
+  const n = hash2(x, y, 321);
+  if (n > 0.97) return shade(DUSK, 1.18);
+  if (n < 0.03) return shade(DUSK, 0.82);
+  return shade(DUSK, 0.94 + hash2(Math.floor(x / 2), Math.floor(y / 2), 322) * 0.1);
+}
+
+/* ---- floor option: oak — lighter warmer ramp on floorWalnut's exact plank
+   geometry (same seams/rows) so the toggle compare is apples-to-apples ---- */
+const OAK_TONES = [PALETTE.wood300, "#c9a06a", PALETTE.wood300, PALETTE.wood500];
+function floorOak(x, y) {
+  const row = Math.floor(y / 8);
+  const stagger = (row % 2) * 16;
+  const seg = Math.floor(((x + stagger) % 32) / 16);
+  const tone = OAK_TONES[Math.floor(hash2(seg, row, 331) * OAK_TONES.length)];
+  if (y % 8 === 0) return shade(tone, 0.55);
+  if ((x + stagger) % 16 === 0) return shade(tone, 0.6);
+  const grain = hash2(x, y, 332);
+  if (grain > 0.93) return shade(tone, 0.8);
+  if (grain < 0.04) return shade(tone, 1.15);
+  return shade(tone, 0.95 + hash2(x, Math.floor(y / 8), 333) * 0.1);
+}
+
+/* ---- linen quilt (64×64): 8px diamond grid via 45°-rotated lattice
+   (u=x+y, v=x-y), two-tone warm cream/terracotta with stitched seams and a
+   soft puffed highlight toward each diamond's center ---- */
+function linenQuilt(x, y) {
+  const u = x + y;
+  const v = x - y;
+  const modU = ((u % 8) + 8) % 8;
+  const modV = ((v % 8) + 8) % 8;
+  const cellU = Math.floor(u / 8);
+  const cellV = Math.floor(v / 8);
+  const tone = (cellU + cellV) % 2 === 0 ? PALETTE.cream100 : PALETTE.wood300;
+  if (modU < 1 || modU > 6 || modV < 1 || modV > 6) return shade(tone, 0.78); // stitch seam
+  const puff = 1 - Math.max(Math.abs(modU - 3.5), Math.abs(modV - 3.5)) / 3.5;
+  return shade(tone, 0.92 + puff * 0.14 + hash2(x, y, 341) * 0.04);
+}
+
+/* ---- curtain weave (32×64): loose vertical fabric weave, pale cream, with a
+   gentle sinusoidal wobble on the fold columns and offset weft dashes for a
+   woven (not printed) look ---- */
+const CURTAIN = PALETTE.cream100;
+function curtainWeave(x, y) {
+  const wobble = Math.round(Math.sin(y / 9) * 1.5);
+  const colPhase = ((x + wobble) % 4 + 4) % 4;
+  if (colPhase === 0) return shade(CURTAIN, 0.82 + hash2(x, y, 351) * 0.05); // fold shadow
+  const weftPhase = (y + Math.floor((x + wobble) / 4) * 2) % 3;
+  const base = weftPhase === 0 ? 0.88 : 0.96;
+  return shade(CURTAIN, base + hash2(x, y, 352) * 0.05);
+}
+
+/* ---- braided bedroom rug (64×64, oval-ish, alpha outside): warm-neutral
+   braid rings (tan/cream/brown), distinct palette from rug-kilim/rug-persian
+   which lean red/mustard/purple/teal ---- */
+const BEDROOM_BRAID = [PALETTE.plaster500, PALETTE.cream100, PALETTE.wood500, PALETTE.plaster700];
+function rugBedroom(x, y) {
+  const dx = (x - 31.5) / 1.15; // squash horizontally wider than tall
+  const dy = y - 31.5;
+  const r = Math.sqrt(dx * dx + dy * dy);
+  if (r > 29) return [0, 0, 0, 0];
+  const ring = Math.floor(r / 5) % BEDROOM_BRAID.length;
+  const c = BEDROOM_BRAID[ring];
+  const seam = Math.abs((r % 5) - 2.5) > 2.1;
+  return [...shade(c, (seam ? 0.84 : 0.97) + hash2(x, y, 361) * 0.06), 255];
+}
+
 /* Only textures referenced by src/ belong here — a JOBS entry for a deleted
    PNG silently resurrects it on the next generator run. Prune both together.
    (Variant fns for rejected style-gate options are kept below for reference.) */
@@ -336,6 +426,13 @@ const JOBS = [
   ["poster-gig", 32, 88, posterGig],
   ["poster-wave", 40, 56, posterWave],
   ["poster-moons", 40, 56, posterMoons],
+  ["wall-sand", 32, 32, wallSand],
+  ["wall-sage", 32, 32, wallSage],
+  ["wall-dusk", 32, 32, wallDusk],
+  ["floor-oak", 32, 32, floorOak],
+  ["linen-quilt", 64, 64, linenQuilt],
+  ["curtain-weave", 32, 64, curtainWeave],
+  ["rug-bedroom", 64, 64, rugBedroom],
 ];
 
 for (const [name, w, h, fn] of JOBS) {
