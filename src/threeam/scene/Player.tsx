@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import type { Mesh } from "three";
 import { useKeyboard } from "@/threeam/input/useKeyboard";
 import { HOUSE } from "@/threeam/world/layout";
 import { resolveMovement } from "@/threeam/world/collision";
 import { roomAt, portalAt } from "@/threeam/world/detect";
+import { stationAt } from "@/threeam/world/stations";
 import { playerPosition } from "@/threeam/world/runtime";
 import { useThreeAm } from "@/threeam/state/store";
 
@@ -15,18 +16,26 @@ const SPEED = 3.5; // m/s
 export function Player() {
   const meshRef = useRef<Mesh>(null);
   const keyboard = useKeyboard();
+  const { gl, scene } = useThree();
 
   useEffect(() => {
     if (process.env.NODE_ENV === "production") return;
-    // dev-only handle so browser automation can teleport & inspect state
+    // dev-only handle so browser automation can teleport & inspect state —
+    // also exposes the renderer/scene for perf probing (renderer.info.render
+    // .calls/.triangles, scene.traverse for light counts) without shipping
+    // any of this to production.
     const w = window as unknown as Record<string, unknown>;
-    w.__3am = { playerPosition, store: useThreeAm };
+    w.__3am = { playerPosition, store: useThreeAm, renderer: gl, scene };
     return () => {
       delete w.__3am;
     };
-  }, []);
+  }, [gl, scene]);
 
   useFrame((_, rawDt) => {
+    if (useThreeAm.getState().focus) {
+      keyboard.consumeInteract(); // drain stale E presses while frozen
+      return;
+    }
     const dt = Math.min(rawDt, 0.05); // clamp tab-switch spikes
     const s = useThreeAm.getState();
     const area = HOUSE.areas[s.area];
@@ -52,9 +61,16 @@ export function Player() {
     );
     if (portal?.id !== s.activePortal?.id) s.setActivePortal(portal);
 
-    // E on an armed portal travels immediately (area swap + teleport)
-    if (keyboard.consumeInteract() && portal) {
-      s.travel(portal);
+    const station = stationAt(s.area, playerPosition.x, playerPosition.z);
+    if (station?.id !== s.activeStation?.id) s.setActiveStation(station);
+
+    // E priority: portal travels immediately, else focus the station
+    if (keyboard.consumeInteract()) {
+      if (portal) {
+        s.travel(portal);
+      } else if (station) {
+        s.setFocus(station.id);
+      }
     }
 
     if (meshRef.current) {

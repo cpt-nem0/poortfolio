@@ -21,9 +21,9 @@ describe("house layout", () => {
     );
   });
 
-  it("has a ladder portal up and down between ground and roof", () => {
-    const up = HOUSE.portals.find((p) => p.id === "ladder-up");
-    const down = HOUSE.portals.find((p) => p.id === "ladder-down");
+  it("has a stairs portal up and down between ground and roof", () => {
+    const up = HOUSE.portals.find((p) => p.id === "stairs-up");
+    const down = HOUSE.portals.find((p) => p.id === "stairs-down");
     expect(up?.area).toBe("ground");
     expect(up?.toArea).toBe("roof");
     expect(down?.area).toBe("roof");

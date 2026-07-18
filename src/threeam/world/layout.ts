@@ -54,6 +54,19 @@ const GROUND: Area = {
     { x: 18.1, z: 4.8, w: 1.8, d: 0.8 }, // sofa (sweet spot, facing the console)
     { x: 17.15, z: 4.9, w: 0.6, d: 0.6 }, // coffee table w/ lamp (sofa's left)
     { x: 20.9, z: 4.85, w: 0.6, d: 0.6 }, // guitar corner (cutaway acoustic + electric)
+    // workspace
+    { x: 9.7, z: 0.3, w: 2.6, d: 0.9 }, // desk
+    { x: 10.4, z: 1.5, w: 0.8, d: 0.8 }, // desk chair (shifted west so the desk front reads clear)
+    { x: 8.8, z: 5.15, w: 0.65, d: 0.7 }, // EVA-01 shrine (SW corner) — figure + plinth; widened wave F round 2 (1.8m figure's forward-leaning footprint measures ~8.80-9.41 x, 5.20-5.82 z in-browser)
+    { x: 11.3, z: 5.54, w: 1.4, d: 0.44 }, // coffee counter (south wall, center) — machine + mug rack + lamp on top
+    { x: 13.55, z: 5.3, w: 0.5, d: 0.5 }, // paper-lantern floor lamp (south wall, right of the coffee counter — same rect as the old tripod it replaced)
+    { x: 15.45, z: 3.85, w: 0.44, d: 2.1 }, // full-wall bookshelf (east divider, workspace face, south of doorway — SE corner)
+    // staircase to the roof — full flight footprint (shallow 10-step run
+    // along the east divider). Depth is capped so the expanded blocking
+    // (d + player radius = 2.91) stays clear of the music doorway band
+    // (z 2.2–3.8 at x≈16) AND of the stairs-up portal trigger below
+    // (furniture.test.ts asserts both).
+    { x: 14.65, z: 0, w: 1.1, d: 2.56 },
   ],
   rooms: [
     { id: "bedroom", rect: { x: 0, z: 0, w: 8, d: 6 } },
@@ -66,30 +79,38 @@ const ROOF: Area = {
   id: "roof",
   bounds: { x: 8, z: 0, w: 8, d: 6 },
   walls: [],
-  furniture: [],
+  furniture: [
+    // the same staircase flight emerges here — same footprint as on ground
+    { x: 14.65, z: 0, w: 1.1, d: 2.56 },
+  ],
   rooms: [{ id: "rooftop", rect: { x: 8, z: 0, w: 8, d: 6 } }],
 };
 
 export const HOUSE: { areas: Record<AreaId, Area>; portals: Portal[] } = {
   areas: { ground: GROUND, roof: ROOF },
-  // Both ladder portals share one trigger rect on purpose: the ladder occupies
+  // Both stair portals share one trigger rect on purpose: the flight occupies
   // the same footprint on both floors. If the roof layout changes, split them.
+  // The stairs are SOLID (see the staircase furniture rect, z 0..2.56), so
+  // the trigger sits just south of the collider plus the player radius
+  // (0.35): the player walks up to the base of the flight and presses E.
+  // Its z-extent (3.0–3.7) also stays north of the bookshelf collider
+  // (z 3.85+) so the whole trigger is standable.
   portals: [
     {
-      id: "ladder-up",
+      id: "stairs-up",
       area: "ground",
-      trigger: { x: 14.6, z: 0.2, w: 1.2, d: 1.0 },
+      trigger: { x: 14.6, z: 3.0, w: 1.2, d: 0.7 },
       toArea: "roof",
       toPosition: { x: 12, z: 2 },
-      label: "climb the ladder",
+      label: "go up the stairs",
     },
     {
-      id: "ladder-down",
+      id: "stairs-down",
       area: "roof",
-      trigger: { x: 14.6, z: 0.2, w: 1.2, d: 1.0 },
+      trigger: { x: 14.6, z: 3.0, w: 1.2, d: 0.7 },
       toArea: "ground",
       toPosition: { x: 14, z: 2 },
-      label: "climb down",
+      label: "head downstairs",
     },
   ],
 };

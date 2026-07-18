@@ -9,7 +9,9 @@
     "lint": "eslint",
     "test": "vitest run",
     "gen:textures": "node scripts/pixelart/gen-textures.mjs",
-    "gen:albums": "node scripts/pixelart/gen-albums.mjs"
+    "gen:albums": "node scripts/pixelart/gen-albums.mjs",
+    "gen:projects": "node scripts/pixelart/gen-projects.mjs",
+    "gen:workspace": "node scripts/pixelart/gen-workspace.mjs"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",

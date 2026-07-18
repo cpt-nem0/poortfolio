@@ -42,6 +42,33 @@ function wallStripes(x, y) {
   return shade(base, 0.96 + n * 0.06);
 }
 
+/* ---- wall option E: charcoal — warm dark gray plaster (32×32 tile) ---- */
+const CHARCOAL = "#4a4038";
+function wallCharcoal(x, y) {
+  const n = hash2(x, y, 231);
+  if (n > 0.97) return shade(CHARCOAL, 1.2);
+  if (n < 0.03) return shade(CHARCOAL, 0.8);
+  return shade(CHARCOAL, 0.94 + hash2(Math.floor(x / 2), Math.floor(y / 2), 232) * 0.1);
+}
+
+/* ---- wall option F: midnight — deep desaturated navy plaster (32×32 tile) ---- */
+const MIDNIGHT = "#2b2f47";
+function wallMidnight(x, y) {
+  const n = hash2(x, y, 241);
+  if (n > 0.97) return shade(MIDNIGHT, 1.2);
+  if (n < 0.03) return shade(MIDNIGHT, 0.8);
+  return shade(MIDNIGHT, 0.94 + hash2(Math.floor(x / 2), Math.floor(y / 2), 242) * 0.1);
+}
+
+/* ---- wall option G: forest — deep muted green plaster (32×32 tile) ---- */
+const FOREST = "#3a4a37";
+function wallForest(x, y) {
+  const n = hash2(x, y, 251);
+  if (n > 0.97) return shade(FOREST, 1.2);
+  if (n < 0.03) return shade(FOREST, 0.8);
+  return shade(FOREST, 0.94 + hash2(Math.floor(x / 2), Math.floor(y / 2), 252) * 0.1);
+}
+
 /* ---- rug option B: kilim bands (64×64) ---- */
 const KILIM_BANDS = [
   PALETTE.red500, PALETTE.cream100, "#c98a2e", "#1f5c55",
@@ -258,20 +285,54 @@ function neonSign(x, y) {
   return [0, 0, 0, 0];
 }
 
+/* ---- neon "shipped" sign 62×22: red lowercase tubes, dim halo, transparent
+   bg — same construction as neon-3am. Glyphs are 3×N on an 8-row grid
+   (rows 0-1 ascenders, 2-6 x-height, 6-7 descenders), 1-col gaps, then
+   upscaled 2x at render so the tube strokes stay bold enough to survive
+   the scene's bloom at walking distance. ---- */
+const SHIPPED_GLYPHS = {
+  s: { top: 2, rows: ["111", "100", "111", "001", "111"] },
+  h: { top: 0, rows: ["100", "100", "111", "101", "101", "101", "101"] },
+  i: { top: 0, rows: ["010", "000", "010", "010", "010", "010", "010"] },
+  p: { top: 2, rows: ["111", "101", "101", "111", "100", "100"] },
+  e: { top: 2, rows: ["111", "101", "111", "100", "111"] },
+  d: { top: 0, rows: ["001", "001", "111", "101", "101", "101", "111"] },
+};
+const SHIPPED_WORD = "shipped";
+function neonShipped(x, y) {
+  const ox = 4; // left margin (word is 2×27=54 cols on a 62-col canvas)
+  const oy = 3; // top margin (2×8=16 glyph rows on a 22-row canvas)
+  const lit = (px, py) => {
+    const gx = Math.floor((px - ox) / 2); // 2x upscale
+    const gy = Math.floor((py - oy) / 2);
+    if (px < ox || py < oy || gy > 7) return false;
+    const letter = SHIPPED_GLYPHS[SHIPPED_WORD[Math.floor(gx / 4)]];
+    if (!letter) return false;
+    const col = gx % 4;
+    if (col === 3) return false; // inter-letter gap
+    const row = letter.rows[gy - letter.top];
+    return !!row && row[col] === "1";
+  };
+  if (lit(x, y)) return [255, 150, 140, 255]; // bright tube core
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      if (lit(x + dx, y + dy)) return [230, 57, 50, 105]; // dim halo
+    }
+  }
+  return [0, 0, 0, 0];
+}
+
+/* Only textures referenced by src/ belong here — a JOBS entry for a deleted
+   PNG silently resurrects it on the next generator run. Prune both together.
+   (Variant fns for rejected style-gate options are kept below for reference.) */
 const JOBS = [
   ["neon-3am", 40, 16, neonSign],
+  ["neon-shipped", 62, 22, neonShipped],
   ["wall-teal", 32, 80, wallTeal],
-  ["wall-plum", 32, 32, wallPlum],
-  ["wall-stripes", 32, 32, wallStripes],
+  ["wall-midnight", 32, 32, wallMidnight],
   ["rug-kilim", 64, 64, rugKilim],
-  ["rug-tealfield", 64, 64, rugTealField],
-  ["rug-round", 64, 64, rugRound],
   ["rug-persian", 64, 64, rugPersian],
-  ["rug-berber", 64, 64, rugBerber],
   ["floor-walnut", 32, 32, floorWalnut],
-  ["floor-herringbone", 64, 64, floorHerringbone],
-  ["floor-graywash", 32, 32, floorGraywash],
-  ["floor-checker", 32, 32, floorChecker],
   ["poster-gig", 32, 88, posterGig],
   ["poster-wave", 40, 56, posterWave],
   ["poster-moons", 40, 56, posterMoons],
