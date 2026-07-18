@@ -9,6 +9,7 @@ import { Effects } from "./Effects";
 import { AudioRig } from "./AudioRig";
 import { MusicNook } from "./rooms/MusicNook";
 import { Workspace } from "./rooms/Workspace";
+import { Bedroom } from "./rooms/Bedroom";
 import { useThreeAm } from "@/threeam/state/store";
 
 /**
@@ -60,6 +61,7 @@ export default function Scene() {
         <Suspense fallback={null}>
           <MusicNook />
           <Workspace />
+          <Bedroom />
         </Suspense>
       )}
       <Player />

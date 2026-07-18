@@ -43,7 +43,7 @@ function WallBox({
 const SOUTH_STUB_H = 0.55;
 
 /** Rooms with their own art-passed surfaces skip the debug tint patch. */
-const ART_PASSED = new Set<string>(["music", "workspace"]);
+const ART_PASSED = new Set<string>(["music", "workspace", "bedroom"]);
 
 /** Chunky pixel-art stairs standing in for a portal (replaces the old
  *  ladder — the owner found the ladder "weird"). The flight is anchored
