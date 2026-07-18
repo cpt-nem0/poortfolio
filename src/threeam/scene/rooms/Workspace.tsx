@@ -244,6 +244,101 @@ function Hourglass({ y0, z, x = -0.2 }: { y0: number; z: number; x?: number }) {
   );
 }
 
+/** Loose ceramic cup for the coffee-counter clutter — same cylinder+handle
+ *  proportions as the mug-rack mugs (visual consistency: reads as "one of
+ *  the same mugs, just left out"), optionally on a tiny saucer disc.
+ *  `position` is the saucer/cup base (counter slab top). */
+function LooseCup({
+  position,
+  color,
+  rotY = 0,
+  saucer = true,
+}: {
+  position: [number, number, number];
+  color: string;
+  rotY?: number;
+  saucer?: boolean;
+}) {
+  const base = saucer ? 0.008 : 0;
+  return (
+    <group position={position} rotation={[0, rotY, 0]}>
+      {saucer && (
+        <mesh position={[0, 0.004, 0]}>
+          <cylinderGeometry args={[0.046, 0.046, 0.008, 12]} />
+          <meshStandardMaterial color="#f2ecd8" />
+        </mesh>
+      )}
+      <mesh position={[0, base + 0.026, 0]}>
+        <cylinderGeometry args={[0.026, 0.024, 0.052, 8]} />
+        <meshStandardMaterial color={color} />
+      </mesh>
+      <mesh position={[0.03, base + 0.028, 0]}>
+        <boxGeometry args={[0.012, 0.028, 0.01]} />
+        <meshStandardMaterial color={color} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Squat bean jar — coffee-counter clutter (a jar reads clearer than a
+ *  flat paper bag under the pixel filter at this scale). `position` is
+ *  the counter slab top. */
+function BeanJar({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      <mesh position={[0, 0.032, 0]}>
+        <cylinderGeometry args={[0.045, 0.042, 0.064, 10]} />
+        <meshStandardMaterial color="#3d2b1a" />
+      </mesh>
+      <mesh position={[0, 0.07, 0]}>
+        <cylinderGeometry args={[0.048, 0.048, 0.014, 10]} />
+        <meshStandardMaterial color="#1a1a22" />
+      </mesh>
+      <mesh position={[0, 0.084, 0]}>
+        <cylinderGeometry args={[0.012, 0.012, 0.016, 8]} />
+        <meshStandardMaterial color="#1a1a22" />
+      </mesh>
+    </group>
+  );
+}
+
+/** Tiny desk-mascot plushie — coffee-counter dressing (owner: "maybe some
+ *  figurine-type plushies"). Rounded blocky critter, no IP: a squashed
+ *  sphere body (sits rather than stands), two round ear nubs, a lighter
+ *  belly patch sitting proud of the body surface (7mm, clears the 4mm
+ *  z-fighting floor). `position` is the counter slab top; `scale` sizes
+ *  the whole critter for variety between the two instances. */
+function CoffeePlushie({
+  position,
+  color,
+  rotY = 0,
+  scale = 1,
+}: {
+  position: [number, number, number];
+  color: string;
+  rotY?: number;
+  scale?: number;
+}) {
+  return (
+    <group position={position} rotation={[0, rotY, 0]} scale={scale}>
+      <mesh position={[0, 0.033, 0]} scale={[1, 0.82, 1]}>
+        <sphereGeometry args={[0.04, 8, 6]} />
+        <meshStandardMaterial color={color} />
+      </mesh>
+      {[-0.02, 0.02].map((ex) => (
+        <mesh key={ex} position={[ex, 0.062, 0]}>
+          <sphereGeometry args={[0.011, 6, 5]} />
+          <meshStandardMaterial color={color} />
+        </mesh>
+      ))}
+      <mesh position={[0, 0.033, 0.047]}>
+        <circleGeometry args={[0.018, 8]} />
+        <meshStandardMaterial color="#f2ecd8" />
+      </mesh>
+    </group>
+  );
+}
+
 /** EVA-01 model: "Neon Genesis Evangelion unit-01" by XxAugustoxX
  *  (https://sketchfab.com/garaujoaugusto) via Sketchfab — CC-BY-4.0
  *  (https://sketchfab.com/3d-models/neon-genesis-evangelion-unit-01-5bc7a4fd7ee64fcb8ba2bb3f4832e343).
@@ -462,29 +557,60 @@ function KatanaModel() {
 }
 useGLTF.preload("/3am/models/katana.glb");
 
-/** Coffee machine model: "Coffee machine" by vervoortward
- *  (https://sketchfab.com/vervoortward) via Sketchfab — CC-BY-4.0
- *  (https://sketchfab.com/3d-models/coffee-machine-5aee9b1f39f3400f890040c710467fdf).
- *  Attribution lives in the GLB's asset.extras too. Healthy file (no rig,
- *  no animations); the shipped 18MB was pure geometry (zero textures), so
- *  it was optimized offline with gltf-transform (weld/simplify/prune +
- *  KHR_mesh_quantization — natively supported by three's GLTFLoader, no
- *  decoder needed) down to 2.3MB.
- *  Perf pass (2026-07, room-local jitter fix): that first pass only
- *  quantized bytes — the "simplify" step never actually ran, so the file
- *  still carried 143,510 triangles for a ~0.29m desk prop (inspected with
- *  `gltf-transform inspect`). Re-ran weld → simplify (--ratio 0.1 --error
- *  0.01, i.e. meshoptimizer targets 10% of vertices, constrained to ≤1% of
- *  mesh-radius deviation) → prune → quantize: 2.32MB/143,510 tris →
- *  237KB/14,347 tris (90% fewer triangles). Same 5 meshes/5 materials, same
- *  visual silhouette — verify by eye after this change since the pixel
- *  filter hides most of the difference but the error bound is a target,
- *  not a guarantee. COFFEE_SCALE sizes it to ~0.29m tall on the counter
- *  (sized by DEPTH — the model is deeper than tall and must fit the 0.44
- *  counter top). */
-const COFFEE_SCALE = 0.28;
+/** Coffee machine model v3: "Canarian Cafe - Coffee Machine" by Lanzaman
+ *  (https://sketchfab.com/lanzaboy) via Sketchfab — CC-BY-4.0
+ *  (http://creativecommons.org/licenses/by/4.0/), source:
+ *  https://sketchfab.com/3d-models/canarian-cafe-coffee-machine-17042d9af8c5461e98876064fd80385d.
+ *  Attribution lives in the GLB's asset.extras too. Plain CC-BY this
+ *  time — no NC restriction (the v2 it replaces was CC-BY-NC, which is
+ *  why it's gone along with the owner disliking its look). Third machine
+ *  on this counter: v1 vervoortward (plain), v2 DailyArt (rejected +
+ *  NC-licensed), v3 this one — owner supplied, deliberately BIG (a
+ *  commercial cafe machine claiming the counter's right half).
+ *
+ *  GLB drill: healthy file — no skins/animations (direct JSON-chunk
+ *  parse), 1 mesh/1 material/4 textures. The two Sketchfab corrective
+ *  node transforms (Rx−90°·S(0.286) → Rx+90°·S(0.01)) compose to a pure
+ *  uniform scale (verified by 4×4 multiply — rotation cancels exactly),
+ *  so mesh-local axes are the final axes. Facing: vertex density piles
+ *  up hard at local +Z (the band histogram puts ~80% of vertices in the
+ *  high-Z third — group heads / knobs / drip-tray detail), matching the
+ *  standard Sketchfab front=+Z convention. Room north = −Z, so this one
+ *  DOES need the 180° turn (unlike v2): COFFEE_YAW = π.
+ *
+ *  Shipped 3.34MB — geometry is tiny (13.5k verts); the weight was four
+ *  4096×4096 textures (~90MB VRAM each!) on a countertop prop. Optimized
+ *  in place: weld → simplify (--ratio 0.1 --error 0.01) → prune → resize
+ *  to 512×512 → png recompress → quantize (safe, no skin) = 3.34MB →
+ *  293KB (91% smaller). validate: 0 errors/warnings; the quantize
+ *  dequant-chain was checked by hand to reproduce the original bbox.
+ *  Native linear texture filtering kept (no filter override below).
+ *
+ *  Emissive: the material ships an emissiveTexture with emissiveFactor
+ *  [1,1,1] — full-strength white-scaled emissive (indicator lights /
+ *  display on the machine face). Against our Bloom (threshold 0.6) that
+ *  risks the clipped-white-core failure the pixar lamp hit, so
+ *  emissiveIntensity is clamped to 0.55 below — the dome-lamp family
+ *  value, bright enough to read as powered-on, under the Bloom
+ *  threshold.
+ *
+ *  Sizing (owner: "cover ~50% of the counter" — right half): at 50% of
+ *  the 1.5m slab the machine's 0.699m native depth would scale to
+ *  0.56m, overhanging the 0.42m slab — so per the brief it's scaled BY
+ *  DEPTH instead and the width lands where it lands: SCALE = 0.40 /
+ *  0.699315 → 0.538m wide (35.9% of the slab, 38.4% of the collider
+ *  width), 0.339m tall, 0.40m deep (1cm clear of the slab's front/back
+ *  edges). COFFEE_POS puts the feet (raw ymin is slightly below the
+ *  model origin) flush on the 0.90 slab top and right-aligns the
+ *  machine: x ∈ [0.162, 0.700] counter-local — right edge flush with
+ *  the cabinet body's edge (slab overhangs to 0.75), everything left of
+ *  x≈0.16 free for the dressing. Full arithmetic in the counter group
+ *  below. */
+const COFFEE_SCALE = 0.5719879193007371;
+const COFFEE_POS: [number, number, number] = [0.43113425553242146, 0.9193584135298203, 0.03524972160847606];
+const COFFEE_YAW = Math.PI;
 function CoffeeMachineModel() {
-  const { scene } = useGLTF("/3am/models/coffee-machine.glb");
+  const { scene } = useGLTF("/3am/models/coffee-machine-v3.glb");
   useEffect(() => {
     scene.traverse((obj) => {
       if ((obj as THREE.Mesh).isMesh) {
@@ -495,13 +621,24 @@ function CoffeeMachineModel() {
           mat.userData.coffeeTuned = true; // traverse can re-run (HMR/remount)
           mat.metalness = Math.min(mat.metalness, 0.2);
           mat.roughness = Math.max(mat.roughness, 0.6);
+          // emissiveTexture × emissiveFactor [1,1,1] — clamp below the
+          // Bloom threshold (0.6) so the machine's lit face can't clip
+          // to flat white (see attribution comment above)
+          if (mat.emissiveIntensity > 0.55) mat.emissiveIntensity = 0.55;
         }
       }
     });
   }, [scene]);
-  return <primitive object={scene} scale={COFFEE_SCALE} />;
+  return (
+    <primitive
+      object={scene}
+      position={COFFEE_POS}
+      rotation={[0, COFFEE_YAW, 0]}
+      scale={COFFEE_SCALE}
+    />
+  );
 }
-useGLTF.preload("/3am/models/coffee-machine.glb");
+useGLTF.preload("/3am/models/coffee-machine-v3.glb");
 
 /** Pixar lamp model: "pixar lamp" by yacinebel
  *  (https://sketchfab.com/yacinebel) via Sketchfab — CC-BY-4.0
@@ -522,7 +659,7 @@ useGLTF.preload("/3am/models/coffee-machine.glb");
  *  warm point light is nested in the same group at the model's head
  *  position (rotation-aware — moving/yawing the lamp can never strand its
  *  light). */
-const PIXAR_LAMP_SCALE = 0.0031;
+const PIXAR_LAMP_SCALE = 0.00327; // owner: "9 -> 9.5" size bump
 function PixarLampModel() {
   const { scene } = useGLTF("/3am/models/pixar-lamp.glb");
   useEffect(() => {
@@ -763,9 +900,10 @@ export function Workspace() {
             <meshStandardMaterial color="#e9e5d8" />
           </mesh>
 
-          {/* control pad — front edge, toggles the motor */}
+          {/* control pad — front edge at the RIGHT end (owner ask; real
+              standing desks keep it there), toggles the motor */}
           <group
-            position={[0, -0.06, 0.454]}
+            position={[1.1, -0.06, 0.454]}
             onClick={(e) => {
               e.stopPropagation();
               setStanding((s) => !s);
@@ -859,12 +997,31 @@ export function Workspace() {
                 <planeGeometry args={[0.76, 0.42]} />
                 <meshBasicMaterial map={termTex} />
               </mesh>
-              {/* light bar — visible fixture, subtle downward glow, no shadow */}
-              <mesh position={[0, 0.565, -0.005]}>
-                <boxGeometry args={[0.74, 0.03, 0.045]} />
-                <meshStandardMaterial color="#141419" />
+              {/* light bar — the near-black body vanished against the
+                  midnight wall (owner: "it's not there"), so it gets a
+                  charcoal body + a visible warm LIT strip on the underside
+                  that marks it as the glow's source */}
+              {/* light bar, pixel-art proportions: two subtle attempts got
+                  swallowed by the bezel darks + 4px blocks, so it's chunky
+                  now — floats a visible gap ABOVE the panel top (0.55) on a
+                  mount arm, silhouette break + bloom outline do the reading */}
+              <mesh position={[0, 0.575, -0.01]}>
+                <boxGeometry args={[0.03, 0.05, 0.03]} />
+                <meshStandardMaterial color="#3a3a46" />
               </mesh>
-              <pointLight position={[0, 0.535, 0.06]} color="#ffcf9e" intensity={1.1} distance={1.5} decay={2} />
+              <mesh position={[0, 0.615, 0.03]}>
+                <boxGeometry args={[0.76, 0.05, 0.09]} />
+                <meshStandardMaterial color="#3a3a46" />
+              </mesh>
+              <mesh position={[0, 0.588, 0.04]}>
+                <boxGeometry args={[0.7, 0.01, 0.05]} />
+                <meshStandardMaterial
+                  color="#ffdcb0"
+                  emissive="#ffcf9e"
+                  emissiveIntensity={2.2}
+                />
+              </mesh>
+              <pointLight position={[0, 0.57, 0.11]} color="#ffcf9e" intensity={1.3} distance={1.6} decay={2} />
             </group>
           </group>
 
@@ -904,7 +1061,9 @@ export function Workspace() {
               height toggle. Fixture-attached point light nested in the
               same group at the model's head (no shadow casting — the
               soft-shadow caster budget is fixed). Own Suspense. */}
-          <group position={[-1.05, 0.076, -0.26]}>
+          {/* yawed toward screen-right per owner; rotation on the GROUP so
+              the nested light stays at the shade mouth */}
+          <group position={[-1.05, 0.076, -0.26]} rotation={[0, 0.3, 0]}>
             <Suspense fallback={null}>
               <PixarLampModel />
             </Suspense>
@@ -925,7 +1084,9 @@ export function Workspace() {
               live amendment). Screen is a small pale-blue emissive plane:
               glow, not a light source. Clear of the riser edge (x 0.4)
               and the desk's right edge (x 1.3). */}
-          <group position={[0.72, 0, -0.08]} rotation={[0, -0.35, 0]}>
+          {/* scale bump + terminal on screen (owner, 2026-07-18); footprint
+              at 1.25x still clears the riser (x 0.4) and desk edge (1.3) */}
+          <group position={[0.72, 0, -0.08]} rotation={[0, -0.35, 0]} scale={1.25}>
             {/* stand: two low aluminum rails + plate */}
             {[-0.14, 0.14].map((sx) => (
               <mesh key={sx} position={[sx, 0.025, 0]}>
@@ -937,23 +1098,26 @@ export function Workspace() {
               <boxGeometry args={[0.32, 0.012, 0.22]} />
               <meshStandardMaterial color="#b8b8c0" />
             </mesh>
-            {/* macbook base */}
+            {/* macbook base — space gray (owner) */}
             <mesh position={[0, 0.067, 0.01]}>
               <boxGeometry args={[0.3, 0.012, 0.2]} />
-              <meshStandardMaterial color="#c9c9d1" />
+              <meshStandardMaterial color="#6e6e73" />
             </mesh>
             {/* tilted open screen, hinged at the base's back edge */}
             <group position={[0, 0.073, -0.09]} rotation={[-0.32, 0, 0]}>
+              {/* lid — space gray to match the base */}
               <mesh position={[0, 0.1, 0]}>
                 <boxGeometry args={[0.3, 0.2, 0.008]} />
-                <meshStandardMaterial color="#c9c9d1" />
+                <meshStandardMaterial color="#6e6e73" />
               </mesh>
               {/* screen was 1.5mm proud of the lid front face (z 0.004) —
                   well under the house's 4mm z-fighting floor, the actual
                   flicker source (perf pass, dpr 1 cap). Bumped to 8mm. */}
               <mesh position={[0, 0.1, 0.012]}>
                 <planeGeometry args={[0.27, 0.17]} />
-                <meshStandardMaterial color="#cfe8ff" emissive="#bfe0ff" emissiveIntensity={1.2} />
+                {/* same terminal the monitor runs — reads as one workflow
+                    spread across two screens (unlit map = screen glow) */}
+                <meshBasicMaterial map={termTex} />
               </mesh>
             </group>
           </group>
@@ -1133,59 +1297,105 @@ export function Workspace() {
         <primitive object={evaTargetAcrossR} position={[0.16, 1.85, -0.02]} />
       </group>
 
-      {/* ── coffee counter — collider {11.3,5.54,1.4,0.44}. Wave F: coffee
-          setup centered on the south stub wall. Sideboard-style counter
-          (chunky walnut body, warm wood top), the real coffee-machine GLB
-          on top FACING NORTH into the room, a mug rack + small dome lamp
-          to its right (screen-right from the walking camera = +x). The
-          dome lamp is the only light here (fixture-attached, NO shadow
-          casting); the paper-lantern floor lamp to the east pools over
-          the whole corner. ── */}
+      {/* ── coffee counter — collider {11.3,5.54,1.4,0.44}, waist height
+          ~0.9m (slab top at 0.90). Wave G overhaul (owner: the old
+          hand-built counter "looks really weird and plain"): a real
+          sideboard read — recessed drawer + door fronts with knobs on a
+          dark plinth, a contrasting overhung top slab. Wave G round 2:
+          the big Canarian-cafe machine v3 claims the counter's RIGHT
+          half (owner ask; depth-limited to 36% of the slab width — see
+          CoffeeMachineModel's sizing note), machine x∈[0.162,0.700]
+          counter-local, feet flush on the slab, facing north (yaw π).
+          The dome lamp STAYS on the left end; the dressing redistributed
+          into the remaining left/center: mug rack, one loose cup on a
+          saucer, bean jar, one plushie — the second bare cup and the
+          smaller plushie were CUT so the narrower free surface still
+          breathes. Every stacked front layer (body → recessed reveal →
+          panel face → knob) steps by ≥6mm, the dpr-1 z-fighting minimum.
+          Machine sits 1cm inside the slab's front/back edges; the slab
+          itself sits 2cm inside the 0.44m collider depth and the whole
+          counter (slab included, its widest element) tops out at room
+          x∈[11.25,12.75] — 0.80m clear of the paper-lantern collider's
+          x∈[13.55,14.05], so nothing here can reach it. Dome lamp is the
+          only light here (fixture-attached, NO shadow casting); no new
+          lights added. ── */}
       <group position={[12, 0, 5.76]}>
-        {/* feet */}
-        {[-0.62, 0.62].map((lx) => (
-          <mesh key={lx} position={[lx, 0.045, 0]}>
-            <boxGeometry args={[0.08, 0.09, 0.34]} />
-            <meshStandardMaterial color="#1a1a22" />
-          </mesh>
-        ))}
-        {/* body */}
-        <mesh position={[0, 0.5, 0.01]}>
-          <boxGeometry args={[1.4, 0.82, 0.36]} />
+        {/* plinth — recessed dark base (kickboard), inset from the body so
+            the cabinet reads as standing on a base rather than a slab */}
+        <mesh position={[0, 0.04, 0]}>
+          <boxGeometry args={[1.3, 0.08, 0.3]} />
+          <meshStandardMaterial color="#1a1a22" />
+        </mesh>
+
+        {/* body — full collider width, set back from the slab's overhang */}
+        <mesh position={[0, 0.465, 0]}>
+          <boxGeometry args={[1.4, 0.77, 0.36]} />
           <meshStandardMaterial color="#6b4128" />
         </mesh>
-        {/* front door panels + handles (north face, toward the room) */}
-        {[-0.34, 0.34].map((dx) => (
+
+        {/* drawer band — one wide recessed panel across the top of the
+            body (implies two drawers), two round knobs. Reveal (dark,
+            6mm recessed from the body's front face at z −0.18) → panel
+            face (8mm further back) → knobs (proud of the panel, flush
+            with the body front). */}
+        <mesh position={[0, 0.76, -0.174]}>
+          <boxGeometry args={[1.24, 0.17, 0.02]} />
+          <meshStandardMaterial color="#3a2418" />
+        </mesh>
+        <mesh position={[0, 0.76, -0.166]}>
+          <boxGeometry args={[1.16, 0.11, 0.02]} />
+          <meshStandardMaterial color="#7d4e30" />
+        </mesh>
+        {[-0.28, 0.28].map((kx) => (
+          <mesh key={kx} position={[kx, 0.76, -0.178]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.012, 0.012, 0.018, 8]} />
+            <meshStandardMaterial color="#c9b088" />
+          </mesh>
+        ))}
+
+        {/* door panels — same reveal → face → knob stack as the drawer
+            band, below it */}
+        {[-0.32, 0.32].map((dx) => (
           <group key={dx}>
-            <mesh position={[dx, 0.48, -0.175]}>
-              <boxGeometry args={[0.58, 0.6, 0.02]} />
+            <mesh position={[dx, 0.38, -0.174]}>
+              <boxGeometry args={[0.64, 0.62, 0.02]} />
+              <meshStandardMaterial color="#3a2418" />
+            </mesh>
+            <mesh position={[dx, 0.38, -0.166]}>
+              <boxGeometry args={[0.58, 0.56, 0.02]} />
               <meshStandardMaterial color="#7d4e30" />
             </mesh>
-            <mesh position={[dx + (dx < 0 ? 0.22 : -0.22), 0.52, -0.19]}>
-              <boxGeometry args={[0.02, 0.1, 0.014]} />
+            <mesh
+              position={[dx + (dx < 0 ? 0.24 : -0.24), 0.38, -0.178]}
+              rotation={[Math.PI / 2, 0, 0]}
+            >
+              <cylinderGeometry args={[0.012, 0.012, 0.018, 8]} />
               <meshStandardMaterial color="#c9b088" />
             </mesh>
           </group>
         ))}
-        {/* counter top slab */}
-        <mesh position={[0, 0.935, 0]}>
-          <boxGeometry args={[1.48, 0.05, 0.44]} />
+
+        {/* counter top slab — contrasting warm wood, overhangs the body
+            (1.5 vs 1.4 wide, 0.42 vs 0.36 deep) but stays 2cm inside the
+            0.44 collider depth on both the front and back edges */}
+        <mesh position={[0, 0.875, 0]}>
+          <boxGeometry args={[1.5, 0.05, 0.42]} />
           <meshStandardMaterial color="#a87b4f" />
         </mesh>
 
-        {/* coffee machine (see CoffeeMachineModel's attribution) — facing
-            north, the reasonable way to make coffee. Own Suspense. The
-            offsets compensate the model's off-center origin (measured
-            in-browser): feet exactly on the slab top, footprint inside
-            the slab, back edge ~8mm clear of the stub wall plane. */}
-        <group position={[-0.276, 0.9112, 0.015]} rotation={[0, Math.PI, 0]}>
-          <Suspense fallback={null}>
-            <CoffeeMachineModel />
-          </Suspense>
-        </group>
+        {/* coffee machine v3 (see CoffeeMachineModel's attribution) —
+            the big cafe machine, right-aligned on the counter (right
+            edge flush with the cabinet body edge at x 0.70), facing
+            north. Own Suspense; position/rotation/scale live on the
+            component itself (COFFEE_POS/COFFEE_YAW/COFFEE_SCALE). */}
+        <Suspense fallback={null}>
+          <CoffeeMachineModel />
+        </Suspense>
 
-        {/* mug rack — two-tier stand, mugs in the room's warm palette */}
-        <group position={[0.24, 0.96, 0]}>
+        {/* mug rack — kept, now center-left between the dome lamp and
+            the machine (wave G round 2: the machine took the right
+            half) */}
+        <group position={[-0.33, 0.9, -0.06]}>
           <mesh position={[0, 0.006, 0]}>
             <boxGeometry args={[0.2, 0.012, 0.14]} />
             <meshStandardMaterial color="#8b5e3c" />
@@ -1219,9 +1429,27 @@ export function Workspace() {
           ))}
         </group>
 
-        {/* small dome lamp — right end of the counter (visible fixture,
-            fixture-attached warm light, NO shadow casting) */}
-        <group position={[0.58, 0.96, 0.02]}>
+        {/* bean jar — tucked back-center, against the machine's left
+            shoulder */}
+        <BeanJar position={[-0.08, 0.9, -0.13]} />
+
+        {/* one loose cup on its saucer at the machine's front-left
+            corner — lived-in: fresh pour, not yet carried off. (The
+            second bare cup was cut in round 2 — the machine ate the
+            surface it sat on and the corner reads better with air.) */}
+        <LooseCup position={[0.04, 0.9, 0.14]} color={ACCENTS[3]} rotY={0.4} />
+
+        {/* desk-mascot plushie — front-center, watching the room. (The
+            second smaller plushie was cut in round 2, same breathing-room
+            reasoning as the cup.) */}
+        <CoffeePlushie position={[-0.15, 0.9, 0.13]} color="#c98a2e" rotY={0.4} />
+
+        {/* small dome lamp — MOVED to the machine's LEFT (owner: the
+            paper-lantern to the east already covers the right flank).
+            Fixture geometry + its nested light are unchanged, only the
+            group position moved (0.58 → −0.56) and lifted to the new
+            slab top (0.96 → 0.90). */}
+        <group position={[-0.56, 0.9, 0.02]}>
           <mesh position={[0, 0.014, 0]}>
             <cylinderGeometry args={[0.04, 0.048, 0.028, 10]} />
             <meshStandardMaterial color="#2e2a4d" />
@@ -1280,8 +1508,10 @@ export function Workspace() {
           polaroid/projects wall. Red lowercase tube lettering (generated
           texture, scripts/pixelart/gen-variants.mjs) + a low red glow.
           The sign itself is the fixture — no shadow casting. ── */}
+      {/* sized down from 1.7×0.6 (owner: "wayyy too big") — the finer
+          pixel grid keeps it legible at this size */}
       <mesh position={[8.9, 1.83, 0.045]}>
-        <planeGeometry args={[1.7, 0.6]} />
+        <planeGeometry args={[1.15, 0.406]} />
         <meshBasicMaterial map={neonShippedTex} transparent />
       </mesh>
       <pointLight position={[8.9, 1.83, 0.3]} color="#ff5040" intensity={2.5} distance={2.8} decay={2} />
