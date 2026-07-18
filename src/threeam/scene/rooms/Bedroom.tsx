@@ -63,6 +63,54 @@ const LAMP_BASE_Y = NS_TOP_Y + LAMP_BASE_H / 2;
 const LAMP_NECK_Y = NS_TOP_Y + LAMP_BASE_H + LAMP_NECK_H / 2;
 const LAMP_SHADE_Y = NS_TOP_Y + LAMP_BASE_H + LAMP_NECK_H + LAMP_SHADE_H / 2 + 0.005;
 
+// west window (Task 7) — surface-mounted unit on the west wall's interior
+// face (x = R.x + 0.011, same plane as the wallW mesh). Sill (y=1.0) sits
+// 0.14m above the headboard top (BED_HEAD_H=0.86) — same wall, same
+// z-band as the bed, confirmed clear (see task-7 report for the table).
+const WIN_Z0 = 2.55;
+const WIN_Z1 = 3.95;
+const WIN_W = WIN_Z1 - WIN_Z0; // 1.4
+const WIN_ZC = (WIN_Z0 + WIN_Z1) / 2; // 3.25
+const WIN_SILL_Y = 1.0;
+const WIN_TOP_Y = 2.3;
+const WIN_H = WIN_TOP_Y - WIN_SILL_Y; // 1.3
+const WIN_YC = (WIN_SILL_Y + WIN_TOP_Y) / 2; // 1.65
+
+// stack, +x outward from the wall plane (x = R.x + 0.011) — each layer
+// ≥6mm clear of the previous (wall → frame → glass → curtain).
+const WIN_FRAME_RAIL_T = 0.06; // jamb/rail thickness
+const WIN_FRAME_NEAR_X = 0.02; // 9mm off the wall (0.02 - 0.011)
+const WIN_FRAME_DEPTH = 0.05;
+const WIN_FRAME_FAR_X = WIN_FRAME_NEAR_X + WIN_FRAME_DEPTH; // 0.07
+const WIN_FRAME_CX = WIN_FRAME_NEAR_X + WIN_FRAME_DEPTH / 2; // 0.045
+const WIN_GLASS_X = WIN_FRAME_FAR_X + 0.01; // 0.08 — 10mm off the frame's far face
+const WIN_CURTAIN_X = WIN_GLASS_X + 0.012; // 0.092 — 12mm off the glass
+const WIN_ROD_X = WIN_CURTAIN_X + 0.003; // same "curtain" layer as the fabric, just proud of it
+
+// glass opening (inset inside the jambs/rails)
+const WIN_GLASS_Z0 = WIN_Z0 + WIN_FRAME_RAIL_T;
+const WIN_GLASS_Z1 = WIN_Z1 - WIN_FRAME_RAIL_T;
+const WIN_GLASS_W = WIN_GLASS_Z1 - WIN_GLASS_Z0; // 1.28
+const WIN_GLASS_Y0 = WIN_SILL_Y + WIN_FRAME_RAIL_T;
+const WIN_GLASS_Y1 = WIN_TOP_Y - WIN_FRAME_RAIL_T;
+const WIN_GLASS_H = WIN_GLASS_Y1 - WIN_GLASS_Y0; // 1.18
+
+// curtain — covers ~40% of the window width, hung from the west (Z0) side;
+// top/bottom pulled in 2cm from the rail/sill so it can't clip the frame.
+const WIN_CURTAIN_W = WIN_W * 0.4; // 0.56
+const WIN_CURTAIN_TOP = WIN_TOP_Y - 0.02; // 2.28
+const WIN_CURTAIN_BOT = WIN_SILL_Y + 0.02; // 1.02
+const WIN_CURTAIN_H = WIN_CURTAIN_TOP - WIN_CURTAIN_BOT; // 1.26
+const WIN_CURTAIN_YC = (WIN_CURTAIN_TOP + WIN_CURTAIN_BOT) / 2; // 1.65
+const WIN_CURTAIN_ZC = WIN_Z0 + WIN_CURTAIN_W / 2;
+
+// faux moon floor patch — stays clear of the rug (mesh below, centered
+// 2.9,3.9, half-extents 1.2×0.85 → rug's x-range starts at 1.7). Patch's
+// x max (1.3) sits 0.4m short of that, so no z-fight risk at y=0.04.
+const MOON_PATCH_X = 0.65;
+const MOON_PATCH_W = 1.3;
+const MOON_PATCH_D = 1.7;
+
 /* ── style-gate tuning toggles (temp code, stripped once Rohan picks —
    precedent commits e545fd1/6347c04). Key 1 cycles walls, key 2 cycles
    floors. Both lists start at the owner's current best guess (sand walls,
@@ -94,6 +142,7 @@ const FLOOR_VARIANTS = [
 export function Bedroom() {
   const R = BEDROOM;
   const rootRef = useRef<THREE.Group>(null);
+  const moonPatchRef = useRef<THREE.Mesh>(null);
 
   useEffect(() => {
     rootRef.current?.traverse((obj) => {
@@ -102,6 +151,15 @@ export function Bedroom() {
         obj.receiveShadow = true;
       }
     });
+  }, []);
+
+  // faux moon patch (Task 7) must not receive shadows (brief: "receiveShadow
+  // false" — a fake light pool getting a real shadow cast across it reads as
+  // a bug). The traverse effect above runs first (declared earlier) and
+  // blanket-sets every descendant mesh to receiveShadow=true, so re-assert
+  // false here, after it, same single-mount-only pattern.
+  useEffect(() => {
+    if (moonPatchRef.current) moonPatchRef.current.receiveShadow = false;
   }, []);
 
   const [wallIdx, setWallIdx] = useState(0);
@@ -131,6 +189,8 @@ export function Bedroom() {
   // rug — single alpha-cutout image (oval shape baked into the PNG), same
   // repeat(1,1) + transparent convention as MusicNook's rugKilim.
   const rugTex = usePixelTexture("/3am/tex/rug-bedroom.png", 1, 1);
+  // curtain — tiled once per meter, same convention as quilt/floor/wall.
+  const curtainTex = usePixelTexture("/3am/tex/curtain-weave.png", WIN_CURTAIN_W, WIN_CURTAIN_H);
 
   return (
     <group ref={rootRef}>
@@ -190,6 +250,113 @@ export function Bedroom() {
       <mesh position={[R.x + R.w - 0.145, 0.09, 4.9]}>
         <boxGeometry args={[0.07, 0.18, 2.2]} />
         <meshStandardMaterial color="#4a3a2e" />
+      </mesh>
+
+      {/* ── west window (Task 7) — surface-mounted night-window unit on the
+          wall's interior face (x = R.x + 0.011). +x outward stack: wall →
+          frame → jamb far face → glass → curtain, each ≥6mm clear (see
+          task-7 report table). Sits directly above the bed headboard
+          (top 0.86) with a 14cm clear gap to the sill (1.0) — same wall
+          face, same z-band, non-overlapping by construction. The glass is
+          an emissive SURFACE only (moon ≤0.8 intensity, tiny star dots,
+          Bloom threshold 0.6) — zero new lights, no-invisible-lights rule
+          stays intact. ── */}
+      {/* frame — dark wood border box set: two jambs + top rail + inner
+          sill trim, all WIN_FRAME_DEPTH deep, centered on WIN_FRAME_CX */}
+      <mesh position={[R.x + WIN_FRAME_CX, WIN_YC, R.z + WIN_Z0 + WIN_FRAME_RAIL_T / 2]}>
+        <boxGeometry args={[WIN_FRAME_DEPTH, WIN_H, WIN_FRAME_RAIL_T]} />
+        <meshStandardMaterial color="#3a2a1e" />
+      </mesh>
+      <mesh position={[R.x + WIN_FRAME_CX, WIN_YC, R.z + WIN_Z1 - WIN_FRAME_RAIL_T / 2]}>
+        <boxGeometry args={[WIN_FRAME_DEPTH, WIN_H, WIN_FRAME_RAIL_T]} />
+        <meshStandardMaterial color="#3a2a1e" />
+      </mesh>
+      <mesh position={[R.x + WIN_FRAME_CX, WIN_TOP_Y - WIN_FRAME_RAIL_T / 2, R.z + WIN_ZC]}>
+        <boxGeometry args={[WIN_FRAME_DEPTH, WIN_FRAME_RAIL_T, WIN_W]} />
+        <meshStandardMaterial color="#3a2a1e" />
+      </mesh>
+      <mesh position={[R.x + WIN_FRAME_CX, WIN_SILL_Y + WIN_FRAME_RAIL_T / 2, R.z + WIN_ZC]}>
+        <boxGeometry args={[WIN_FRAME_DEPTH, WIN_FRAME_RAIL_T, WIN_W]} />
+        <meshStandardMaterial color="#3a2a1e" />
+      </mesh>
+
+      {/* protruding sill ledge — top surface flush at WIN_SILL_Y, sticks
+          out past the frame's far face (0.07) for a real windowsill read */}
+      <mesh position={[R.x + 0.06, WIN_SILL_Y - 0.015, R.z + WIN_ZC]}>
+        <boxGeometry args={[0.1, 0.03, WIN_W + 0.1]} />
+        <meshStandardMaterial color="#2e2116" />
+      </mesh>
+
+      {/* glass — night-sky base plane (flat unlit color, no texture) plus
+          a tiny emissive moon disc and 3 star dots layered a sub-mm in
+          front to dodge z-fighting (not a new stack layer — see report).
+          moon emissiveIntensity 0.7 (≤0.8 ceiling); stars 0.55, radius
+          0.008 — tiny enough that neither clips under Bloom (thresh 0.6). */}
+      <mesh position={[R.x + WIN_GLASS_X, WIN_YC, R.z + WIN_ZC]} rotation={[0, Math.PI / 2, 0]}>
+        <planeGeometry args={[WIN_GLASS_W, WIN_GLASS_H]} />
+        <meshBasicMaterial color="#101830" />
+      </mesh>
+      <mesh
+        position={[R.x + WIN_GLASS_X + 0.002, 1.95, R.z + 3.65]}
+        rotation={[0, Math.PI / 2, 0]}
+      >
+        <circleGeometry args={[0.11, 20]} />
+        <meshStandardMaterial color="#dfe6ff" emissive="#dfe6ff" emissiveIntensity={0.7} />
+      </mesh>
+      {[
+        { y: 1.85, z: 2.75 },
+        { y: 2.1, z: 2.9 },
+        { y: 1.75, z: 3.35 },
+      ].map(({ y, z }) => (
+        <mesh
+          key={`star-${y}-${z}`}
+          position={[R.x + WIN_GLASS_X + 0.002, y, R.z + z]}
+          rotation={[0, Math.PI / 2, 0]}
+        >
+          <circleGeometry args={[0.008, 8]} />
+          <meshStandardMaterial color="#f0f4ff" emissive="#f0f4ff" emissiveIntensity={0.55} />
+        </mesh>
+      ))}
+
+      {/* curtain rod — thin bar above the frame top, slight overhang past
+          the jambs each side */}
+      <mesh
+        position={[R.x + WIN_ROD_X, WIN_TOP_Y + 0.06, R.z + WIN_ZC]}
+        rotation={[Math.PI / 2, 0, 0]}
+      >
+        <cylinderGeometry args={[0.012, 0.012, WIN_W + 0.2, 8]} />
+        <meshStandardMaterial color="#2e2a4d" />
+      </mesh>
+
+      {/* curtain — curtain-weave texture, hung from the rod covering ~40%
+          of the window from the west side. Small added z-rotation on top
+          of the wall-facing y-rotation so it reads as hanging fabric, not
+          a flat board. transparent:false per brief — a solid drape, not a
+          cutout like the rug. */}
+      <mesh
+        position={[R.x + WIN_CURTAIN_X, WIN_CURTAIN_YC, R.z + WIN_CURTAIN_ZC]}
+        rotation={[0, Math.PI / 2, 0.05]}
+      >
+        <planeGeometry args={[WIN_CURTAIN_W, WIN_CURTAIN_H]} />
+        <meshStandardMaterial map={curtainTex} transparent={false} side={2} />
+      </mesh>
+
+      {/* faux moon floor patch — barely-visible cool overlay sloping from
+          the window into the room. Zero lights added (fake light pool
+          only); stays clear of the rug in x (see MOON_PATCH_W comment
+          above), so no z-fight risk at y=0.04. receiveShadow re-forced
+          false in the effect above (mount traverse otherwise flips every
+          descendant mesh back to true). Delete this one mesh if it reads
+          wrong at the gate. */}
+      <mesh
+        ref={moonPatchRef}
+        name="moon-floor-patch"
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[R.x + MOON_PATCH_X, 0.04, R.z + WIN_ZC]}
+        receiveShadow={false}
+      >
+        <planeGeometry args={[MOON_PATCH_W, MOON_PATCH_D]} />
+        <meshBasicMaterial color="#26304d" transparent opacity={0.18} />
       </mesh>
 
       {/* ── bed — collider {0.35,2.5,2.1,1.7}. Low walnut-family frame,
