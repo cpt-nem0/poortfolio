@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import type { Mesh } from "three";
 import { useKeyboard } from "@/threeam/input/useKeyboard";
 import { HOUSE } from "@/threeam/world/layout";
@@ -16,16 +16,20 @@ const SPEED = 3.5; // m/s
 export function Player() {
   const meshRef = useRef<Mesh>(null);
   const keyboard = useKeyboard();
+  const { gl, scene } = useThree();
 
   useEffect(() => {
     if (process.env.NODE_ENV === "production") return;
-    // dev-only handle so browser automation can teleport & inspect state
+    // dev-only handle so browser automation can teleport & inspect state —
+    // also exposes the renderer/scene for perf probing (renderer.info.render
+    // .calls/.triangles, scene.traverse for light counts) without shipping
+    // any of this to production.
     const w = window as unknown as Record<string, unknown>;
-    w.__3am = { playerPosition, store: useThreeAm };
+    w.__3am = { playerPosition, store: useThreeAm, renderer: gl, scene };
     return () => {
       delete w.__3am;
     };
-  }, []);
+  }, [gl, scene]);
 
   useFrame((_, rawDt) => {
     if (useThreeAm.getState().focus) {

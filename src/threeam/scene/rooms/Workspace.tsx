@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { usePixelTexture } from "../usePixelTexture";
 import { useThreeAm } from "@/threeam/state/store";
 import { site } from "@/content/site";
@@ -289,7 +290,16 @@ function Hourglass({ y0, z, x = -0.2 }: { y0: number; z: number; x?: number }) {
  *  height-threshold check meant to drop the 4 real trim meshes). Textures
  *  were left untouched throughout (only the coffee-machine/pixar-lamp GLBs
  *  were pure geometry with nothing to lose there; this one ships 3 real
- *  2048px JPEGs that quantize doesn't touch anyway). */
+ *  2048px JPEGs that quantize doesn't touch anyway).
+ *
+ *  Perf pass (2026-07, room-local jitter fix): the 47-mesh static bake
+ *  above was 47 separate draw calls sharing only 16 materials. Left the
+ *  GLB itself untouched (re-baking via a CLI `join` risks desyncing the
+ *  per-mesh bounding-box trim check this component's runtime bake depends
+ *  on) and instead merge the baked static Meshes by material AT RUNTIME,
+ *  once per mount, right after the skin-strip loop below — see the
+ *  `created`/`byMaterial` block. Cuts EVA's draw calls from 47 to ~16
+ *  (one per material) with identical triangle count and pixel output. */
 const EVA_SCALE = 0.001063;
 function EvaModel() {
   const { scene } = useGLTF("/3am/models/eva-01.glb");
@@ -298,6 +308,7 @@ function EvaModel() {
     scene.traverse((o) => {
       if ((o as THREE.SkinnedMesh).isSkinnedMesh) skinned.push(o as THREE.SkinnedMesh);
     });
+    const created: THREE.Mesh[] = [];
     for (const sm of skinned) {
       const geo = sm.geometry;
       // skeleton-space trim (tiny bind bbox) can't join the static bake —
@@ -321,6 +332,59 @@ function EvaModel() {
       const parent = sm.parent;
       parent?.add(st);
       parent?.remove(sm);
+      created.push(st);
+    }
+
+    // draw-call reduction (perf pass, 2026-07 — room-local jitter fix): the
+    // bake above yields up to 47 static Meshes scattered across the
+    // original skeleton's node hierarchy, sharing only 16 materials — every
+    // one is its own draw call. Merge geometries that share a material into
+    // a single Mesh, baking each source mesh's transform relative to THIS
+    // component's `scene` root (not full world space) into the merged
+    // vertices first, so the outer <primitive position/rotation/scale>
+    // below still places the whole figure correctly. Only groups whose
+    // geometries share an identical attribute set are merged — a mismatch
+    // (e.g. a mesh missing UVs) would otherwise corrupt mergeGeometries'
+    // output. Runs once per mount (created is empty on HMR re-runs, since
+    // the skin-strip loop above only finds SkinnedMesh nodes once), never
+    // per frame.
+    if (created.length > 0) {
+      scene.updateMatrixWorld(true);
+      const sceneInverse = new THREE.Matrix4().copy(scene.matrixWorld).invert();
+      const byMaterial = new Map<THREE.Material, THREE.Mesh[]>();
+      for (const m of created) {
+        const mat = m.material as THREE.Material;
+        if (!byMaterial.has(mat)) byMaterial.set(mat, []);
+        byMaterial.get(mat)!.push(m);
+      }
+      for (const [mat, meshes] of byMaterial) {
+        if (meshes.length < 2) continue;
+        const geoms: THREE.BufferGeometry[] = [];
+        let attrsMatch = true;
+        for (const m of meshes) {
+          m.updateMatrixWorld(true);
+          const localMatrix = sceneInverse.clone().multiply(m.matrixWorld);
+          const g = m.geometry.clone();
+          g.applyMatrix4(localMatrix);
+          if (
+            geoms.length > 0 &&
+            Object.keys(g.attributes).sort().join(",") !==
+              Object.keys(geoms[0].attributes).sort().join(",")
+          ) {
+            attrsMatch = false;
+            break;
+          }
+          geoms.push(g);
+        }
+        if (!attrsMatch) continue;
+        const merged = mergeGeometries(geoms, false);
+        if (!merged) continue;
+        for (const m of meshes) m.parent?.remove(m);
+        const combined = new THREE.Mesh(merged, mat);
+        combined.castShadow = true;
+        combined.receiveShadow = true;
+        scene.add(combined);
+      }
     }
     // room convention + material sanity under the warm room lighting
     scene.traverse((obj) => {
@@ -405,9 +469,19 @@ useGLTF.preload("/3am/models/katana.glb");
  *  no animations); the shipped 18MB was pure geometry (zero textures), so
  *  it was optimized offline with gltf-transform (weld/simplify/prune +
  *  KHR_mesh_quantization — natively supported by three's GLTFLoader, no
- *  decoder needed) down to 2.3MB. COFFEE_SCALE sizes it to ~0.29m tall on
- *  the counter (sized by DEPTH — the model is deeper than tall and must
- *  fit the 0.44 counter top). */
+ *  decoder needed) down to 2.3MB.
+ *  Perf pass (2026-07, room-local jitter fix): that first pass only
+ *  quantized bytes — the "simplify" step never actually ran, so the file
+ *  still carried 143,510 triangles for a ~0.29m desk prop (inspected with
+ *  `gltf-transform inspect`). Re-ran weld → simplify (--ratio 0.1 --error
+ *  0.01, i.e. meshoptimizer targets 10% of vertices, constrained to ≤1% of
+ *  mesh-radius deviation) → prune → quantize: 2.32MB/143,510 tris →
+ *  237KB/14,347 tris (90% fewer triangles). Same 5 meshes/5 materials, same
+ *  visual silhouette — verify by eye after this change since the pixel
+ *  filter hides most of the difference but the error bound is a target,
+ *  not a guarantee. COFFEE_SCALE sizes it to ~0.29m tall on the counter
+ *  (sized by DEPTH — the model is deeper than tall and must fit the 0.44
+ *  counter top). */
 const COFFEE_SCALE = 0.28;
 function CoffeeMachineModel() {
   const { scene } = useGLTF("/3am/models/coffee-machine.glb");
@@ -435,11 +509,19 @@ useGLTF.preload("/3am/models/coffee-machine.glb");
  *  Attribution lives in the GLB's asset.extras too. Healthy file (no rig,
  *  no animations); shipped 4.7MB of untextured geometry, optimized offline
  *  with gltf-transform (weld/simplify/prune + KHR_mesh_quantization) to
- *  2.0MB. Replaces the wave-B hand-built articulated desk lamp. Lives
- *  INSIDE the desk's riding group so it glides with the motorized height
- *  toggle; the warm point light is nested in the same group at the
- *  model's head position (rotation-aware — moving/yawing the lamp can
- *  never strand its light). */
+ *  2.0MB.
+ *  Perf pass (2026-07, room-local jitter fix): same story as the coffee
+ *  machine — that pass never actually simplified, so it still carried
+ *  116,318 triangles. Re-ran weld → simplify (--ratio 0.1 --error 0.01) →
+ *  prune → quantize: 1.99MB/116,318 tris → 606KB/22,218 tris (81% fewer
+ *  triangles; simplify stopped short of the 10% target ratio because it hit
+ *  the 1%-of-mesh-radius error bound first, on the fine ribbed shade
+ *  geometry). Same 5 meshes/5 materials — verify by eye after this change.
+ *  Replaces the wave-B hand-built articulated desk lamp. Lives INSIDE the
+ *  desk's riding group so it glides with the motorized height toggle; the
+ *  warm point light is nested in the same group at the model's head
+ *  position (rotation-aware — moving/yawing the lamp can never strand its
+ *  light). */
 const PIXAR_LAMP_SCALE = 0.0031;
 function PixarLampModel() {
   const { scene } = useGLTF("/3am/models/pixar-lamp.glb");
