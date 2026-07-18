@@ -246,24 +246,36 @@ function Hourglass({ y0, z, x = -0.2 }: { y0: number; z: number; x?: number }) {
 /** EVA-01 model: "Neon Genesis Evangelion unit-01" by XxAugustoxX
  *  (https://sketchfab.com/garaujoaugusto) via Sketchfab — CC-BY-4.0
  *  (https://sketchfab.com/3d-models/neon-genesis-evangelion-unit-01-5bc7a4fd7ee64fcb8ba2bb3f4832e343).
- *  Attribution lives in the GLB's asset.extras too. Rendered statically in bind pose
- *  (see the rig note inside); bind space is ~1698 units tall and EVA_SCALE
- *  brings it to ~1.4m standing on the plinth.
- *  Wrapped in its own Suspense at the call site so the 4.5MB fetch never
+ *  Attribution lives in the GLB's asset.extras too.
+ *
+ *  This Sketchfab FBX conversion ships a broken rig: 47 of 51 meshes have
+ *  vertex data authored in a ~1700-unit space while the skeleton (and its
+ *  inverse bind matrices) live in a ~11-unit space, so GPU skinning throws
+ *  the body ~150x off-scale (each mesh is rigidly bound 100% to a single
+ *  joint — WEIGHTS_0 is [1,0,0,0] everywhere — so this isn't subtle blend
+ *  skinning gone wrong, it's a flat unit-space mismatch). No animations
+ *  ship, so the fix is to drop skinning entirely and render the bind pose
+ *  statically: plain Meshes reusing the same geometry/materials, using
+ *  each SkinnedMesh's own local transform (not its joint matrices) — valid
+ *  because the vertex data is already pre-baked into that big bind-pose
+ *  space. The remaining 4 meshes are trim authored directly in the small
+ *  skeleton space (relies on the joint matrix to reach correct scale);
+ *  those go sub-pixel under this shortcut and are dropped.
+ *
+ *  Wave F round 2 (2026-07) swapped in a 2x-texture re-download of the same
+ *  model (2048x2048 maps, up from 1024) — same 51-mesh structure, same
+ *  broken rig (skinCount still 51/51; confirmed via a temp runtime probe,
+ *  not by assuming the old file's quirks carried over). Do not remove this
+ *  bake without re-verifying skin state against whatever GLB is current.
+ *
+ *  Bind space is ~1698 units tall; EVA_SCALE brings it to 1.8m standing on
+ *  the plinth (bumped from 1.4m — Rohan wanted it much bigger).
+ *  Wrapped in its own Suspense at the call site so the ~5.3MB fetch never
  *  blocks the rest of the room's first paint. */
-const EVA_SCALE = 0.000825;
+const EVA_SCALE = 0.001063;
 function EvaModel() {
   const { scene } = useGLTF("/3am/models/eva-01.glb");
   useEffect(() => {
-    /* This Sketchfab FBX conversion ships a broken rig: most meshes'
-       vertices live in a ~1700-unit space while the skeleton (and its
-       inverse bind matrices) live in a ~11-unit space, so GPU skinning
-       throws the body ~150x off-scale (only a few trim meshes authored in
-       skeleton space landed right). There are no animations, so the fix is
-       to drop skinning entirely and render the bind pose statically —
-       plain Meshes reusing the same geometry/materials. The few
-       skeleton-space trim meshes become sub-pixel at this scale and are
-       dropped with the rest of the skinning. */
     const skinned: THREE.SkinnedMesh[] = [];
     scene.traverse((o) => {
       if ((o as THREE.SkinnedMesh).isSkinnedMesh) skinned.push(o as THREE.SkinnedMesh);
@@ -271,11 +283,14 @@ function EvaModel() {
     for (const sm of skinned) {
       const geo = sm.geometry;
       // skeleton-space trim (tiny bind bbox) can't join the static bake —
-      // it was authored 155x smaller; skip it (sub-pixel at figure scale)
+      // it was authored ~150x smaller than the main body meshes; skip it
+      // (sub-pixel at figure scale). Threshold sits in the clean gap
+      // between the trim cluster (~1.7-2.7 units) and the smallest
+      // legitimate body-space mesh (~9.9 units).
       geo.computeBoundingBox();
       const bb = geo.boundingBox!;
       const h = bb.max.y - bb.min.y;
-      if (h < 50) {
+      if (h < 8) {
         sm.parent?.remove(sm);
         continue;
       }
@@ -299,6 +314,15 @@ function EvaModel() {
           mat.userData.evaTuned = true; // traverse can re-run (HMR/remount)
           mat.metalness = Math.min(mat.metalness, 0.2);
           mat.roughness = Math.max(mat.roughness, 0.6);
+          // this GLB ships a couple of emissive materials (glowing eyes,
+          // an indicator light) authored at emissiveIntensity up to 10 —
+          // sane for whatever exposure the source scene used, but wildly
+          // hot combined with our own Bloom pass (threshold 0.6): it was
+          // blowing those spots (and their bloom halo) to flat white and
+          // washing out the surrounding purple/green armor color, which is
+          // what actually read as "distorted" up close. Clamp to a glow
+          // that still pops without flattening detail.
+          if (mat.emissiveIntensity > 1.5) mat.emissiveIntensity = 1.5;
         }
       }
     });
@@ -815,13 +839,24 @@ export function Workspace() {
         ))}
       </group>
 
-      {/* ── EVA-01 shrine — collider {8.8,5.15,0.6,0.6}. Wave E built a
+      {/* ── EVA-01 shrine — collider {8.8,5.15,0.65,0.7}. Wave E built a
           blocky figurine; Wave F swapped in Rohan's downloaded Sketchfab
           model (attribution on EvaModel). Unit-01 stands on a tall dark
           plinth, showcased by a sunset wash: a small can on the plinth
           corner aimed up at the figure (visible fixture, spotlight
           attached, NO shadow casting — same family as the nook's sunset
-          lamp). ── */}
+          lamp).
+          Wave F round 2: figure bumped 1.4m → 1.8m (owner wanted it
+          much bigger). The spotlight's aim was raised (1.7 → 2.0) and its
+          cone widened (0.65 → 0.75 rad) so the taller head still sits
+          inside the beam; intensity was cut 22 → 5 — at the old value the
+          torso (now much closer to the fixed low fixture) blew out to
+          flat white/yellow under Bloom, which is what actually read as
+          "distorted" up close (confirmed by toggling the light off: the
+          purple/green/orange material colors underneath were fine all
+          along). Plinth height (0.4) and collider position are unchanged;
+          only the width/depth grew slightly to cover the bigger figure's
+          forward-leaning footprint. ── */}
       <group position={[9.1, 0, 5.45]} rotation={[0, -0.35, 0]}>
         {/* tall museum plinth — lifts the figure above the dollhouse
             south-stub cutoff (the camera can't see below y≈1.0 this deep
@@ -860,14 +895,14 @@ export function Workspace() {
       <spotLight
         position={[9.21, 0.49, 5.66]}
         target={evaTarget}
-        angle={0.65}
+        angle={0.75}
         penumbra={0.55}
-        intensity={22}
+        intensity={5}
         distance={4}
         decay={1.4}
         color="#ff7a5c"
       />
-      <primitive object={evaTarget} position={[9.05, 1.7, 5.4]} />
+      <primitive object={evaTarget} position={[9.05, 2.0, 5.4]} />
 
       {/* ── tripod floor lamp — collider {13.55,5.3,0.5,0.5}. Wave E: the
           relocated "lamp with a shelf in it" ask — three wooden legs, a
