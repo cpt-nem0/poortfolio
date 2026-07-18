@@ -5,7 +5,7 @@ import type { AreaId, Rect } from "./layout";
  * prompt; E (or clicking the station's meshes) focuses it — the camera
  * flies to `camera` and a content panel opens. Pure data, no three/React.
  */
-export type StationId = "projects" | "experience";
+export type StationId = "projects" | "experience" | "about";
 
 export type Station = {
   id: StationId;
@@ -35,6 +35,20 @@ export const STATIONS: Station[] = [
     // pos is raised + offset west of the look point so the sightline clears
     // a player standing anywhere in the trigger (no shared x with look)
     camera: { pos: [11.4, 3.4, 4.4], look: [13.4, 1.7, 0.2] },
+  },
+  {
+    id: "about",
+    area: "ground",
+    // standing zone in front of the manga dresser (north wall), just south
+    // of the dresser's collider (z 0.3-0.85) so the whole trigger is clear
+    trigger: { x: 2.7, z: 1.0, w: 1.9, d: 1.15 },
+    label: "about me",
+    // pos is SE of the dresser, above head height; look is at the dresser +
+    // wall composition. pos and look share no axis coordinate (5.4/3.3/3.2
+    // vs 3.0/1.35/0.4). Sightline clearance over the trigger verified in the
+    // P4 T4 report via closest-approach analysis (min height ~1.49m at the
+    // west trigger corner, clears the 1.4m head-height requirement).
+    camera: { pos: [5.4, 3.3, 3.2], look: [3.0, 1.35, 0.4] },
   },
 ];
 

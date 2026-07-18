@@ -83,9 +83,36 @@ function ExperienceContent() {
   );
 }
 
+function AboutContent() {
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-3 text-xs leading-relaxed text-[#9d8fd8]">
+        {site.about.paragraphs.map((p, i) => (
+          <p key={i}>{p}</p>
+        ))}
+      </div>
+      <ul className="flex flex-wrap gap-3">
+        {site.socials.map((s) => (
+          <li key={s.label}>
+            <a
+              href={s.href}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded border border-[#453a63] bg-[#14101f]/80 px-3 py-1.5 text-xs text-[#f2ecd8] transition-colors hover:border-[#ffb35c] hover:text-[#ffb35c]"
+            >
+              {s.label} ↗
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 const PANEL_TITLES = {
   projects: "things i've built",
   experience: "places i've worked",
+  about: "who i am",
 } as const;
 
 export function StationPanel() {
@@ -110,7 +137,13 @@ export function StationPanel() {
         </button>
       </header>
       <div className="flex-1 overflow-y-auto px-5 py-4">
-        {focus === "projects" ? <ProjectsContent /> : <ExperienceContent />}
+        {focus === "projects" ? (
+          <ProjectsContent />
+        ) : focus === "experience" ? (
+          <ExperienceContent />
+        ) : (
+          <AboutContent />
+        )}
       </div>
       <footer className="border-t border-[#453a63] px-5 py-2 text-[10px] text-[#7d729e]">
         ESC to step back
