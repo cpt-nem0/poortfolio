@@ -59,11 +59,12 @@ const GROUND: Area = {
     { x: 10.7, z: 1.5, w: 0.8, d: 0.8 }, // desk chair
     { x: 8.85, z: 5.2, w: 0.45, d: 0.45 }, // storage-shelf lamp (SW corner, west wall, south of door) — replaces the old drawer + floor lamp
     { x: 15.45, z: 3.85, w: 0.44, d: 2.1 }, // full-wall bookshelf (east divider, workspace face, south of doorway — SE corner)
-    // staircase to the roof — full flight footprint (steps + handrail).
-    // Must NOT overlap the stairs-up portal trigger below: the trigger sits
-    // south of this rect plus the player radius so the prompt spot is
-    // reachable (furniture.test.ts asserts both).
-    { x: 14.65, z: 0, w: 1.1, d: 1.82 },
+    // staircase to the roof — full flight footprint (shallow 10-step run
+    // along the east divider). Depth is capped so the expanded blocking
+    // (d + player radius = 2.91) stays clear of the music doorway band
+    // (z 2.2–3.8 at x≈16) AND of the stairs-up portal trigger below
+    // (furniture.test.ts asserts both).
+    { x: 14.65, z: 0, w: 1.1, d: 2.56 },
   ],
   rooms: [
     { id: "bedroom", rect: { x: 0, z: 0, w: 8, d: 6 } },
@@ -78,7 +79,7 @@ const ROOF: Area = {
   walls: [],
   furniture: [
     // the same staircase flight emerges here — same footprint as on ground
-    { x: 14.65, z: 0, w: 1.1, d: 1.82 },
+    { x: 14.65, z: 0, w: 1.1, d: 2.56 },
   ],
   rooms: [{ id: "rooftop", rect: { x: 8, z: 0, w: 8, d: 6 } }],
 };
@@ -87,14 +88,16 @@ export const HOUSE: { areas: Record<AreaId, Area>; portals: Portal[] } = {
   areas: { ground: GROUND, roof: ROOF },
   // Both stair portals share one trigger rect on purpose: the flight occupies
   // the same footprint on both floors. If the roof layout changes, split them.
-  // The stairs are SOLID (see the staircase furniture rect, z 0..1.82), so
+  // The stairs are SOLID (see the staircase furniture rect, z 0..2.56), so
   // the trigger sits just south of the collider plus the player radius
   // (0.35): the player walks up to the base of the flight and presses E.
+  // Its z-extent (3.0–3.7) also stays north of the bookshelf collider
+  // (z 3.85+) so the whole trigger is standable.
   portals: [
     {
       id: "stairs-up",
       area: "ground",
-      trigger: { x: 14.6, z: 2.2, w: 1.2, d: 0.8 },
+      trigger: { x: 14.6, z: 3.0, w: 1.2, d: 0.7 },
       toArea: "roof",
       toPosition: { x: 12, z: 2 },
       label: "go up the stairs",
@@ -102,7 +105,7 @@ export const HOUSE: { areas: Record<AreaId, Area>; portals: Portal[] } = {
     {
       id: "stairs-down",
       area: "roof",
-      trigger: { x: 14.6, z: 2.2, w: 1.2, d: 0.8 },
+      trigger: { x: 14.6, z: 3.0, w: 1.2, d: 0.7 },
       toArea: "ground",
       toPosition: { x: 14, z: 2 },
       label: "head downstairs",

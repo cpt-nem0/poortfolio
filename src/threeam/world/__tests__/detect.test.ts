@@ -18,12 +18,12 @@ describe("roomAt", () => {
 
 describe("portalAt", () => {
   it("finds the stairs when standing on its trigger", () => {
-    const p = portalAt(HOUSE.portals, "ground", 15.2, 2.6);
+    const p = portalAt(HOUSE.portals, "ground", 15.2, 3.35);
     expect(p?.id).toBe("stairs-up");
   });
 
   it("ignores portals of other areas", () => {
-    expect(portalAt(HOUSE.portals, "roof", 15.2, 2.6)?.id).toBe("stairs-down");
+    expect(portalAt(HOUSE.portals, "roof", 15.2, 3.35)?.id).toBe("stairs-down");
   });
 
   it("returns null away from triggers", () => {

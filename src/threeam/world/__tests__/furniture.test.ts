@@ -86,23 +86,25 @@ describe("staircase collider", () => {
   it("the flight is solid on the ground floor (no phasing through)", () => {
     expect(isBlocked(ground, 15.2, 0.5)).toBe(true); // upper stringer
     expect(isBlocked(ground, 15.2, 1.0)).toBe(true); // mid flight
-    expect(isBlocked(ground, 15.2, 1.7)).toBe(true); // bottom steps
+    expect(isBlocked(ground, 15.2, 1.7)).toBe(true); // lower flight
+    expect(isBlocked(ground, 15.2, 2.4)).toBe(true); // bottom steps (long shallow run)
   });
 
   it("the flight is solid on the roof too", () => {
     expect(isBlocked(roof, 15.2, 0.5)).toBe(true);
-    expect(isBlocked(roof, 15.2, 1.7)).toBe(true);
+    expect(isBlocked(roof, 15.2, 2.4)).toBe(true);
   });
 
   it("the base trigger area stays walkable on both floors", () => {
-    expect(isBlocked(ground, 15.2, 2.6)).toBe(false); // trigger center
-    expect(isBlocked(roof, 15.2, 2.6)).toBe(false);
+    expect(isBlocked(ground, 15.2, 3.35)).toBe(false); // trigger center
+    expect(isBlocked(roof, 15.2, 3.35)).toBe(false);
   });
 
   it("walkways around the flight stay open", () => {
     expect(isBlocked(ground, 14.0, 1.0)).toBe(false); // west of the flight
-    expect(isBlocked(ground, 15.2, 2.3)).toBe(false); // just south of the base
+    expect(isBlocked(ground, 15.2, 3.1)).toBe(false); // just south of the base
     expect(isBlocked(ground, 16, 3)).toBe(false); // doorway into the music nook
+    expect(isBlocked(ground, 14.7, 3.35)).toBe(false); // rug spot toward the room
   });
 });
 
