@@ -104,15 +104,26 @@ describe("workspace furniture colliders", () => {
 });
 
 describe("bedroom furniture colliders", () => {
-  // SUPER-KING pass: bed centered on the north wall (x 2.9-5.1, x-center
-  // 4.0 unchanged) and enlarged again ({2.0,2.25}→{2.2,2.5}). The
-  // dragonslayer lean-zone rect is REMOVED (sword parked for the future
-  // gaming den). Nightstand and plant are untouched.
+  // FURNISHING WAVE (owner's final bedroom design sketch, 2026-07-19): the
+  // single nightstand is replaced by a flanking twin pair, and eight new
+  // pieces land (twin nightstands, sofa, sunset-lamp stool, cat bed, bench,
+  // hanger stand, perfume stand, second plant). Bed and first plant are
+  // untouched. Every pairwise gap below was verified programmatically
+  // (node script, zero overlaps) before landing — see p4-furnish-report.md
+  // for the full clearance table.
   it("bedroom rects are present verbatim", () => {
     const bedroomRects = [
       { x: 2.9, z: 0.33, w: 2.2, d: 2.5 }, // bed (headboard north, centered on the wall, SUPER-KING)
-      { x: 6.45, z: 0.95, w: 0.55, d: 0.5 }, // nightstand (bed's east flank)
+      { x: 2.25, z: 0.4, w: 0.55, d: 0.5 }, // west nightstand
+      { x: 5.25, z: 0.4, w: 0.55, d: 0.5 }, // east nightstand
       { x: 0.45, z: 5.1, w: 0.4, d: 0.4 }, // plant
+      { x: 0.95, z: 5.15, w: 0.35, d: 0.35 }, // second plant
+      { x: 0.6, z: 0.4, w: 0.95, d: 0.95 }, // sofa
+      { x: 5.85, z: 0.42, w: 0.4, d: 0.4 }, // sunset-lamp stool
+      { x: 7.05, z: 0.45, w: 0.55, d: 0.55 }, // cat bed
+      { x: 3.5, z: 2.95, w: 1.2, d: 0.4 }, // bed-front bench
+      { x: 3.3, z: 5.35, w: 2.2, d: 0.5 }, // clothes hanger stand
+      { x: 6.55, z: 5.3, w: 1.0, d: 0.5 }, // perfume stand
     ];
 
     for (const rect of bedroomRects) {
@@ -125,6 +136,13 @@ describe("bedroom furniture colliders", () => {
         `bedroom rect ${JSON.stringify(rect)} not found in furniture`
       ).toBe(true);
     }
+  });
+
+  it("the old single nightstand rect is gone (replaced by the twin pair)", () => {
+    const found = ground.furniture.some(
+      (f) => f.x === 6.45 && f.z === 0.95 && f.w === 0.55 && f.d === 0.5
+    );
+    expect(found).toBe(false);
   });
 
   it("the manga dresser rect is gone (removed for now)", () => {
@@ -146,8 +164,16 @@ describe("bedroom furniture colliders", () => {
       a.x < b.x + b.w && b.x < a.x + a.w && a.z < b.z + b.d && b.z < a.z + a.d;
     const bedroomRects = [
       { name: "bed", r: { x: 2.9, z: 0.33, w: 2.2, d: 2.5 } },
-      { name: "nightstand", r: { x: 6.45, z: 0.95, w: 0.55, d: 0.5 } },
+      { name: "west nightstand", r: { x: 2.25, z: 0.4, w: 0.55, d: 0.5 } },
+      { name: "east nightstand", r: { x: 5.25, z: 0.4, w: 0.55, d: 0.5 } },
       { name: "plant", r: { x: 0.45, z: 5.1, w: 0.4, d: 0.4 } },
+      { name: "second plant", r: { x: 0.95, z: 5.15, w: 0.35, d: 0.35 } },
+      { name: "sofa", r: { x: 0.6, z: 0.4, w: 0.95, d: 0.95 } },
+      { name: "sunset-lamp stool", r: { x: 5.85, z: 0.42, w: 0.4, d: 0.4 } },
+      { name: "cat bed", r: { x: 7.05, z: 0.45, w: 0.55, d: 0.55 } },
+      { name: "bed-front bench", r: { x: 3.5, z: 2.95, w: 1.2, d: 0.4 } },
+      { name: "clothes hanger stand", r: { x: 3.3, z: 5.35, w: 2.2, d: 0.5 } },
+      { name: "perfume stand", r: { x: 6.55, z: 5.3, w: 1.0, d: 0.5 } },
       { name: "balcony west rail", r: { x: -1.56, z: 2.3, w: 0.06, d: 2.2 } },
       { name: "balcony north rail", r: { x: -1.5, z: 2.3, w: 1.5, d: 0.06 } },
       { name: "balcony south rail", r: { x: -1.5, z: 4.44, w: 1.5, d: 0.06 } },
@@ -163,61 +189,111 @@ describe("bedroom furniture colliders", () => {
   });
 
   it("SPAWN point with player radius stays clear of all bedroom rects", () => {
-    expect(isBlocked(ground, 4, 3.6)).toBe(false); // SPAWN point
+    expect(isBlocked(ground, 4, 4.3)).toBe(false); // SPAWN point
   });
 
-  it("SPAWN clears the super-king bed's far edge by exactly 42cm", () => {
-    // bed far z edge = 0.33 + 2.5 = 2.83; + player radius 0.35 = 3.18;
-    // SPAWN.z = 3.6, so the margin is 3.6 - 3.18 = 0.42m. Directly under
-    // the spawn's x (4.0, inside the bed's 2.9-5.1 x-span), so this is the
-    // closest-approach probe, not a diagonal corner case.
-    expect(isBlocked(ground, 4, 3.18)).toBe(false); // 3.18 = tangent point, still clear (strict <)
-    expect(isBlocked(ground, 4, 3.17)).toBe(true); // 1cm inside the 0.35 radius = blocked
+  it("SPAWN clears the bed-front bench's far edge by exactly 95cm", () => {
+    // bench: {x:3.5, z:2.95, w:1.2, d:0.4} → z-span 2.95-3.35, x-span
+    // 3.5-4.7. SPAWN.x (4.0) is inside the bench's x-span, so this is a
+    // straight z-gap probe, not a diagonal corner case: bench far z edge
+    // (3.35) + player radius (0.35) = 3.70 is the tangent point.
+    // 4.3 - 3.70 = 0.60m of open margin past the tangent point (and
+    // 4.3 - 3.35 = 0.95m from the bench's edge itself, the "95cm" in the
+    // title, matching the earlier SUPER-KING pass's clearance-by-title
+    // convention of citing the raw edge gap).
+    expect(isBlocked(ground, 4, 3.70)).toBe(false); // 3.70 = tangent point, still clear (strict <)
+    expect(isBlocked(ground, 4, 3.69)).toBe(true); // 1cm inside the 0.35 radius = blocked
   });
 
-  it("the old SPAWN point {4,3} is now blocked by the super-king bed", () => {
-    // bed far z edge (2.83) + player radius (0.35) = 3.18 > 3.0 — this is
-    // exactly why SPAWN moved.
+  it("the old SPAWN point {4,3} is still blocked by the super-king bed", () => {
+    // bed far z edge (2.83) + player radius (0.35) = 3.18 > 3.0.
     expect(isBlocked(ground, 4, 3)).toBe(true);
   });
 
+  it("the P4-SUPER-KING SPAWN point {4,3.6} is now blocked by the bed-front bench", () => {
+    // bench far z edge (3.35) + player radius (0.35) = 3.70 > 3.6 — this is
+    // exactly why SPAWN moved again, from {4,3.6} to {4,4.3}.
+    expect(isBlocked(ground, 4, 3.6)).toBe(true);
+  });
+
   it("bedroom walkway probes all walkable", () => {
-    expect(isBlocked(ground, 4.5, 3.6)).toBe(false); // open floor, south of the centered bed
+    expect(isBlocked(ground, 4.5, 4.3)).toBe(false); // open floor, south of the bench, at the new spawn's z
     expect(isBlocked(ground, 7.5, 3.0)).toBe(false); // door approach
-    expect(isBlocked(ground, 1.6, 4.6)).toBe(false); // open floor west of the room, south side
-    expect(isBlocked(ground, 2.0, 0.5)).toBe(false); // open floor — the manga dresser's old spot (removed for now)
+    expect(isBlocked(ground, 1.6, 4.6)).toBe(false); // open floor west of the room, south side (between the hanger and the plants)
+    expect(isBlocked(ground, 2.0, 1.8)).toBe(false); // open floor between the sofa and the west nightstand (z=1.8 clears both z-ranges)
+    expect(isBlocked(ground, 6.0, 3.5)).toBe(false); // open floor east of the bench, between it and the about trigger
   });
 
   it("bed blocks players standing on it", () => {
     expect(isBlocked(ground, 2.9, 0.33)).toBe(true); // bed rect corner
   });
 
-  it("nightstand blocks players standing on it", () => {
-    expect(isBlocked(ground, 6.45, 0.95)).toBe(true); // nightstand rect corner
+  it("west nightstand blocks players standing on it", () => {
+    expect(isBlocked(ground, 2.25, 0.4)).toBe(true); // rect corner
+  });
+
+  it("east nightstand blocks players standing on it", () => {
+    expect(isBlocked(ground, 5.25, 0.4)).toBe(true); // rect corner
   });
 
   it("plant blocks players standing on it", () => {
     expect(isBlocked(ground, 0.45, 5.1)).toBe(true); // plant center
   });
 
+  it("second plant blocks players standing on it", () => {
+    expect(isBlocked(ground, 0.95, 5.15)).toBe(true); // rect corner
+  });
+
+  it("sofa blocks players standing on it", () => {
+    expect(isBlocked(ground, 0.6, 0.4)).toBe(true); // rect corner
+  });
+
+  it("sunset-lamp stool blocks players standing on it", () => {
+    expect(isBlocked(ground, 5.85, 0.42)).toBe(true); // rect corner
+  });
+
+  it("cat bed blocks players standing on it", () => {
+    expect(isBlocked(ground, 7.05, 0.45)).toBe(true); // rect corner
+  });
+
+  it("bed-front bench blocks players standing on it", () => {
+    expect(isBlocked(ground, 3.5, 2.95)).toBe(true); // rect corner
+  });
+
+  it("clothes hanger stand blocks players standing on it", () => {
+    expect(isBlocked(ground, 3.3, 5.35)).toBe(true); // rect corner
+  });
+
+  it("perfume stand blocks players standing on it", () => {
+    expect(isBlocked(ground, 6.55, 5.3)).toBe(true); // rect corner
+  });
+
   it("the old bed/nightstand spots along the west wall are open floor now", () => {
     expect(isBlocked(ground, 1.5, 3.5)).toBe(false); // old bed footprint
-    expect(isBlocked(ground, 0.6, 2.1)).toBe(false); // old nightstand footprint
+    // old single-nightstand footprint from the P4-recenter pass, still
+    // clear of the new sofa (sofa's z-max 1.35 is well short of z=2.1)
+    expect(isBlocked(ground, 0.6, 2.1)).toBe(false);
   });
 
   it("the old window table spot (removed — balcony wave) is open floor now", () => {
     expect(isBlocked(ground, 0.35, 2.7)).toBe(false);
   });
 
-  it("the old dragonslayer spot is open floor again — the super-king bed doesn't reach it", () => {
-    // the super-king bed (x 2.9-5.1) doesn't reach x=6.55, and the
-    // dragonslayer rect itself is gone — nothing left to block here.
-    // (6.55, 0.32) — the rect's own former corner — is skipped as a probe:
-    // it sits within the player radius of the z=0 north wall (0.32-0.35 <
-    // 0), so it reads "blocked" from the bounds check alone regardless of
-    // furniture; not a useful probe for "is the dragonslayer gone".
-    expect(isBlocked(ground, 6.55, 0.55)).toBe(false);
-    expect(isBlocked(ground, 6.0, 0.55)).toBe(false);
+  it("the old dragonslayer spot is now covered by the cat bed and its approach", () => {
+    // the old dragonslayer rect ({x:6.55,z:0.32,w:0.85,d:0.5}, x 6.55-7.4)
+    // is gone, but this wave's cat bed ({x:7.05,z:0.45,w:0.55,d:0.55})
+    // reoccupies most of that footprint, and the sunset-lamp stool
+    // (x 5.85-6.25) sits close enough (0.3m gap to x=6.55, inside the 0.35
+    // player radius) to also reach into it — so the spot reads "furnished
+    // again", just by different pieces. (6.55, 0.55): nearest stool edge is
+    // x=6.25, dx=0.3 < 0.35 radius → blocked by the stool, not the (absent)
+    // dragonslayer rect nor the cat bed (nearest cat-bed edge is x=7.05,
+    // dx=0.5, clear on its own).
+    expect(isBlocked(ground, 6.55, 0.55)).toBe(true);
+    // (7.2, 0.7) sits inside the cat bed's own footprint (x 7.05-7.6,
+    // z 0.45-1.0) — directly blocked by the new furniture, not a proximity
+    // effect.
+    expect(isBlocked(ground, 7.2, 0.7)).toBe(true);
   });
 });
 

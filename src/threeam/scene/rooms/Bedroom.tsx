@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { usePixelTexture } from "../usePixelTexture";
@@ -20,11 +20,8 @@ export const BEDROOM = { x: 0, z: 0, w: 8, d: 6 };
 // relocation land with the eclipse/den plans. The manga dresser is still
 // REMOVED FOR NOW (P4 recenter, unrelated to this pass) — its old rect (x
 // 2.8-4.4) overlapped the centered bed's x-span; it returns in a later
-// step. Nightstand is unchanged (verified still clear of the bigger bed —
-// see layout.ts's `// bedroom` section, the verbatim source of truth, and
-// furniture.test.ts's exhaustive pairwise clearance check).
+// step.
 const BED_RECT = { x: 2.9, z: 0.33, w: 2.2, d: 2.5 };
-const NIGHTSTAND_RECT = { x: 6.45, z: 0.95, w: 0.55, d: 0.5 };
 const PLANT_RECT = { x: 0.45, z: 5.1, w: 0.4, d: 0.4 };
 // window table + west window — REMOVED (P4 balcony wave, owner's final
 // design sketch): the whole west-wall night-window unit (frame, glass,
@@ -38,10 +35,40 @@ const PLANT_RECT = { x: 0.45, z: 5.1, w: 0.4, d: 0.4 };
 // (never hand-guessed, same rule as every other mesh in this section).
 const SCONCE_X = BED_RECT.x + BED_RECT.w / 2; // 4.0
 
-const NIGHTSTAND_CENTER = {
-  x: NIGHTSTAND_RECT.x + NIGHTSTAND_RECT.w / 2,
-  z: NIGHTSTAND_RECT.z + NIGHTSTAND_RECT.d / 2,
+// ── FURNISHING WAVE (owner's final bedroom design sketch, 2026-07-19) ──
+// the single nightstand ({6.45,0.95,0.55,0.5}) is REMOVED and replaced by a
+// flanking twin pair (see layout.ts's `// bedroom` section, verbatim source
+// of truth); eight more pieces land in this pass (sofa, sunset-lamp stool,
+// cat bed, bed-front bench, clothes hanger, perfume stand, second plant,
+// plus the poster wall + mirror which have no colliders). Every rect below
+// is copied verbatim from layout.ts — p4-furnish-report.md has the full
+// pairwise-clearance arithmetic (checked programmatically, zero overlaps).
+const NIGHTSTAND_W_RECT = { x: 2.25, z: 0.4, w: 0.55, d: 0.5 };
+const NIGHTSTAND_E_RECT = { x: 5.25, z: 0.4, w: 0.55, d: 0.5 };
+const SOFA_RECT = { x: 0.6, z: 0.4, w: 0.95, d: 0.95 };
+const STOOL_RECT = { x: 5.85, z: 0.42, w: 0.4, d: 0.4 };
+const CATBED_RECT = { x: 7.05, z: 0.45, w: 0.55, d: 0.55 };
+const BENCH_RECT = { x: 3.5, z: 2.95, w: 1.2, d: 0.4 };
+const HANGER_RECT = { x: 3.3, z: 5.35, w: 2.2, d: 0.5 };
+const PERFUME_RECT = { x: 6.55, z: 5.3, w: 1.0, d: 0.5 };
+const PLANT2_RECT = { x: 0.95, z: 5.15, w: 0.35, d: 0.35 };
+
+const NIGHTSTAND_W_CENTER = {
+  x: NIGHTSTAND_W_RECT.x + NIGHTSTAND_W_RECT.w / 2,
+  z: NIGHTSTAND_W_RECT.z + NIGHTSTAND_W_RECT.d / 2,
 };
+const NIGHTSTAND_E_CENTER = {
+  x: NIGHTSTAND_E_RECT.x + NIGHTSTAND_E_RECT.w / 2,
+  z: NIGHTSTAND_E_RECT.z + NIGHTSTAND_E_RECT.d / 2,
+};
+const SOFA_CENTER = { x: SOFA_RECT.x + SOFA_RECT.w / 2, z: SOFA_RECT.z + SOFA_RECT.d / 2 };
+const STOOL_CENTER = { x: STOOL_RECT.x + STOOL_RECT.w / 2, z: STOOL_RECT.z + STOOL_RECT.d / 2 };
+const CATBED_CENTER = { x: CATBED_RECT.x + CATBED_RECT.w / 2, z: CATBED_RECT.z + CATBED_RECT.d / 2 };
+const BENCH_CENTER = { x: BENCH_RECT.x + BENCH_RECT.w / 2, z: BENCH_RECT.z + BENCH_RECT.d / 2 };
+const HANGER_CENTER = { x: HANGER_RECT.x + HANGER_RECT.w / 2, z: HANGER_RECT.z + HANGER_RECT.d / 2 };
+const PERFUME_CENTER = { x: PERFUME_RECT.x + PERFUME_RECT.w / 2, z: PERFUME_RECT.z + PERFUME_RECT.d / 2 };
+const PLANT2_CENTER = { x: PLANT2_RECT.x + PLANT2_RECT.w / 2, z: PLANT2_RECT.z + PLANT2_RECT.d / 2 };
+
 const PLANT_CENTER = { x: PLANT_RECT.x + PLANT_RECT.w / 2, z: PLANT_RECT.z + PLANT_RECT.d / 2 };
 
 // bed — real Sketchfab GLB (see BedModel's attribution comment below for
@@ -88,35 +115,45 @@ const BED_MODEL_POS: [number, number, number] = [3.81887070230198985563792430745
 // is now the room's only warm light on this wall — bumped one step to
 // compensate (see its own comment).
 
-// cat (Task 9, re-seated P4, re-seated again for the P4 recenter, and
-// again for the SUPER-KING pass) — curls at the GLB bed's foot corner, ON
-// its measured top surface (foot-area vertex cluster, ~90th-percentile
-// height — see BedModel's comment). World-space (no longer nested in a
-// bed-local group, since that group carries the model's own rotation).
-// Re-derived using the same formulas, just fed the new scale/pos: foot
-// edge world Z = Tz + s*(Zmin + local_Z_range) = 1.700911 +
-// 0.00457054*(-295.569372+538.23) = 2.81 (a clean number — coincidental,
-// not rounded, same as the P4-recenter pass's 2.56); Z inset stays 0.26m
-// off that edge: 2.81-0.26=2.55. X offset stays off the width centerline
-// (still 4.0 — BED_RECT's center didn't move, only its size grew), same
-// +0.10 offset: 4.0+0.10=4.10, unchanged from the P4-recenter pass. Y
-// (on-surface height) scales linearly with the model, same rule as every
-// prior pass: 0.3755 * (s_new/s_old) = 0.3755 * 1.1131221719 = 0.4180
-// (ratio = 2.46/2.21 exactly, the two BED_RECT.d-minus-margin figures,
-// since both scales share the /538.23 denominator).
-const CAT_X = 4.1;
-const CAT_Y = 0.418;
-const CAT_Z = 2.55;
+// cat (Task 9, re-seated P4, re-seated again for the P4 recenter, the
+// SUPER-KING pass, and now the FURNISHING WAVE) — STALE ABOVE: every prior
+// derivation (foot-corner vertex cluster, Tz/Zmin/Xc arithmetic) described
+// curling on the GLB bed's own top surface. The owner's ask this wave is
+// "move the cat to her cat bed" (CATBED_RECT, NE corner) — she no longer
+// sits on the bed at all, so none of that GLB-surface math applies anymore
+// (kept above only as history for the bed's own foot-surface height, which
+// other future props could still want). The new perch is this file's own
+// constructed geometry (CATBED_PAD_H below), not a probed mesh, so the
+// derivation is direct: CAT_Y is exactly the inner pad's top surface
+// (CATBED_PAD_H, world y since the pad sits on the floor at y=0), and
+// CAT_X/CAT_Z sit at the pad's center (CATBED_CENTER) — a round bed has no
+// "foot corner" to inset from, so the cat curls dead-center on the pad
+// (rotationY left at the component's own default, same curl look as
+// before).
+const CAT_X = CATBED_CENTER.x;
+const CAT_Z = CATBED_CENTER.z;
 
-// nightstand — cabinet kept (its hand-built lamp was removed when the GLB
-// bed's own lamp took over as hero fixture; that GLB lamp is now ALSO gone,
-// lamp-cut pass — the wall sconce (relocated over the headboard, SUPER-KING
-// pass) is the room's only warm light on this wall, see its own comment).
-// Heights still stack off the nightstand's
-// actual top surface (NS_TOP_Y), never a hand-guessed y.
+// nightstands — cabinet pair (FURNISHING WAVE replaced the single east-side
+// nightstand with a flanking twin; both share the exact same body/top/
+// drawer construction and each gets its own small lamp on top — see the
+// twin-nightstand JSX below). Heights still stack off the shared top
+// surface constant (NS_TOP_Y), never a hand-guessed y.
 const NS_BODY_H = 0.46;
 const NS_TOP_T = 0.03;
 const NS_TOP_Y = NS_BODY_H + NS_TOP_T; // top surface, world y = 0.49
+
+// cat bed (FURNISHING WAVE) — round pet bed: a torus cushion ring (donut,
+// lying flat) with a flat inner pad nested inside it. Ring tube radius sets
+// the ring's own height off the floor (its bottom touches y=0, so the
+// torus's local-Y center sits exactly one tube-radius up); pad height is
+// independent (it's a separate flat cylinder, not derived from the ring).
+// Both radii sized to fit inside CATBED_RECT's half-extent (0.275m) with
+// margin: ring outer edge = CATBED_RING_R + CATBED_RING_TUBE = 0.26m < 0.275.
+const CATBED_RING_R = 0.19; // torus path radius (ring's own center-line)
+const CATBED_RING_TUBE = 0.07; // torus tube radius
+const CATBED_PAD_R = 0.16;
+const CATBED_PAD_H = 0.05; // inner pad height — this IS the cat's on-surface Y
+const CAT_Y = CATBED_PAD_H;
 
 // ── west balcony (P4 balcony wave, owner's final design sketch) — the
 // bedroom's west wall becomes a glass sliding door onto a small step-out
@@ -135,10 +172,13 @@ const DECK_RECT = { x: -1.5, z: 2.3, w: 1.5, d: 2.2 }; // deck floor footprint, 
 // railing rects — verbatim, layout.ts's BALCONY_RAIL_W/N/S (source of truth
 // for collision; duplicated here only because Bedroom.tsx doesn't import
 // layout.ts's private consts, same pattern as every other furniture rect
-// in this file, e.g. BED_RECT/NIGHTSTAND_RECT above).
+// in this file, e.g. BED_RECT/NIGHTSTAND_W_RECT above). RAIL_S — layout.ts's
+// BALCONY_RAIL_S — is deliberately NOT duplicated here: its collider stays
+// (layout.ts is still the source of truth for it), but this wave makes the
+// south rail invisible (owner's ask, dollhouse-cutaway convention — see the
+// railing JSX below), so there's nothing here that needs its own rect copy.
 const RAIL_W_RECT = { x: -1.56, z: 2.3, w: 0.06, d: 2.2 };
 const RAIL_N_RECT = { x: -1.5, z: 2.3, w: 1.5, d: 0.06 };
-const RAIL_S_RECT = { x: -1.5, z: 4.44, w: 1.5, d: 0.06 };
 const RAIL_TOP_Y = 0.95; // top-rail height off the deck
 
 // sliding-door frame — dark wood, +x outward stack off the wall plane
@@ -194,6 +234,44 @@ const PEDESTAL_H = 0.12;
    floor. Toggle machinery stripped per precedent (e545fd1/6347c04). ── */
 const WALL_TEX = "/3am/tex/wall-sage.png";
 const FLOOR_TEX = "/3am/tex/floor-oak.png";
+
+// ── poster wall (FURNISHING WAVE) — "many posters with different
+// alignments" over the headboard, x 2.3-5.7 / y 1.5-2.5, weaving around the
+// sconce (SCONCE_X=4.0, its cone reaches x≈3.89-4.11) with a buffer on both
+// sides: the closest poster edges sit at x=3.775 (west cluster) and x=4.275
+// (east cluster), each ≥0.16m clear of the cone. z is a flat 0.03 (2cm off
+// the wall's own face at R.z+0.01 — 2cm > the 6mm-offset floor), same for
+// every poster since none of them overlap the sconce's x-band in the first
+// place. Six posters (asymmetric salon-wall count, in the 6-7 range), four
+// unique textures, two reused (sunset/mountain each appear twice at
+// different sizes/positions so the reuse doesn't read as a copy-paste
+// pair). No collider — flat wall dressing, same as every poster elsewhere
+// in the house. */
+const POSTER_Z = 0.03;
+type PosterKey = "sunset" | "mountain" | "space" | "wavearc";
+const POSTERS: { key: PosterKey; cx: number; cy: number; w: number; h: number; rotZ: number }[] = [
+  { key: "sunset", cx: 2.55, cy: 2.0, w: 0.5, h: 0.55, rotZ: -0.04 },
+  { key: "mountain", cx: 3.05, cy: 2.3, w: 0.4, h: 0.45, rotZ: 0.03 },
+  { key: "space", cx: 3.55, cy: 1.85, w: 0.45, h: 0.5, rotZ: -0.02 },
+  { key: "wavearc", cx: 4.5, cy: 2.05, w: 0.45, h: 0.6, rotZ: 0.04 },
+  { key: "sunset", cx: 4.95, cy: 2.35, w: 0.35, h: 0.4, rotZ: -0.03 },
+  { key: "mountain", cx: 5.4, cy: 1.9, w: 0.5, h: 0.5, rotZ: 0.02 },
+];
+
+// ── mirror (FURNISHING WAVE) — east divider's bedroom face (wallSegS,
+// x=BEDROOM.x+BEDROOM.w-0.11=7.89, the same plane that mesh renders on),
+// south of the door gap. Layered offset stack, same "wall → frame → glass"
+// convention as the balcony's sliding door (DOOR_FRAME_NEAR_X etc. above),
+// mirrored toward -x since this wall's visible face normal points -x
+// (rotY=-π/2 maps local +z to world -x): frame sits 2cm proud of the wall
+// (≥6mm), glass sits 1cm further proud of the frame's near face (≥6mm,
+// same 10mm the sliding door's fixed pane used off its own frame).
+const MIRROR_W = 0.6;
+const MIRROR_H = 1.6;
+const MIRROR_WALL_X = BEDROOM.x + BEDROOM.w - 0.11; // 7.89, wallSegS's own plane
+const MIRROR_FRAME_DEPTH = 0.04;
+const MIRROR_FRAME_X = MIRROR_WALL_X - 0.02 - MIRROR_FRAME_DEPTH / 2; // 7.85
+const MIRROR_GLASS_X = MIRROR_WALL_X - 0.02 - MIRROR_FRAME_DEPTH - 0.01; // 7.82
 
 /** Bed model: "Bed with lamp" by GreenG
  *  (https://sketchfab.com/AngelNebesniy) via Sketchfab — CC-BY-4.0
@@ -373,6 +451,10 @@ useGLTF.preload("/3am/models/bed-with-lamp.glb");
 export function Bedroom() {
   const R = BEDROOM;
   const rootRef = useRef<THREE.Group>(null);
+  // aim point for the sunset stool lamp's wash across the poster cluster —
+  // same nested-target pattern as MusicNook's sunsetTarget / Workspace's
+  // evaTargetAcross*.
+  const [stoolLampTarget] = useState(() => new THREE.Object3D());
 
   useEffect(() => {
     rootRef.current?.traverse((obj) => {
@@ -403,6 +485,12 @@ export function Bedroom() {
   // deck floor — same floor-oak family as the room, own repeat for its
   // smaller footprint.
   const deckFloor = usePixelTexture(FLOOR_TEX, DECK_RECT.w, DECK_RECT.d);
+  // poster wall (FURNISHING WAVE) — four textures, same 1x1 whole-image
+  // convention as MusicNook's posterGig/posterWave/posterMoons.
+  const posterSunset = usePixelTexture("/3am/tex/poster-sunset-bars.png", 1, 1);
+  const posterMountain = usePixelTexture("/3am/tex/poster-mountain-ridge.png", 1, 1);
+  const posterSpace = usePixelTexture("/3am/tex/poster-space-planet.png", 1, 1);
+  const posterWaveArc = usePixelTexture("/3am/tex/poster-wave-arc.png", 1, 1);
 
   return (
     <group ref={rootRef}>
@@ -417,6 +505,29 @@ export function Bedroom() {
         <planeGeometry args={[R.w, WALL_H]} />
         <meshStandardMaterial map={wallN} />
       </mesh>
+
+      {/* poster wall (FURNISHING WAVE) — see the POSTERS const above for
+          the placement table + sconce-clearance arithmetic. Flat planes on
+          the north wall, no collider (same convention as every poster
+          elsewhere in the house). */}
+      {POSTERS.map((p, i) => {
+        const tex = {
+          sunset: posterSunset,
+          mountain: posterMountain,
+          space: posterSpace,
+          wavearc: posterWaveArc,
+        }[p.key];
+        return (
+          <mesh
+            key={`poster-${i}`}
+            position={[R.x + p.cx, p.cy, R.z + POSTER_Z]}
+            rotation={[0, 0, p.rotZ]}
+          >
+            <planeGeometry args={[p.w, p.h]} />
+            <meshStandardMaterial map={tex} />
+          </mesh>
+        );
+      })}
 
       {/* west wall (inner face of the perimeter wall at x=0) — P4 balcony
           wave: split into two segments flanking the sliding-door gap (z
@@ -498,10 +609,19 @@ export function Bedroom() {
         <meshStandardMaterial map={deckFloor} />
       </mesh>
 
-      {/* railing — chunky top rails ON the collider rects (west/north/
-          south), plus corner + midspan posts, warm wood (matches the
-          stair stringer's tone). */}
-      {[RAIL_W_RECT, RAIL_N_RECT, RAIL_S_RECT].map((rect, i) => (
+      {/* railing — chunky top rails ON the collider rects (west/north),
+          plus corner + midspan posts, warm wood (matches the stair
+          stringer's tone). The SOUTH rail is INVISIBLE this wave (owner's
+          ask): same dollhouse-cutaway convention as the house's camera-side
+          south wall (House.tsx's SOUTH_STUB_H comment — "collision still
+          uses the full wall," the visual just doesn't draw it) — the
+          collider (RAIL_S_RECT, layout.ts's BALCONY_RAIL_S) is untouched,
+          players still can't walk off the deck's south edge, but nothing
+          renders there so the camera sees clean over the boundary. Only
+          RAIL_W_RECT/RAIL_N_RECT get a visible top-rail bar below; the SW
+          corner post (which visually read as "here's the south rail") is
+          dropped too, so no post hints at a line that isn't drawn. */}
+      {[RAIL_W_RECT, RAIL_N_RECT].map((rect, i) => (
         <mesh
           key={`rail-bar-${i}`}
           position={[
@@ -516,7 +636,6 @@ export function Bedroom() {
       ))}
       {[
         { x: -1.5, z: 2.3 }, // NW corner
-        { x: -1.5, z: 4.5 }, // SW corner
         { x: -1.5, z: 3.4 }, // west rail midspan (2.2m run — one extra post for chunkiness)
       ].map((p, i) => (
         <mesh key={`rail-post-${i}`} position={[R.x + p.x, RAIL_TOP_Y / 2, R.z + p.z]}>
@@ -638,50 +757,97 @@ export function Bedroom() {
         </Suspense>
       </group>
 
-      {/* sleeping cat (Task 9, re-seated P4, re-seated again SUPER-KING) —
-          sits on the GLB bed's foot-area top surface (world-space, no
-          longer nested in a bed-local group — that group carries the
-          model's own rotation, which would reorient the cat's body too).
-          See the CAT_X/Y/Z consts above for the foot-inset/surface-height
-          derivation. */}
+      {/* sleeping cat (Task 9, re-seated P4/SUPER-KING, MOVED this wave) —
+          she no longer sleeps on the bed: FURNISHING WAVE gives her a round
+          cat bed in the NE corner (CATBED_RECT), and she now curls on its
+          own inner pad, world-space at (CAT_X, CAT_Y, CAT_Z) — see the
+          consts above (by CATBED_PAD_H) for the derivation, which is now
+          just this file's own constructed geometry, not GLB probing.
+          Behaviors (breathing, ear twitch, pettable hearts) are untouched;
+          only the seat moved. */}
       <Cat x={CAT_X} y={CAT_Y} z={CAT_Z} />
 
-      {/* ── nightstand — collider {6.45,0.95,0.55,0.5} (unchanged by the
-          SUPER-KING pass — the bigger/centered bed's far x edge (5.1)
-          still leaves a 1.35m gap before this rect's x min, verified in
-          the p4-superking report). Two-tone cabinet (dark body / warm top
-          slab) with one recessed drawer + knob. Its hand-built lamp was
-          REMOVED when the GLB bed's own lamp took over as hero light —
-          that GLB lamp is now ALSO gone (lamp-cut pass, see BedModel's
-          comment), so this cabinet currently sits unlit; the sconce
-          (relocated over the headboard, see its own comment) is the
-          room's one warm fixture on this wall. Kept the cabinet itself
-          regardless — it never overlapped the bed or its (now-cut)
-          lamp/table cluster. ── */}
-      <group position={[NIGHTSTAND_CENTER.x, 0, NIGHTSTAND_CENTER.z]}>
-        {/* body */}
-        <mesh position={[0, NS_BODY_H / 2, 0]}>
-          <boxGeometry
-            args={[NIGHTSTAND_RECT.w - 0.04, NS_BODY_H, NIGHTSTAND_RECT.d - 0.04]}
-          />
-          <meshStandardMaterial color="#4a3a2e" />
+      {/* ── cat's bed — collider {7.05,0.45,0.55,0.55}, FURNISHING WAVE.
+          Round pet bed: a torus cushion ring (donut, lying flat on the
+          floor) with a flat inner pad nested inside — the cat sits on the
+          pad's own top surface (CATBED_PAD_H, see the consts above). No
+          light — reads by the room's ambient + the nearby sconce/lamps. ── */}
+      <group position={[CATBED_CENTER.x, 0, CATBED_CENTER.z]}>
+        <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, CATBED_RING_TUBE, 0]}>
+          <torusGeometry args={[CATBED_RING_R, CATBED_RING_TUBE, 10, 20]} />
+          <meshStandardMaterial color="#a04b3a" />
         </mesh>
-        {/* top slab — lighter walnut tone, slight overhang. Top face lands
-            exactly at NS_TOP_Y (= NS_BODY_H + NS_TOP_T). */}
-        <mesh position={[0, NS_BODY_H + NS_TOP_T / 2, 0]}>
-          <boxGeometry args={[NIGHTSTAND_RECT.w, NS_TOP_T, NIGHTSTAND_RECT.d]} />
-          <meshStandardMaterial color="#6b4128" />
-        </mesh>
-        {/* drawer front — recessed panel + knob, east (room-facing) face */}
-        <mesh position={[NIGHTSTAND_RECT.w / 2 - 0.03, NS_BODY_H * 0.54, 0]}>
-          <boxGeometry args={[0.02, 0.19, 0.32]} />
-          <meshStandardMaterial color="#2e2a4d" />
-        </mesh>
-        <mesh position={[NIGHTSTAND_RECT.w / 2 - 0.008, NS_BODY_H * 0.54, 0]}>
-          <sphereGeometry args={[0.014, 8, 6]} />
-          <meshStandardMaterial color="#c9a06a" />
+        <mesh position={[0, CATBED_PAD_H / 2, 0]}>
+          <cylinderGeometry args={[CATBED_PAD_R, CATBED_PAD_R, CATBED_PAD_H, 16]} />
+          <meshStandardMaterial color="#e6d8b8" />
         </mesh>
       </group>
+
+      {/* ── twin nightstands — colliders {2.25,0.4,0.55,0.5} (west) and
+          {5.25,0.4,0.55,0.5} (east), FURNISHING WAVE. Replaces the old
+          single east-flank nightstand (was {6.45,0.95,0.55,0.5} — see
+          furniture.test.ts's "old single nightstand rect is gone" check).
+          Each cabinet is identical: two-tone body/top slab (same
+          construction as the old single nightstand) but with TWO stacked
+          drawer fronts instead of one (brief: "small two-drawer
+          cabinets"), front face on the +z (south, room-facing) side rather
+          than the old +x — these sit near the headboard, not against a
+          side wall, so "front" now means "facing into the room." Each is
+          topped by its own small warm lamp: same base/pole/open-cone-shade
+          construction as MusicNook's coffee-table lamp, pointLight nested
+          INSIDE the fixture group (rotation-safe by construction),
+          intensity 3.5 / distance 3 / decay 2, NO castShadow — these
+          complement the headboard sconce rather than replace it, so the
+          sconce stays at its own bumped intensity (5) unless the head zone
+          reads over-bright in browser (owner's eyeball call, flagged in
+          the report). ── */}
+      {[
+        { rect: NIGHTSTAND_W_RECT, center: NIGHTSTAND_W_CENTER },
+        { rect: NIGHTSTAND_E_RECT, center: NIGHTSTAND_E_CENTER },
+      ].map(({ rect, center }, i) => (
+        <group key={`nightstand-${i}`} position={[center.x, 0, center.z]}>
+          {/* body */}
+          <mesh position={[0, NS_BODY_H / 2, 0]}>
+            <boxGeometry args={[rect.w - 0.04, NS_BODY_H, rect.d - 0.04]} />
+            <meshStandardMaterial color="#4a3a2e" />
+          </mesh>
+          {/* top slab — lighter walnut tone, slight overhang. Top face
+              lands exactly at NS_TOP_Y (= NS_BODY_H + NS_TOP_T). */}
+          <mesh position={[0, NS_BODY_H + NS_TOP_T / 2, 0]}>
+            <boxGeometry args={[rect.w, NS_TOP_T, rect.d]} />
+            <meshStandardMaterial color="#6b4128" />
+          </mesh>
+          {/* two drawer fronts — recessed panels + knobs, south (+z,
+              room-facing) face */}
+          {[0.28, 0.68].map((frac, di) => (
+            <group key={di}>
+              <mesh position={[0, NS_BODY_H * frac, rect.d / 2 - 0.03]}>
+                <boxGeometry args={[rect.w - 0.14, 0.15, 0.02]} />
+                <meshStandardMaterial color="#2e2a4d" />
+              </mesh>
+              <mesh position={[0, NS_BODY_H * frac, rect.d / 2 - 0.008]}>
+                <sphereGeometry args={[0.014, 8, 6]} />
+                <meshStandardMaterial color="#c9a06a" />
+              </mesh>
+            </group>
+          ))}
+          {/* small warm lamp — base/pole/open-cone shade, same family as
+              MusicNook's coffee-table lamp */}
+          <mesh position={[0, NS_TOP_Y + 0.02, 0]}>
+            <cylinderGeometry args={[0.055, 0.065, 0.03, 8]} />
+            <meshStandardMaterial color="#2e2a4d" />
+          </mesh>
+          <mesh position={[0, NS_TOP_Y + 0.11, 0]}>
+            <cylinderGeometry args={[0.012, 0.012, 0.16, 6]} />
+            <meshStandardMaterial color="#2e2a4d" />
+          </mesh>
+          <mesh position={[0, NS_TOP_Y + 0.22, 0]}>
+            <cylinderGeometry args={[0.06, 0.085, 0.11, 8, 1, true]} />
+            <meshStandardMaterial color="#ffb35c" emissive="#ffb35c" emissiveIntensity={0.85} side={2} />
+          </mesh>
+          <pointLight position={[0, NS_TOP_Y + 0.28, 0]} color="#ffd9a0" intensity={3.5} distance={3} decay={2} />
+        </group>
+      ))}
 
       {/* ── manga dresser — REMOVED FOR NOW (P4 recenter, unrelated to the
           SUPER-KING pass). Its old collider {2.8,0.3,1.6,0.55} overlapped
@@ -781,6 +947,272 @@ export function Bedroom() {
           );
         })}
       </group>
+
+      {/* ── second plant — collider {0.95,5.15,0.35,0.35}, FURNISHING WAVE.
+          Beside the first (SW corner, 0.1m gap). Different pot (terracotta
+          "#a04b3a" — used elsewhere in the house for pots too, but distinct
+          from the FIRST plant's slate-blue "#55677a" right next to it,
+          which is this pair's own contrast) AND a different species
+          silhouette: a bushy round cluster of small spheres instead of the
+          first plant's upright blade leaves. ── */}
+      <group position={[PLANT2_CENTER.x, 0, PLANT2_CENTER.z]}>
+        <mesh position={[0, 0.11, 0]}>
+          <cylinderGeometry args={[0.12, 0.09, 0.22, 8]} />
+          <meshStandardMaterial color="#a04b3a" />
+        </mesh>
+        {[0, 1, 2, 3, 4].map((i) => {
+          const a = (i / 5) * Math.PI * 2;
+          const r = 0.05 + (i % 2) * 0.02;
+          const s = 0.06 + (i % 3) * 0.012;
+          return (
+            <mesh key={i} position={[Math.sin(a) * r, 0.24 + s, Math.cos(a) * r]}>
+              <sphereGeometry args={[s, 7, 6]} />
+              <meshStandardMaterial color={i % 2 ? "#3f8f5a" : "#2e6e54"} />
+            </mesh>
+          );
+        })}
+        <mesh position={[0, 0.3, 0]}>
+          <sphereGeometry args={[0.08, 7, 6]} />
+          <meshStandardMaterial color="#3f8f5a" />
+        </mesh>
+      </group>
+
+      {/* ── single-person sofa / armchair — collider {0.6,0.4,0.95,0.95},
+          NW corner, FURNISHING WAVE. Faces southeast into the room
+          (rotation.y=π/4 maps local +z, the chair's own "open" front, to
+          world (+x,+z) — southeast). Compact footprint (unrotated ~0.62m
+          square) keeps the 45°-rotated diagonal comfortably inside the
+          0.95×0.95 collider. Terracotta/rust fabric ("#8a4a3a" family) —
+          distinct hue from the music nook's indigo-purple two-seat sofa
+          (Sofa.tsx, "#4d4a75" family) per the brief. ── */}
+      <group position={[SOFA_CENTER.x, 0, SOFA_CENTER.z]} rotation={[0, Math.PI / 4, 0]}>
+        {/* base */}
+        <mesh position={[0, 0.13, 0]}>
+          <boxGeometry args={[0.62, 0.26, 0.62]} />
+          <meshStandardMaterial color="#8a4a3a" />
+        </mesh>
+        {/* backrest (local -z, faces away from the room) */}
+        <mesh position={[0, 0.42, -0.25]} rotation={[-0.12, 0, 0]}>
+          <boxGeometry args={[0.62, 0.42, 0.16]} />
+          <meshStandardMaterial color="#7a3f31" />
+        </mesh>
+        {/* armrests */}
+        <mesh position={[-0.31, 0.32, 0]}>
+          <boxGeometry args={[0.16, 0.3, 0.62]} />
+          <meshStandardMaterial color="#7a3f31" />
+        </mesh>
+        <mesh position={[0.31, 0.32, 0]}>
+          <boxGeometry args={[0.16, 0.3, 0.62]} />
+          <meshStandardMaterial color="#7a3f31" />
+        </mesh>
+        {/* seat cushion */}
+        <mesh position={[0, 0.28, 0.03]}>
+          <boxGeometry args={[0.48, 0.1, 0.5]} />
+          <meshStandardMaterial color="#a2593f" />
+        </mesh>
+        {/* one accent pillow */}
+        <mesh position={[-0.16, 0.38, -0.14]} rotation={[0, 0.3, 0.08]}>
+          <boxGeometry args={[0.18, 0.16, 0.06]} />
+          <meshStandardMaterial color="#e6d8b8" />
+        </mesh>
+        {/* short wooden feet */}
+        {[
+          [-0.26, -0.26], [-0.26, 0.26], [0.26, -0.26], [0.26, 0.26],
+        ].map(([fx, fz], i) => (
+          <mesh key={i} position={[fx, 0.04, fz]}>
+            <cylinderGeometry args={[0.028, 0.024, 0.08, 6]} />
+            <meshStandardMaterial color="#4a3a2e" />
+          </mesh>
+        ))}
+      </group>
+
+      {/* ── sunset-lamp stool — collider {5.85,0.42,0.4,0.4}, FURNISHING
+          WAVE. Small wooden stool (round top, 3 legs) topped by a compact
+          sunset-can lamp — same visible-fixture family as MusicNook's
+          console lamp and Workspace's EVA-shrine crossfire cans (base
+          cylinder + emissive lens disc), spotLight NESTED in the can,
+          aimed west at the poster cluster (target x4.2/y2.0/z0.15, per the
+          brief). Warm orange-pink, tuned to wash the east posters (P4/P5/
+          P6 above, x 4.275-5.65) without blowing them out under the
+          scene's Bloom (threshold 0.6, Effects.tsx) — intensity kept
+          modest (8, vs. the nook's single sunset lamp at 16) since this
+          fixture sits much closer to its targets. NO castShadow. ── */}
+      <group position={[STOOL_CENTER.x, 0, STOOL_CENTER.z]}>
+        {/* stool top */}
+        <mesh position={[0, 0.4, 0]}>
+          <cylinderGeometry args={[0.17, 0.17, 0.03, 10]} />
+          <meshStandardMaterial color="#6b4128" />
+        </mesh>
+        {/* 3 legs */}
+        {[0, 1, 2].map((i) => {
+          const a = (i / 3) * Math.PI * 2 + 0.3;
+          return (
+            <mesh key={i} position={[Math.sin(a) * 0.12, 0.2, Math.cos(a) * 0.12]}>
+              <cylinderGeometry args={[0.018, 0.018, 0.4, 6]} />
+              <meshStandardMaterial color="#4a3a2e" />
+            </mesh>
+          );
+        })}
+        {/* sunset can — base + emissive lens, tipped to aim west/north
+            toward the poster cluster */}
+        <group position={[0, 0.44, 0]} rotation={[0, 0, -0.55]}>
+          <mesh position={[0, 0.03, 0]}>
+            <cylinderGeometry args={[0.04, 0.05, 0.06, 8]} />
+            <meshStandardMaterial color="#2e2a4d" />
+          </mesh>
+          <mesh position={[0, 0.065, 0]}>
+            <cylinderGeometry args={[0.032, 0.032, 0.012, 8]} />
+            <meshStandardMaterial color="#ff7a72" emissive="#ff6a55" emissiveIntensity={3.2} />
+          </mesh>
+        </group>
+        <spotLight
+          position={[0, 0.5, 0]}
+          target={stoolLampTarget}
+          angle={0.55}
+          penumbra={0.6}
+          intensity={8}
+          distance={4}
+          decay={1.6}
+          color="#ff7a5c"
+        />
+      </group>
+      <primitive object={stoolLampTarget} position={[4.2, 2.0, 0.15]} />
+
+      {/* ── bed-front bench — collider {3.5,2.95,1.2,0.4}, FURNISHING
+          WAVE. Upholstered bench at the bed's foot (0.12m clear of the
+          bed's far z edge, 2.83 — see p4-furnish-report.md). Dusty
+          blue-gray cushion ("#5f6a8c", the DUSK palette tone) on a dark
+          wood frame — cool accent against the warm terracotta sofa/cat
+          bed. SPAWN moved to {4,4.3} because of this piece — see
+          layout.ts's SPAWN comment. ── */}
+      <group position={[BENCH_CENTER.x, 0, BENCH_CENTER.z]}>
+        <mesh position={[0, 0.32, 0]}>
+          <boxGeometry args={[BENCH_RECT.w - 0.08, 0.06, BENCH_RECT.d - 0.08]} />
+          <meshStandardMaterial color="#5f6a8c" />
+        </mesh>
+        <mesh position={[0, 0.27, 0]}>
+          <boxGeometry args={[BENCH_RECT.w - 0.14, 0.04, BENCH_RECT.d - 0.14]} />
+          <meshStandardMaterial color="#4a3a2e" />
+        </mesh>
+        {[
+          [-BENCH_RECT.w / 2 + 0.08, -BENCH_RECT.d / 2 + 0.06],
+          [-BENCH_RECT.w / 2 + 0.08, BENCH_RECT.d / 2 - 0.06],
+          [BENCH_RECT.w / 2 - 0.08, -BENCH_RECT.d / 2 + 0.06],
+          [BENCH_RECT.w / 2 - 0.08, BENCH_RECT.d / 2 - 0.06],
+        ].map(([fx, fz], i) => (
+          <mesh key={i} position={[fx, 0.125, fz]}>
+            <boxGeometry args={[0.04, 0.25, 0.04]} />
+            <meshStandardMaterial color="#4a3a2e" />
+          </mesh>
+        ))}
+      </group>
+
+      {/* ── clothes hanger stand — collider {3.3,5.35,2.2,0.5},
+          south-center, FURNISHING WAVE. Floor rail rack: two end poles + a
+          horizontal rail, 5 hanging garments (thin colored silhouettes,
+          varied spacing/widths) and 2 pairs of shoes underneath. ── */}
+      <group position={[HANGER_CENTER.x, 0, HANGER_CENTER.z]}>
+        {[-1, 1].map((side, i) => (
+          <mesh key={i} position={[side * (HANGER_RECT.w / 2 - 0.06), 0.65, 0]}>
+            <cylinderGeometry args={[0.02, 0.02, 1.3, 6]} />
+            <meshStandardMaterial color="#4a3a2e" />
+          </mesh>
+        ))}
+        <mesh rotation={[0, 0, Math.PI / 2]} position={[0, 1.28, 0]}>
+          <cylinderGeometry args={[0.014, 0.014, HANGER_RECT.w - 0.1, 6]} />
+          <meshStandardMaterial color="#2e2a4d" />
+        </mesh>
+        {[
+          { dx: -0.75, w: 0.22, h: 0.5, c: "#b3475f" },
+          { dx: -0.42, w: 0.18, h: 0.42, c: "#57b6e8" },
+          { dx: -0.06, w: 0.24, h: 0.55, c: "#3f8f5a" },
+          { dx: 0.32, w: 0.2, h: 0.46, c: "#ffb35c" },
+          { dx: 0.68, w: 0.2, h: 0.5, c: "#5b4b8a" },
+        ].map(({ dx, w, h, c }, i) => (
+          <group key={i}>
+            {/* hanger hook */}
+            <mesh position={[dx, 1.2, 0]}>
+              <torusGeometry args={[0.025, 0.006, 6, 8, Math.PI]} />
+              <meshStandardMaterial color="#22222c" />
+            </mesh>
+            {/* garment silhouette */}
+            <mesh position={[dx, 1.18 - h / 2, 0]}>
+              <boxGeometry args={[w, h, 0.02]} />
+              <meshStandardMaterial color={c} />
+            </mesh>
+          </group>
+        ))}
+        {/* shoes — two small pairs on the floor beneath the rack */}
+        {[-0.5, 0.4].map((dx, i) => (
+          <group key={i}>
+            <mesh position={[dx - 0.05, 0.03, 0.08]}>
+              <boxGeometry args={[0.1, 0.06, 0.2]} />
+              <meshStandardMaterial color={i ? "#22222c" : "#a04b3a"} />
+            </mesh>
+            <mesh position={[dx + 0.09, 0.03, 0.08]}>
+              <boxGeometry args={[0.1, 0.06, 0.2]} />
+              <meshStandardMaterial color={i ? "#22222c" : "#a04b3a"} />
+            </mesh>
+          </group>
+        ))}
+      </group>
+
+      {/* ── perfume stand — collider {6.55,5.3,1.0,0.5}, SE corner,
+          FURNISHING WAVE. Waist-high slim dresser with 6 tiny bottles on
+          top (varied heights/colors) and one atomizer bulb. ── */}
+      <group position={[PERFUME_CENTER.x, 0, PERFUME_CENTER.z]}>
+        <mesh position={[0, 0.36, 0]}>
+          <boxGeometry args={[PERFUME_RECT.w - 0.06, 0.72, PERFUME_RECT.d - 0.06]} />
+          <meshStandardMaterial color="#4a3a2e" />
+        </mesh>
+        <mesh position={[0, 0.735, 0]}>
+          <boxGeometry args={[PERFUME_RECT.w, 0.03, PERFUME_RECT.d]} />
+          <meshStandardMaterial color="#6b4128" />
+        </mesh>
+        {[
+          { dx: -0.3, h: 0.1, c: "#57b6e8" },
+          { dx: -0.15, h: 0.14, c: "#f2ecd8" },
+          { dx: 0.0, h: 0.08, c: "#b3475f" },
+          { dx: 0.16, h: 0.12, c: "#5b4b8a" },
+          { dx: 0.3, h: 0.09, c: "#ffb35c" },
+        ].map(({ dx, h, c }, i) => (
+          <mesh key={i} position={[dx, 0.75 + h / 2, i % 2 === 0 ? -0.06 : 0.06]}>
+            <cylinderGeometry args={[0.025, 0.03, h, 6]} />
+            <meshStandardMaterial color={c} />
+          </mesh>
+        ))}
+        {/* atomizer bulb — a bottle with a small sphere "bulb" on top */}
+        <mesh position={[-0.02, 0.79, 0.12]}>
+          <cylinderGeometry args={[0.028, 0.032, 0.1, 6]} />
+          <meshStandardMaterial color="#a04b3a" />
+        </mesh>
+        <mesh position={[-0.02, 0.855, 0.12]}>
+          <sphereGeometry args={[0.025, 8, 6]} />
+          <meshStandardMaterial color="#e6d8b8" />
+        </mesh>
+      </group>
+
+      {/* ── mirror — east divider's bedroom face, south of the door gap
+          (wallSegS, x=7.89, z-center 4.9, z-span 3.8-6), FURNISHING WAVE.
+          Dark frame + a flat pale-cool gradient plane standing in for a
+          reflection (real reflections rejected for cost, per the brief) —
+          a brighter diagonal streak plane fakes a highlight across it.
+          Same "wall → frame → glass" layered-offset convention as the
+          balcony's sliding door (each layer ≥6mm proud of the last, here
+          stacking toward -x/west since this wall's face normal points
+          -x). No collider — flush wall dressing. ── */}
+      <mesh position={[MIRROR_FRAME_X, 1.5, 4.9]}>
+        <boxGeometry args={[MIRROR_FRAME_DEPTH, MIRROR_H + 0.08, MIRROR_W + 0.08]} />
+        <meshStandardMaterial color="#22222c" />
+      </mesh>
+      <mesh position={[MIRROR_GLASS_X, 1.5, 4.9]}>
+        <boxGeometry args={[0.01, MIRROR_H, MIRROR_W]} />
+        <meshStandardMaterial color="#c7d3dc" metalness={0.3} roughness={0.15} />
+      </mesh>
+      <mesh position={[MIRROR_GLASS_X - 0.006, 1.35, 4.85]} rotation={[0, 0, 0.55]}>
+        <boxGeometry args={[0.006, 1.5, 0.12]} />
+        <meshStandardMaterial color="#eef3f6" />
+      </mesh>
     </group>
   );
 }

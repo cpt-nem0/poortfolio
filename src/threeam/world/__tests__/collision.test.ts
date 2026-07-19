@@ -10,11 +10,14 @@ const ground = HOUSE.areas.ground;
 
 describe("isBlocked", () => {
   it("open floor is walkable", () => {
-    // was (4,3) — the old SPAWN point — but the SUPER-KING bed (far z edge
-    // 2.83 + player radius 0.35 = 3.18) now reaches past it; (4,3.6) is the
-    // new SPAWN point and stays clear (see furniture.test.ts for the exact
-    // margin arithmetic).
-    expect(isBlocked(ground, 4, 3.6)).toBe(false);
+    // was (4,3), then (4,3.6) — the old SPAWN points — but the bedroom has
+    // filled in twice since (the SUPER-KING bed, then the FURNISHING WAVE's
+    // bed-front bench) and both are now inside some collider's radius.
+    // Rather than keep chasing a bedroom-local point through every future
+    // furniture pass, this probe moved to (12,3): open workspace floor,
+    // untouched by any bedroom furniture rect. SPAWN's own current position
+    // ({4,4.3}) is covered by furniture.test.ts's exhaustive bedroom checks.
+    expect(isBlocked(ground, 12, 3)).toBe(false);
   });
 
   it("outside bounds is blocked", () => {
@@ -46,10 +49,15 @@ describe("resolveMovement", () => {
   });
 
   it("blocks x through a wall but slides on z", () => {
-    // just west of the x=8 divider, inside the wall band (z=1)
-    const p = resolveMovement(ground, { x: 7.4, z: 1 }, { x: 0.5, z: 0.3 });
+    // just west of the x=8 divider, inside the wall band. Was z=1, but the
+    // FURNISHING WAVE's cat bed ({x:7.05,z:0.45,w:0.55,d:0.55}) now reaches
+    // z=1.35 with the player radius added, which swallowed both the start
+    // and target z of that probe; moved to z=4.5 (still inside the
+    // divider's south wall band, z 3.8-6, and clear of the new perfume
+    // stand at z 5.3-5.8 by 0.5m at the landing point z=4.8).
+    const p = resolveMovement(ground, { x: 7.4, z: 4.5 }, { x: 0.5, z: 0.3 });
     expect(p.x).toBeCloseTo(7.4); // x move rejected
-    expect(p.z).toBeCloseTo(1.3); // z move allowed
+    expect(p.z).toBeCloseTo(4.8); // z move allowed
   });
 
   it("passes through the doorway", () => {

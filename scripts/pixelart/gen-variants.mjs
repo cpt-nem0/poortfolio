@@ -413,6 +413,85 @@ function rugBedroom(x, y) {
   return [...shade(c, (seam ? 0.84 : 0.97) + hash2(x, y, 361) * 0.06), 255];
 }
 
+/* ---- bedroom poster wall (FURNISHING WAVE): four non-branded, textless
+   posters for the "many posters, different alignments" salon wall behind
+   the headboard. Same seeded hash2/shade idiom + 1px night900 frame border
+   as posterGig/posterWave/posterMoons above; distinct subjects so a
+   6-7-poster hang (some panels reusing the same texture) still reads as
+   varied. ---- */
+
+/* sunset gradient bars 32×44: six warm-to-cool horizontal bands (dawn
+   amber down to dusk purple) with a partially-set sun disc on the horizon
+   and thin cross-lines through it (retro sunset-poster motif). */
+const SUNSET_BANDS = [PALETTE.amber300, PALETTE.amber500, PALETTE.salt500, PALETTE.red500, PALETTE.purple500, PALETTE.purple700];
+function posterSunsetBars(x, y) {
+  if (x === 0 || x === 31 || y === 0 || y === 43) return shade(PALETTE.night900, 1.4);
+  const band = Math.min(Math.floor((y - 1) / 7), SUNSET_BANDS.length - 1);
+  let c = shade(SUNSET_BANDS[band], 0.94 + hash2(x, y, 401) * 0.08);
+  const cx = 16, cy = 28, r = 9;
+  const dx = x - cx, dy = y - cy;
+  if (dx * dx + dy * dy < r * r) c = shade(PALETTE.cream100, 0.96 + hash2(x, y, 402) * 0.06);
+  if (y > 29 && (y - 29) % 3 === 0 && dx * dx + dy * dy < r * r) c = shade(SUNSET_BANDS[band], 0.9); // eclipse lines through the sun
+  if (y === 30) c = shade(PALETTE.night900, 1.2); // horizon line
+  return c;
+}
+
+/* pixel mountain ridge 40×32 (landscape): cool dusk sky over three
+   silhouette ridge layers (far → near), each a simple triangular-wave
+   skyline at a different height/tone so they read as receding depth. */
+const RIDGE_LAYERS = [
+  { amp: 5, base: 14, period: 13, phase: 2, tone: "#5f6a8c" },
+  { amp: 7, base: 19, period: 9, phase: 5, tone: "#453a63" },
+  { amp: 9, base: 25, period: 11, phase: 0, tone: "#241f3d" },
+];
+function posterMountainRidge(x, y) {
+  if (x === 0 || x === 39 || y === 0 || y === 31) return shade(PALETTE.night900, 1.4);
+  let c = shade("#8b9574", 0.7 + (y / 31) * 0.35 + hash2(x, y, 411) * 0.05); // dusk sky gradient
+  for (const layer of RIDGE_LAYERS) {
+    const ridgeY = layer.base + Math.round(Math.sin((x + layer.phase) / layer.period * Math.PI * 2) * layer.amp * 0.5 + layer.amp * 0.5);
+    if (y >= ridgeY) c = shade(layer.tone, 0.94 + hash2(x, y, 412) * 0.08);
+  }
+  return c;
+}
+
+/* retro space / ringed planet 36×48: near-black sky, sparse hashed stars,
+   one banded planet with a tilted ring ellipse crossing it. */
+function posterSpacePlanet(x, y) {
+  if (x === 0 || x === 35 || y === 0 || y === 47) return shade(PALETTE.night900, 1.4);
+  let c = shade(PALETTE.night900, 0.85 + hash2(x, y, 421) * 0.15);
+  const star = hash2(x, y, 422);
+  if (star > 0.985) c = shade(PALETTE.cream100, 0.8 + hash2(x, y, 423) * 0.2);
+  const cx = 22, cy = 20, r = 8;
+  const dx = x - cx, dy = y - cy;
+  const rr = Math.sqrt(dx * dx + dy * dy);
+  if (rr < r) {
+    const bandTone = Math.floor((dy + r) / 3) % 2 === 0 ? PALETTE.amber500 : "#e89a48";
+    c = shade(bandTone, 0.94 + hash2(x, y, 424) * 0.08);
+  }
+  // tilted ring ellipse: rotate (dx,dy) -0.4 rad, test a flat ellipse band
+  const ang = -0.4;
+  const rx = dx * Math.cos(ang) - dy * Math.sin(ang);
+  const ry = dx * Math.sin(ang) + dy * Math.cos(ang);
+  const ellipse = (rx * rx) / (14 * 14) + (ry * ry) / (3.2 * 3.2);
+  if (ellipse > 0.75 && ellipse < 1.15 && !(rr < r * 0.55)) c = shade(PALETTE.cream100, 0.85);
+  return c;
+}
+
+/* minimal wave / arc 32×40: plain dark field, a few concentric arcs low on
+   the canvas, textless and deliberately sparse. */
+function posterWaveArc(x, y) {
+  if (x === 0 || x === 31 || y === 0 || y === 39) return shade(PALETTE.night900, 1.4);
+  let c = shade(PALETTE.night500, 0.92 + hash2(x, y, 431) * 0.08);
+  const cx = 16, cy = 46; // arc center below the canvas so only the tops show
+  const dx = x - cx, dy = y - cy;
+  const r = Math.sqrt(dx * dx + dy * dy);
+  for (const ring of [10, 16, 22]) {
+    if (Math.abs(r - ring) < 0.8) c = shade(PALETTE.teal500, 0.9 + hash2(x, y, 432) * 0.1);
+  }
+  if (Math.abs(r - 28) < 0.9) c = shade(PALETTE.cream100, 0.85);
+  return c;
+}
+
 /* Only textures referenced by src/ belong here — a JOBS entry for a deleted
    PNG silently resurrects it on the next generator run. Prune both together.
    (Variant fns for rejected style-gate options are kept below for reference.) */
@@ -434,6 +513,10 @@ const JOBS = [
   ["linen-quilt", 64, 64, linenQuilt],
   ["curtain-weave", 32, 64, curtainWeave],
   ["rug-bedroom", 64, 64, rugBedroom],
+  ["poster-sunset-bars", 32, 44, posterSunsetBars],
+  ["poster-mountain-ridge", 40, 32, posterMountainRidge],
+  ["poster-space-planet", 36, 48, posterSpacePlanet],
+  ["poster-wave-arc", 32, 40, posterWaveArc],
 ];
 
 for (const [name, w, h, fn] of JOBS) {

@@ -5,21 +5,26 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
 /**
- * Sleeping black cat (Task 9), curled on the bed's duvet. Chunky "loaf"
- * silhouette from 2 stacked boxes, a tucked head box, 2 ear wedges (one
- * twitches), and a tail that curls from the body's back around toward the
- * front. Near-black matte everywhere, one lighter highlight band along the
- * spine to catch the window-moonlight. castShadow comes from Bedroom's
- * mount-time traverse — this component mounts inside that traversed root,
- * so it deliberately sets no shadow flags itself.
+ * Sleeping black cat (Task 9), curled up in her own cat bed (FURNISHING
+ * WAVE — she used to curl on the bed's duvet; the owner's final sketch
+ * gives her a round pet bed in the room's NE corner instead, and moves her
+ * there). Chunky "loaf" silhouette from 2 stacked boxes, a tucked head box,
+ * 2 ear wedges (one twitches), and a tail that curls from the body's back
+ * around toward the front. Near-black matte everywhere, one lighter
+ * highlight band along the spine to catch the room's ambient light.
+ * castShadow comes from Bedroom's mount-time traverse — this component
+ * mounts inside that traversed root, so it deliberately sets no shadow
+ * flags itself.
  *
- * Position is a prop, not a hand-guessed local constant: Bedroom.tsx derives
- * x/y/z from the bed's own measured top surface (foot-corner x, mid z) and
- * passes them in. Originally the hand-built bed's duvet-top consts (task-9
- * report has that arithmetic); since the bed-swap task (real GLB bed +
- * lamp) the source is the GLB's own foot-area vertex cloud instead — see
- * BedModel's attribution comment in Bedroom.tsx for the new derivation.
- * Cat behavior/rendering itself is untouched by that swap.
+ * Position is a prop, not a hand-guessed local constant: Bedroom.tsx
+ * derives x/y/z from the cat bed's own constructed geometry (its inner
+ * pad's top surface + center) and passes them in. STALE HISTORY: from the
+ * bed-swap task through the SUPER-KING pass, the source used to be the GLB
+ * bed's own foot-area vertex cloud (see BedModel's attribution comment in
+ * Bedroom.tsx for that old derivation, kept there for the record) — this
+ * wave replaces all of that with the much simpler cat-bed-pad math (see the
+ * CAT_X/CAT_Y/CAT_Z consts in Bedroom.tsx). Cat behavior/rendering itself
+ * is untouched by the move — only the seat changed.
  */
 
 const CAT_NEAR_BLACK = "#16161c";
