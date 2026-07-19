@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { usePixelTexture } from "../usePixelTexture";
 import { Cat } from "./Cat";
@@ -18,7 +19,6 @@ const PLANT_RECT = { x: 0.45, z: 5.1, w: 0.4, d: 0.4 };
 const DRESSER_RECT = { x: 2.8, z: 0.3, w: 1.6, d: 0.55 };
 const DRAGONSLAYER_RECT = { x: 5.6, z: 0.32, w: 0.85, d: 0.5 }; // lean-zone, not a furniture footprint
 
-const BED_CENTER = { x: BED_RECT.x + BED_RECT.w / 2, z: BED_RECT.z + BED_RECT.d / 2 };
 const NIGHTSTAND_CENTER = {
   x: NIGHTSTAND_RECT.x + NIGHTSTAND_RECT.w / 2,
   z: NIGHTSTAND_RECT.z + NIGHTSTAND_RECT.d / 2,
@@ -29,63 +29,48 @@ const DRESSER_CENTER = {
   z: DRESSER_RECT.z + DRESSER_RECT.d / 2,
 };
 
-// bed — local-space layout (relative to BED_CENTER, +x toward the foot).
-// Headboard sits flush on the rect's west edge (local x = -BED_HALF_W),
-// i.e. world x = BED_RECT.x — the task-7 window mounts on that same wall
-// face with sill y=1.0, so the headboard top is capped under it.
-const BED_HALF_W = BED_RECT.w / 2;
-const BED_HEAD_T = 0.09; // headboard slab thickness
-const BED_HEAD_H = 0.86; // stays clear of the window sill (1.0)
-const BED_HEAD_X = -BED_HALF_W + BED_HEAD_T / 2;
-const BED_HB_EAST = -BED_HALF_W + BED_HEAD_T; // headboard's room-facing face
-const BED_FRAME_H = 0.24;
-const BED_FRAME_LEN = BED_RECT.w - BED_HEAD_T; // frame runs headboard→foot
-const BED_FRAME_X = -BED_HALF_W + BED_HEAD_T + BED_FRAME_LEN / 2;
-const BED_MATT_H = 0.2;
-const BED_MATT_INSET = 0.03; // mattress reveal past the frame, each side
-const BED_MATT_LEN = BED_FRAME_LEN - BED_MATT_INSET * 2;
-const BED_MATT_TOP_Y = BED_FRAME_H + BED_MATT_H; // mattress top surface
-const BED_PILLOW_W = 0.26;
-const BED_PILLOW_D = 0.7;
-const BED_PILLOW_H = 0.11;
-const BED_PILLOW_X = BED_HB_EAST + 0.05 + BED_PILLOW_W / 2;
-const BED_PILLOW_Z = BED_PILLOW_D / 2 + 0.03;
-const BED_DUVET_OVERHANG = 0.035; // brief: 3-4cm overhang each side
-const BED_DUVET_H = 0.05;
-const BED_DUVET_X0 = BED_PILLOW_X + BED_PILLOW_W / 2 + 0.04; // west edge
-const BED_DUVET_X1 = BED_HALF_W + BED_DUVET_OVERHANG; // overhangs the foot
-const BED_DUVET_LEN = BED_DUVET_X1 - BED_DUVET_X0;
-const BED_DUVET_X = (BED_DUVET_X0 + BED_DUVET_X1) / 2;
-const BED_DUVET_Z = BED_RECT.d + BED_DUVET_OVERHANG * 2;
+// bed — real Sketchfab GLB (see BedModel's attribution comment below for
+// the full derivation) replaces the hand-built frame/headboard/mattress/
+// pillows/duvet. BED_MODEL_SCALE/POS/ROTATION_Y and the lamp's local
+// nesting position are all derived there from the mesh's own vertex
+// cloud — nothing here is hand-guessed.
+const BED_MODEL_SCALE = 0.003827393054572264;
+const BED_MODEL_ROTATION_Y = Math.PI / 2;
+// headboard face lands BED_RECT.x + 2cm (clearance off the wall plane,
+// same convention as every other wall-adjacent piece in this room); bed
+// (excluding the model's own lamp/table cluster) is centered on the
+// collider's z-span. See BedModel's comment for the raw-vertex arithmetic.
+const BED_MODEL_POS: [number, number, number] = [1.5012601628680855, 0, 3.5016786879815225];
+// lamp shade/bulb position IN THE MODEL'S OWN LOCAL SPACE (same space as
+// the scaled <primitive>, pre the wrapper group's rotation/translation) —
+// nesting the pointLight here inside that same rotated group keeps it
+// rotation-safe by construction (HANDOFF §6 fixture-offset class).
+const BED_LAMP_LOCAL_POS: [number, number, number] = [-1.0538076425802145, 0.7217402367480494, -0.8103972666080197];
 
-// cat (Task 9) — curls on the duvet's TOP surface (mattress top + duvet
-// slab height, never a hand-guessed y) at the bed's foot corner: high local
-// x (inset from the foot edge BED_DUVET_X1 by ~half the loaf's footprint
-// plus clearance so it doesn't hang off), mid z (small offset off dead-
-// center so it reads as tucked into a corner rather than glued to the
-// midline; still well clear of BED_DUVET_Z's overhung edges).
-const CAT_TOP_Y = BED_MATT_TOP_Y + BED_DUVET_H;
-// 0.26 inset covers the loaf's own half-footprint (~0.21, head+tail included,
-// see task-9 report) plus clearance so nothing hangs off the foot overhang.
-const CAT_X = BED_DUVET_X1 - 0.26;
-const CAT_Z = BED_DUVET_Z * 0.12;
+// cat (Task 9) — curls at the GLB bed's foot corner, ON its measured top
+// surface (foot-area vertex cluster, ~90th-percentile height to sit on
+// the flat blanket read rather than a fold/pillow spike or a sheet
+// valley — see BedModel's comment). World-space now (no longer nested in
+// a bed-local group, since that group carries the model's own π/2 yaw):
+// X inset 0.26m off the foot edge (same loaf-footprint clearance as the
+// old hand-built bed), Z offset off the width centerline toward the side
+// AWAY from the model's own lamp/table cluster so the cat never sits
+// inside that geometry.
+const CAT_X = 2.17;
+const CAT_Y = 0.35;
+const CAT_Z = 3.25;
 
-// nightstand + bedside lamp — all lamp heights stack off the nightstand's
-// actual top surface (NS_TOP_Y), never a hand-guessed y.
+// nightstand — cabinet kept (its hand-built lamp is removed; the GLB bed's
+// own lamp is now the room's hero fixture). Heights still stack off the
+// nightstand's actual top surface (NS_TOP_Y), never a hand-guessed y.
 const NS_BODY_H = 0.46;
 const NS_TOP_T = 0.03;
 const NS_TOP_Y = NS_BODY_H + NS_TOP_T; // top surface, world y = 0.49
-const LAMP_BASE_H = 0.025;
-const LAMP_NECK_H = 0.16;
-const LAMP_SHADE_H = 0.15;
-const LAMP_BASE_Y = NS_TOP_Y + LAMP_BASE_H / 2;
-const LAMP_NECK_Y = NS_TOP_Y + LAMP_BASE_H + LAMP_NECK_H / 2;
-const LAMP_SHADE_Y = NS_TOP_Y + LAMP_BASE_H + LAMP_NECK_H + LAMP_SHADE_H / 2 + 0.005;
 
 // west window (Task 7) — surface-mounted unit on the west wall's interior
 // face (x = R.x + 0.011, same plane as the wallW mesh). Sill (y=1.0) sits
-// 0.14m above the headboard top (BED_HEAD_H=0.86) — same wall, same
-// z-band as the bed, confirmed clear (see task-7 report for the table).
+// 0.26m above the GLB bed's headboard top (0.694, see BedModel's comment)
+// — same wall, same z-band as the bed, confirmed clear.
 const WIN_Z0 = 2.55;
 const WIN_Z1 = 3.95;
 const WIN_W = WIN_Z1 - WIN_Z0; // 1.4
@@ -183,6 +168,89 @@ const FLOOR_VARIANTS = [
   { label: "walnut", path: "/3am/tex/floor-walnut.png" },
 ];
 
+/** Bed model: "Bed with lamp" by GreenG
+ *  (https://sketchfab.com/AngelNebesniy) via Sketchfab — CC-BY-4.0
+ *  (http://creativecommons.org/licenses/by/4.0/), source:
+ *  https://sketchfab.com/3d-models/bed-with-lamp-b9b6f7dce9df4d719acc37b5e05a3ea3.
+ *  Attribution lives in the GLB's asset.extras too. Replaces the hand-built
+ *  frame/headboard/mattress/pillows/duvet AND the nightstand's hand-built
+ *  lamp — this model's own lamp is now the room's hero fixture.
+ *
+ *  GLB drill: healthy file (no skin, no animations; 1 mesh/1 material/3
+ *  textures). The Sketchfab corrective node chain (root rotation × fbx-node
+ *  scale 0.01 × object-node scale ~19.932) composes to a pure uniform scale
+ *  of 0.19932 with the rotation canceling to identity (verified by 4×4
+ *  matrix multiply, not assumed) — same "mesh-local axes are the final
+ *  axes" case as Workspace's coffee machine/gaming chair. Optimized in
+ *  place: weld → simplify (--ratio 0.1 --error 0.01) → prune → resize
+ *  512×512 → quantize (safe, no skin) = 4.60MB → 812KB (82% smaller);
+ *  validate: 0 errors/warnings, and the quantize compensation node was
+ *  checked to reproduce the pre-quantize scene bbox (sub-mm drift only).
+ *  Native linear texture filtering kept (no filter override below).
+ *
+ *  Orientation/footprint (raw accessor probe, no browser — owner eyeballs
+ *  the result): splitting the 39,992-vert cloud at local X = -952 isolates
+ *  two clusters — a 34,523-vert "bed" body and a 5,469-vert "lamp" cluster
+ *  that reads as an integrated headboard-side table+lamp (it runs
+ *  alongside roughly the headboard-half of the bed's length and extends
+ *  past the bed's own footprint to one side, rather than sitting neatly on
+ *  top of it). The bed cluster's tall band sits at local min-Z spanning the
+ *  full local-X width — that's the headboard, so local +Z is this model's
+ *  own head→foot axis (mirrors this file's old "+x toward the foot"
+ *  convention) and local X is the side-to-side width axis. A
+ *  rotation.y=π/2 wrapper group maps local +Z → world +X (foot) and local
+ *  -X (the lamp's side) → world +Z, which is why the lamp lands away from
+ *  the kept nightstand (north end) rather than beside it — an asymmetric
+ *  two-nightstand-ish layout, flagged in the report for Rohan's call.
+ *
+ *  BED_MODEL_SCALE fits the bed body's own length (local Z range, 538.23
+ *  scene units pre-extra-scale) to BED_RECT.w minus a 4cm margin (2.06m):
+ *  2.06 / 538.23 = 0.0038274. At that scale: bed-only width comes out to
+ *  1.75m (BED_RECT.d is 1.70m — 2.6cm over on each side, inside the ±4cm
+ *  tolerance); headboard top lands at 0.694m (window sill is 1.0m, so
+ *  0.26m clear — comfortably under the 0.95m cap, no window-frame
+ *  overlap). The model's own lamp/table cluster, included, widens the full
+ *  footprint to 2.57m — 0.84m past BED_RECT's far z edge into open floor
+ *  (clears the corner-plant collider by ~6cm; does not reach the dresser).
+ *  Scaling down further to zero that overflow would put the bed itself at
+ *  a comically short ~1.4m — same "report the overlap for the owner's
+ *  call" tradeoff this task's brief calls out for the headboard/window
+ *  case, applied here to the footprint instead.
+ *
+ *  BED_LAMP_LOCAL_POS is the centroid of the lamp cluster's own top 15%
+ *  (by height) verts — the shade interior — nested INSIDE the same
+ *  rotated/positioned group as the model, so it's rotation-safe by
+ *  construction (never a hand-computed world position, HANDOFF §6). Same
+ *  warm profile as the lamp it replaces (intensity 7, #ffcf9e, distance
+ *  4.5, decay 2, no castShadow — fixed shadow-caster budget). */
+function BedModel() {
+  const { scene } = useGLTF("/3am/models/bed-with-lamp.glb");
+  useEffect(() => {
+    scene.traverse((obj) => {
+      if ((obj as THREE.Mesh).isMesh) {
+        obj.castShadow = true;
+        obj.receiveShadow = true;
+        const mat = (obj as THREE.Mesh).material as THREE.MeshStandardMaterial;
+        if (mat && mat.isMeshStandardMaterial && !mat.userData.bedTuned) {
+          mat.userData.bedTuned = true; // traverse can re-run (HMR/remount)
+          mat.metalness = Math.min(mat.metalness, 0.2);
+          mat.roughness = Math.max(mat.roughness, 0.6);
+          // one shared material for the whole prop ships emissiveFactor
+          // [1,1,1] (full strength) baked for the lamp shade's emissive
+          // texture region — clamp below the Bloom threshold (0.6), same
+          // dome-lamp convention as Workspace's coffee machine, so the
+          // shade reads as lit without clipping (the bed-fabric region's
+          // emissive map is already near-black, so the clamp is a no-op
+          // there — no need to ADD a glow, this file already ships one).
+          if (mat.emissiveIntensity > 0.55) mat.emissiveIntensity = 0.55;
+        }
+      }
+    });
+  }, [scene]);
+  return <primitive object={scene} scale={BED_MODEL_SCALE} />;
+}
+useGLTF.preload("/3am/models/bed-with-lamp.glb");
+
 /**
  * The bedroom — painted surfaces + temp style toggles (task 5 of the
  * bedroom plan). Renders INSIDE the gray-box shell: textured surfaces sit a
@@ -239,13 +307,15 @@ export function Bedroom() {
   const wallSegN = usePixelTexture(wallV.path, 2.2, WALL_H); // east divider, north-of-door segment
   const wallSegS = usePixelTexture(wallV.path, 2.2, WALL_H); // east divider, south-of-door segment
   const wallStub = usePixelTexture(wallV.path, R.w, 0.2, 0, 0.5);
-  // duvet — tiled once per meter, same convention as the floor/wall calls
-  // above (BED_DUVET_LEN/BED_DUVET_Z are derived from BED_RECT, see consts).
-  const quilt = usePixelTexture("/3am/tex/linen-quilt.png", BED_DUVET_LEN, BED_DUVET_Z);
+  // NOTE: linen-quilt.png (duvet texture) is now unreferenced — the bed
+  // swap replaced the hand-built duvet with the GLB bed. Left the PNG +
+  // its scripts/pixelart/gen-variants.mjs JOBS entry in place (HANDOFF §6:
+  // deleting one without the other lets the generator silently resurrect
+  // it) since it may return on a throw blanket.
   // rug — single alpha-cutout image (oval shape baked into the PNG), same
   // repeat(1,1) + transparent convention as MusicNook's rugKilim.
   const rugTex = usePixelTexture("/3am/tex/rug-bedroom.png", 1, 1);
-  // curtain — tiled once per meter, same convention as quilt/floor/wall.
+  // curtain — tiled once per meter, same convention as floor/wall.
   const curtainTex = usePixelTexture("/3am/tex/curtain-weave.png", WIN_CURTAIN_W, WIN_CURTAIN_H);
   // dresser cabinet — cabinet-wood texture family, same tile RecordConsole
   // uses for its console body, repeat scaled down for the dresser's size.
@@ -418,81 +488,47 @@ export function Bedroom() {
         <meshBasicMaterial color="#26304d" transparent opacity={0.18} />
       </mesh>
 
-      {/* ── bed — collider {0.35,2.5,2.1,1.7}. Low walnut-family frame,
-          headboard flush on the west wall face (local x = -BED_HALF_W,
-          world x = BED_RECT.x), top capped at 0.86 to clear the task-7
-          window sill (1.0) that lands on the same wall face, same z-band.
-          linen-quilt duvet overhangs the frame 3.5cm each side + a rolled
-          fold-back band where the pillows peek out. No emissive anywhere
-          in this group (Bloom threshold 0.6 — see brief). ── */}
-      <group position={[BED_CENTER.x, 0, BED_CENTER.z]}>
-        {/* headboard slab */}
-        <mesh position={[BED_HEAD_X, BED_HEAD_H / 2, 0]}>
-          <boxGeometry args={[BED_HEAD_T, BED_HEAD_H, BED_RECT.d]} />
-          <meshStandardMaterial color="#6b4128" />
-        </mesh>
-
-        {/* low frame */}
-        <mesh position={[BED_FRAME_X, BED_FRAME_H / 2, 0]}>
-          <boxGeometry args={[BED_FRAME_LEN, BED_FRAME_H, BED_RECT.d]} />
-          <meshStandardMaterial color="#4a3a2e" />
-        </mesh>
-
-        {/* mattress box */}
-        <mesh position={[BED_FRAME_X, BED_FRAME_H + BED_MATT_H / 2, 0]}>
-          <boxGeometry
-            args={[BED_MATT_LEN, BED_MATT_H, BED_RECT.d - BED_MATT_INSET * 2]}
-          />
-          <meshStandardMaterial color="#e8e2d3" />
-        </mesh>
-
-        {/* two pillows, slight random yaw */}
-        {[
-          { z: BED_PILLOW_Z, yaw: 0.06 },
-          { z: -BED_PILLOW_Z, yaw: -0.05 },
-        ].map(({ z, yaw }) => (
-          <mesh
-            key={z}
-            position={[BED_PILLOW_X, BED_MATT_TOP_Y + BED_PILLOW_H / 2, z]}
-            rotation={[0, yaw, 0]}
-          >
-            <boxGeometry args={[BED_PILLOW_W, BED_PILLOW_H, BED_PILLOW_D]} />
-            <meshStandardMaterial color="#f0e9da" />
-          </mesh>
-        ))}
-
-        {/* rolled fold-back band — where the duvet turns down before the
-            pillows; solid cream (no texture distortion on the cylinder) */}
-        <mesh
-          position={[BED_DUVET_X0, BED_MATT_TOP_Y + 0.05, 0]}
-          rotation={[Math.PI / 2, 0, 0]}
-        >
-          <cylinderGeometry args={[0.05, 0.05, BED_DUVET_Z - 0.05, 10]} />
-          <meshStandardMaterial color="#e8ddc4" />
-        </mesh>
-
-        {/* duvet slab, linen-quilt texture, overhangs frame + foot */}
-        <mesh position={[BED_DUVET_X, BED_MATT_TOP_Y + BED_DUVET_H / 2, 0]}>
-          <boxGeometry args={[BED_DUVET_LEN, BED_DUVET_H, BED_DUVET_Z]} />
-          <meshStandardMaterial map={quilt} />
-        </mesh>
-
-        {/* sleeping cat (Task 9) — sits on the duvet top surface, local to
-            this same bed group so CAT_X/CAT_Z line up with the duvet's own
-            local-space consts above with no re-derivation. */}
-        <Cat x={CAT_X} y={CAT_TOP_Y} z={CAT_Z} />
+      {/* ── bed — collider {0.35,2.5,2.1,1.7}. Real Sketchfab GLB (see
+          BedModel's attribution comment) replaces the hand-built
+          frame/headboard/mattress/pillows/duvet. rotation.y=π/2 maps the
+          model's local +Z (head→foot) to world +X and local -X (its own
+          lamp/table side) to world +Z; BED_MODEL_POS puts the headboard
+          face on the wall plane (BED_RECT.x + 2cm clearance) and centers
+          the bed-only footprint on the collider's z-span (full derivation
+          in BedModel's comment, including the footprint-overflow call).
+          The GLB's own lamp is now the room's hero fixture: the point
+          light nests INSIDE this same group at the model's local shade
+          position — same rotation-safe pattern as the shade-nested light
+          it replaces, same warm profile, no castShadow. Own Suspense so
+          the fetch never blocks the room's first paint. ── */}
+      <group position={BED_MODEL_POS} rotation={[0, BED_MODEL_ROTATION_Y, 0]}>
+        <Suspense fallback={null}>
+          <BedModel />
+        </Suspense>
+        <pointLight
+          position={BED_LAMP_LOCAL_POS}
+          color="#ffcf9e"
+          intensity={7}
+          distance={4.5}
+          decay={2}
+        />
       </group>
 
-      {/* ── nightstand + bedside lamp — collider {0.35,1.85,0.55,0.5}, north
-          of the bed head. Two-tone cabinet (dark body / warm top slab) with
-          one recessed drawer + knob. The lamp is the room's hero light: the
-          pointLight is nested INSIDE the shade group at the bulb position
-          (local [0,0,0]), so it inherits the shade's world transform by
-          construction — same rotation-safe pattern as House.tsx's stairwell
-          sconce, avoiding the hand-computed-world-position fixture-offset
-          bug that shipped twice in P3. No castShadow (fixture-attached
-          point light, matches every other bedside/table lamp in the
-          house). ── */}
+      {/* sleeping cat (Task 9) — sits on the GLB bed's foot-area top
+          surface (world-space now, no longer nested in a bed-local group
+          — that group carries the model's own π/2 yaw, which would
+          reorient the cat's body too). See the CAT_X/Y/Z consts above for
+          the foot-inset/surface-height derivation. */}
+      <Cat x={CAT_X} y={CAT_Y} z={CAT_Z} />
+
+      {/* ── nightstand — collider {0.35,1.85,0.55,0.5}, north of the bed
+          head. Two-tone cabinet (dark body / warm top slab) with one
+          recessed drawer + knob. Its hand-built lamp is REMOVED — the GLB
+          bed's own lamp (above) is now the room's hero light. Kept the
+          cabinet itself: the GLB's lamp/table cluster lands at the bed's
+          OTHER (south) end, not beside this nightstand, so the two pieces
+          don't overlap or read as redundant (see BedModel's comment for
+          why — flagged for Rohan's call regardless). ── */}
       <group position={[NIGHTSTAND_CENTER.x, 0, NIGHTSTAND_CENTER.z]}>
         {/* body */}
         <mesh position={[0, NS_BODY_H / 2, 0]}>
@@ -516,29 +552,6 @@ export function Bedroom() {
           <sphereGeometry args={[0.014, 8, 6]} />
           <meshStandardMaterial color="#c9a06a" />
         </mesh>
-
-        {/* bedside lamp — base + neck stack off NS_TOP_Y (the nightstand's
-            actual top face, not a guessed constant) */}
-        <group position={[0.02, 0, -0.06]}>
-          <mesh position={[0, LAMP_BASE_Y, 0]}>
-            <cylinderGeometry args={[0.05, 0.055, LAMP_BASE_H, 10]} />
-            <meshStandardMaterial color="#2e2a4d" />
-          </mesh>
-          <mesh position={[0, LAMP_NECK_Y, 0]}>
-            <cylinderGeometry args={[0.012, 0.012, LAMP_NECK_H, 8]} />
-            <meshStandardMaterial color="#2e2a4d" />
-          </mesh>
-          {/* shade group — the fixture; pointLight lives INSIDE it at the
-              bulb position so it moves/rotates with the shade by
-              construction (rotation-safe, no hand-computed world coords) */}
-          <group position={[0, LAMP_SHADE_Y, 0]}>
-            <mesh>
-              <cylinderGeometry args={[0.075, 0.1, LAMP_SHADE_H, 10, 1, true]} />
-              <meshStandardMaterial color="#f2c98a" side={2} />
-            </mesh>
-            <pointLight color="#ffcf9e" intensity={7} distance={4.5} decay={2} />
-          </group>
-        </group>
       </group>
 
       {/* ── manga dresser — collider {2.8,0.3,1.6,0.55}. Waist-high 2×2

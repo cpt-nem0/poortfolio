@@ -14,8 +14,12 @@ import * as THREE from "three";
  * so it deliberately sets no shadow flags itself.
  *
  * Position is a prop, not a hand-guessed local constant: Bedroom.tsx derives
- * x/y/z from its own BED_* consts (duvet top surface, foot-corner x, mid z)
- * and passes them in — see task-9 report for the exact arithmetic.
+ * x/y/z from the bed's own measured top surface (foot-corner x, mid z) and
+ * passes them in. Originally the hand-built bed's duvet-top consts (task-9
+ * report has that arithmetic); since the bed-swap task (real GLB bed +
+ * lamp) the source is the GLB's own foot-area vertex cloud instead — see
+ * BedModel's attribution comment in Bedroom.tsx for the new derivation.
+ * Cat behavior/rendering itself is untouched by that swap.
  */
 
 const CAT_NEAR_BLACK = "#16161c";
