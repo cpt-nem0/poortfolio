@@ -47,12 +47,17 @@ const GROUND: Area = {
   bounds: { x: 0, z: 0, w: 22, d: 6 },
   walls: [...dividerWithDoor(8, 6), ...dividerWithDoor(16, 6)],
   furniture: [
-    // bedroom
-    { x: 0.35, z: 2.5, w: 2.1, d: 1.7 }, // bed (headboard west, under the window)
-    { x: 0.35, z: 1.85, w: 0.55, d: 0.5 }, // nightstand (north of bed head)
+    // bedroom — P4 rearrange: bed rotated 90° onto the north wall (east of
+    // the dresser), nightstand moved to the bed's east flank, dragonslayer
+    // lean-zone shifted east to clear the bed, new window table under the
+    // west window (see furniture.test.ts's "no two bedroom furniture rects
+    // overlap" test for the exhaustive pairwise clearance check).
+    { x: 4.65, z: 0.35, w: 1.7, d: 2.1 }, // bed (headboard north, east of dresser)
+    { x: 6.45, z: 0.95, w: 0.55, d: 0.5 }, // nightstand (bed's east flank, south of the sword)
     { x: 2.8, z: 0.3, w: 1.6, d: 0.55 }, // manga dresser (north wall)
-    { x: 5.6, z: 0.32, w: 0.85, d: 0.5 }, // dragonslayer lean-zone (north wall, east of dresser)
+    { x: 6.55, z: 0.32, w: 0.85, d: 0.5 }, // dragonslayer lean-zone (north wall, east of the bed)
     { x: 0.45, z: 5.1, w: 0.4, d: 0.4 }, // plant (SW corner)
+    { x: 0.35, z: 2.7, w: 0.5, d: 1.1 }, // window table (west wall, under the window)
     { x: 17.6, z: 0.3, w: 2.8, d: 0.9 }, // record console, centered on the wall (turntable + speakers on top)
     { x: 20.675, z: 0.475, w: 0.35, d: 0.35 }, // floor lamp (right of console)
     { x: 16.5, z: 0.5, w: 0.35, d: 0.35 }, // snake plant (console's left flank)

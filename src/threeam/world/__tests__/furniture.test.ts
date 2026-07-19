@@ -104,13 +104,18 @@ describe("workspace furniture colliders", () => {
 });
 
 describe("bedroom furniture colliders", () => {
+  // P4 rearrange: bed rotated 90° onto the north wall (east of the
+  // dresser), nightstand moved to the bed's east flank, dragonslayer
+  // lean-zone shifted east to clear the bed, new window table under the
+  // west window. Dresser and plant are untouched.
   it("bedroom rects are present verbatim", () => {
     const bedroomRects = [
-      { x: 0.35, z: 2.5, w: 2.1, d: 1.7 }, // bed
-      { x: 0.35, z: 1.85, w: 0.55, d: 0.5 }, // nightstand
+      { x: 4.65, z: 0.35, w: 1.7, d: 2.1 }, // bed (headboard north, east of dresser)
+      { x: 6.45, z: 0.95, w: 0.55, d: 0.5 }, // nightstand (bed's east flank, south of the sword)
       { x: 2.8, z: 0.3, w: 1.6, d: 0.55 }, // manga dresser
-      { x: 5.6, z: 0.32, w: 0.85, d: 0.5 }, // dragonslayer lean-zone
+      { x: 6.55, z: 0.32, w: 0.85, d: 0.5 }, // dragonslayer lean-zone (moved east of the bed)
       { x: 0.45, z: 5.1, w: 0.4, d: 0.4 }, // plant
+      { x: 0.35, z: 2.7, w: 0.5, d: 1.1 }, // window table (under the west window)
     ];
 
     for (const rect of bedroomRects) {
@@ -125,23 +130,44 @@ describe("bedroom furniture colliders", () => {
     }
   });
 
+  it("no two bedroom furniture rects overlap", () => {
+    const intersects = (a: Rect, b: Rect) =>
+      a.x < b.x + b.w && b.x < a.x + a.w && a.z < b.z + b.d && b.z < a.z + a.d;
+    const bedroomRects = [
+      { name: "bed", r: { x: 4.65, z: 0.35, w: 1.7, d: 2.1 } },
+      { name: "nightstand", r: { x: 6.45, z: 0.95, w: 0.55, d: 0.5 } },
+      { name: "dresser", r: { x: 2.8, z: 0.3, w: 1.6, d: 0.55 } },
+      { name: "dragonslayer", r: { x: 6.55, z: 0.32, w: 0.85, d: 0.5 } },
+      { name: "plant", r: { x: 0.45, z: 5.1, w: 0.4, d: 0.4 } },
+      { name: "window table", r: { x: 0.35, z: 2.7, w: 0.5, d: 1.1 } },
+    ];
+    for (let i = 0; i < bedroomRects.length; i++) {
+      for (let j = i + 1; j < bedroomRects.length; j++) {
+        expect(
+          intersects(bedroomRects[i].r, bedroomRects[j].r),
+          `${bedroomRects[i].name} overlaps ${bedroomRects[j].name}`
+        ).toBe(false);
+      }
+    }
+  });
+
   it("SPAWN point with player radius stays clear of all bedroom rects", () => {
     expect(isBlocked(ground, 4, 3)).toBe(false); // SPAWN point
   });
 
   it("bedroom walkway probes all walkable", () => {
-    expect(isBlocked(ground, 4.5, 3.0)).toBe(false); // center
+    expect(isBlocked(ground, 4.5, 3.0)).toBe(false); // open floor, west of the relocated bed
     expect(isBlocked(ground, 7.5, 3.0)).toBe(false); // door approach
-    expect(isBlocked(ground, 1.6, 4.6)).toBe(false); // foot of bed → rug zone
+    expect(isBlocked(ground, 1.6, 4.6)).toBe(false); // open floor south of the window table
     expect(isBlocked(ground, 3.6, 1.5)).toBe(false); // dresser front / about-station zone
   });
 
   it("bed blocks players standing on it", () => {
-    expect(isBlocked(ground, 0.35, 2.5)).toBe(true); // bed center
+    expect(isBlocked(ground, 4.65, 0.35)).toBe(true); // bed rect corner
   });
 
   it("nightstand blocks players standing on it", () => {
-    expect(isBlocked(ground, 0.35, 1.85)).toBe(true); // nightstand center
+    expect(isBlocked(ground, 6.45, 0.95)).toBe(true); // nightstand rect corner
   });
 
   it("manga dresser blocks players standing on it", () => {
@@ -149,11 +175,24 @@ describe("bedroom furniture colliders", () => {
   });
 
   it("dragonslayer lean-zone blocks players standing on it", () => {
-    expect(isBlocked(ground, 5.6, 0.32)).toBe(true); // dragonslayer center
+    expect(isBlocked(ground, 6.55, 0.32)).toBe(true); // dragonslayer rect corner (moved east)
   });
 
   it("plant blocks players standing on it", () => {
     expect(isBlocked(ground, 0.45, 5.1)).toBe(true); // plant center
+  });
+
+  it("window table blocks players standing on it", () => {
+    expect(isBlocked(ground, 0.35, 2.7)).toBe(true); // table rect corner
+  });
+
+  it("the old bed/nightstand spots along the west wall are open floor now", () => {
+    expect(isBlocked(ground, 1.5, 3.5)).toBe(false); // old bed footprint
+    expect(isBlocked(ground, 0.6, 2.1)).toBe(false); // old nightstand footprint
+  });
+
+  it("the old dragonslayer spot is now covered by the relocated bed", () => {
+    expect(isBlocked(ground, 6.0, 0.55)).toBe(true); // inside old sword lean-zone, inside new bed rect
   });
 });
 
