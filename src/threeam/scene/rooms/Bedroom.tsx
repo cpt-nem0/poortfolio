@@ -722,6 +722,37 @@ export function Bedroom() {
         <meshBasicMaterial color="#0a0a0f" transparent opacity={0.3} />
       </mesh>
 
+      {/* ── dresser/dragonslayer wall sconce (Task 10) — the hero light is
+          now the GLB bed's own lamp (~0.69,0.72,4.56 world), whose
+          distance=4.5 falloff doesn't reach this north-wall zone (~4.9m
+          away, past the cutoff) — and window glass is an emissive SURFACE
+          only, not a real light (task 7). Without a local source this
+          corner (x 2.8-6.5) reads flat-dark under just the global
+          ambient/directional, which matters here specifically because the
+          "about" station camera (stations.ts) frames a close-up look at
+          exactly this dresser/dragonslayer composition. One fixture-attached
+          source added, House/StairsApproach's brass-half-dome sconce as the
+          pattern (same mount box + emissive cone, pointLight nested INSIDE
+          this group so it's rotation-safe by construction even though this
+          group happens to carry no rotation — matches the fixture-nesting
+          rule regardless), intensity kept ≤4, warm, no castShadow. Mounted
+          above the dragonslayer (DS_BASE_X) so its distance=3.6 falloff also
+          washes partway toward the dresser (~3m away) without a second
+          fixture. The room's SE corner (~6.6,4.9) stays unlit here on
+          purpose — a bonsai stand lands there in a follow-up plan and will
+          carry its own light. ── */}
+      <group position={[DS_BASE_X, 2.4, R.z + 0.02]}>
+        <mesh position={[0, -0.09, -0.02]}>
+          <boxGeometry args={[0.1, 0.05, 0.06]} />
+          <meshStandardMaterial color="#4a3a2e" />
+        </mesh>
+        <mesh rotation={[Math.PI, 0, 0]}>
+          <coneGeometry args={[0.11, 0.14, 8, 1, true]} />
+          <meshStandardMaterial color="#ffcf8f" emissive="#ffcf8f" emissiveIntensity={0.8} side={2} />
+        </mesh>
+        <pointLight color="#ffcf8f" intensity={3.5} distance={3.6} decay={2} />
+      </group>
+
       {/* ── rug (no collider — visual only, walkable) — rug-bedroom is a
           single alpha-cutout oval image, same repeat(1,1) + transparent
           convention as MusicNook's kilim rug. Centered under the foot-of-bed
