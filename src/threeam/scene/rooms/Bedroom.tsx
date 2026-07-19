@@ -13,16 +13,17 @@ export const BEDROOM = { x: 0, z: 0, w: 8, d: 6 };
    — every mesh in the furniture section below derives its position from
    these rect constants; the plan mandates no re-hardcoding a collider's
    numbers into a mesh position. ── */
-// P4 rearrange: bed rotated 90° onto the north wall (east of the dresser),
-// nightstand moved to the bed's east flank, dragonslayer lean-zone shifted
-// east to clear the bed, new window table under the west window (clear
-// top, awaiting a bonsai in a later step). See layout.ts's `// bedroom`
-// section (verbatim source of truth) and furniture.test.ts's exhaustive
-// pairwise clearance check.
-const BED_RECT = { x: 4.65, z: 0.35, w: 1.7, d: 2.1 };
+// P4 recenter: bed centered on the north wall (x 3.0-5.0, room-x-center
+// 4.0) and enlarged (w 1.7→2.0, d 2.1→2.25). The manga dresser is REMOVED
+// FOR NOW — its old rect (x 2.8-4.4) overlapped the centered bed's x-span,
+// so centering it forced the removal; it returns in a later step.
+// Nightstand and dragonslayer lean-zone are unchanged (verified still clear
+// of the bigger bed — see layout.ts's `// bedroom` section, the verbatim
+// source of truth, and furniture.test.ts's exhaustive pairwise clearance
+// check).
+const BED_RECT = { x: 3.0, z: 0.33, w: 2.0, d: 2.25 };
 const NIGHTSTAND_RECT = { x: 6.45, z: 0.95, w: 0.55, d: 0.5 };
 const PLANT_RECT = { x: 0.45, z: 5.1, w: 0.4, d: 0.4 };
-const DRESSER_RECT = { x: 2.8, z: 0.3, w: 1.6, d: 0.55 };
 const DRAGONSLAYER_RECT = { x: 6.55, z: 0.32, w: 0.85, d: 0.5 }; // lean-zone, not a furniture footprint
 const WINDOW_TABLE_RECT = { x: 0.35, z: 2.7, w: 0.5, d: 1.1 }; // under the west window
 
@@ -31,10 +32,6 @@ const NIGHTSTAND_CENTER = {
   z: NIGHTSTAND_RECT.z + NIGHTSTAND_RECT.d / 2,
 };
 const PLANT_CENTER = { x: PLANT_RECT.x + PLANT_RECT.w / 2, z: PLANT_RECT.z + PLANT_RECT.d / 2 };
-const DRESSER_CENTER = {
-  x: DRESSER_RECT.x + DRESSER_RECT.w / 2,
-  z: DRESSER_RECT.z + DRESSER_RECT.d / 2,
-};
 const WINDOW_TABLE_CENTER = {
   x: WINDOW_TABLE_RECT.x + WINDOW_TABLE_RECT.w / 2,
   z: WINDOW_TABLE_RECT.z + WINDOW_TABLE_RECT.d / 2,
@@ -45,57 +42,67 @@ const WINDOW_TABLE_CENTER = {
 // pillows/duvet. BED_MODEL_SCALE/POS/ROTATION_Y and the lamp's local
 // nesting position are all derived there from the mesh's own vertex
 // cloud — nothing here is hand-guessed.
-const BED_MODEL_SCALE = 0.003827393054572264;
-// P4 rearrange: rotation.y = 0 (was π/2) — headboard now against the NORTH
-// wall instead of the west wall. Under the old π/2 mapping, local +Z
-// (head→foot) → world +X and local -X (lamp side) → world +Z. A bare Y
-// rotation can only keep the head→foot axis grid-aligned at θ=0 or θ=π
-// (sinθ must be 0); θ=0 gives local +Z → world +Z directly (head→foot
-// runs north→south, correct ordering) while θ=π would reverse that
-// ordering (foot would land north) to chase a "nicer" lamp direction — so
-// θ=0 is the only choice that satisfies the hard requirement (headboard
-// north). See the report for the algebraic re-derivation of BED_MODEL_POS
-// below (reuses the ORIGINAL Zmin/Xc/scale facts, just re-solved for the
-// new θ=0 mapping — no fresh GLB probing needed since the length/width
-// dimensions are numerically identical between the old and new rects, w/d
-// swapped: old {w:2.1,d:1.7} vs new {w:1.7,d:2.1}).
+// P4 recenter: rotation.y stays 0 (unchanged from the P4 rearrange — the
+// bed still faces headboard-north, only BED_RECT's size/position changed,
+// not its orientation). Scale is re-derived below because the rect's
+// length axis (d, the local-Z/head→foot fit target) grew from 2.1 to 2.25.
 const BED_MODEL_ROTATION_Y = 0;
+// BED_MODEL_SCALE re-fits the bed body's own length (local Z range, the
+// same 538.23 scene units the original bed-swap task measured — intrinsic
+// to the GLB, unaffected by any rect change) to the new BED_RECT.d minus
+// the same 4cm margin: (2.25 - 0.04) / 538.23 = 2.21 / 538.23 =
+// 0.0041060513... At that scale the bed-only WIDTH (local X range,
+// 457.230 units, itself back-derived from the P4-rearrange scale's
+// published 1.75m-at-old-scale fact: 1.75 / 0.003827393054572264 =
+// 457.230) comes out to 1.8774m — BED_RECT.w is 2.0m, so the bed body now
+// sits 6.13cm INSIDE the collider on each side (comfortably contained,
+// the inverse of the old 2.6cm-over case; no re-tuning needed since it's
+// well within the same ±4cm-class tolerance).
+const BED_MODEL_SCALE = 0.00410605131635174553629489251807;
 // headboard face lands BED_RECT.z + 2cm (clearance off the wall plane,
 // same convention as every other wall-adjacent piece in this room); bed
 // (excluding the model's own lamp/table cluster) is centered on the
-// collider's x-span. Re-derived (not re-probed) from the original bed-swap
-// task's own published constants: Zmin (local, head→foot axis) = -295.569
-// units and Xc (local, width-axis centroid) = 39.630 units, both backed
-// out algebraically from the OLD BED_MODEL_POS + rotation via the same
-// formulas this task used to place the model originally. See the report
-// for the full derivation, including the flagged caveat that the model's
-// integrated lamp/table cluster (headboard-side, ~0.84m overflow past the
-// bed-only footprint) now overflows WEST toward the dresser instead of
-// past the old plant corner — an unavoidable consequence of θ=0 being the
-// only orientation-correct choice, same "flag for Rohan's call" pattern
-// the original bed-swap task used for its own axis tradeoff.
-const BED_MODEL_POS: [number, number, number] = [5.348321312018477, 0, 1.5012601628680855];
+// collider's x-span. Re-derived (not re-probed) algebraically, reusing the
+// P4-rearrange task's own back-derived Zmin/Xc facts (Zmin = -295.569372
+// units, local head→foot axis; Xc = 39.629765 units, local width-axis
+// centroid — both intrinsic to the GLB, so they carry over unchanged
+// across a scale/rect edit): with the new scale s = BED_MODEL_SCALE,
+//   Tz = (BED_RECT.z + 0.02) - s * Zmin = 0.35 - s*(-295.569372) = 1.563623
+//   Tx = (BED_RECT.x + BED_RECT.w/2) - s * Xc = 4.0 - s*39.629765 = 3.837278
+// See the P4-recenter report for the full arithmetic table, including the
+// sanity check that reapplying this same formula with the OLD scale/rect
+// reproduces the OLD published BED_MODEL_POS to 4 decimal places.
+const BED_MODEL_POS: [number, number, number] = [3.83727815054034470147114023158, 0, 1.56362301040176360102890162797];
 // lamp shade/bulb position IN THE MODEL'S OWN LOCAL SPACE (same space as
 // the scaled <primitive>, pre the wrapper group's rotation/translation) —
 // nesting the pointLight here inside that same rotated group keeps it
-// rotation-safe by construction (HANDOFF §6 fixture-offset class).
-const BED_LAMP_LOCAL_POS: [number, number, number] = [-1.0538076425802145, 0.7217402367480494, -0.8103972666080197];
+// rotation-safe by construction (HANDOFF §6 fixture-offset class). Since
+// this is a raw-local-space offset (not itself passed through the
+// primitive's own `scale` prop), it scales linearly with the model:
+// re-derived as the OLD published value × (s_new / s_old) = × 1.0728063
+// (both scales are proportional multipliers of the same underlying GLB
+// geometry, so this ratio carries over exactly without re-probing the
+// mesh). See the report for the full per-axis table.
+const BED_LAMP_LOCAL_POS: [number, number, number] = [-1.13053146000485401472699077112, 0.774287460657614462650322468323, -0.869399279321101536730872489078];
 
-// cat (Task 9, re-seated P4) — curls at the GLB bed's foot corner, ON its
-// measured top surface (foot-area vertex cluster, ~90th-percentile height
-// to sit on the flat blanket read rather than a fold/pillow spike or a
-// sheet valley — see BedModel's comment). World-space (no longer nested in
-// a bed-local group, since that group carries the model's own rotation):
-// Z inset 0.26m off the foot edge (same convention as before — foot edge
-// is now south, at world z≈2.43, so 2.43-0.26=2.17; the head→foot axis
-// numbers are unchanged by the rotation, only which world axis they land
-// on). X offset off the width centerline (5.5) toward the side AWAY from
-// the model's own lamp/table cluster (now west, toward the dresser) —
-// i.e. +0.10 instead of the old -0.10, same mirrored-sign logic as
-// BED_MODEL_POS's re-derivation.
-const CAT_X = 5.6;
-const CAT_Y = 0.35;
-const CAT_Z = 2.17;
+// cat (Task 9, re-seated P4, re-seated again for the P4 recenter) — curls
+// at the GLB bed's foot corner, ON its measured top surface (foot-area
+// vertex cluster, ~90th-percentile height — see BedModel's comment).
+// World-space (no longer nested in a bed-local group, since that group
+// carries the model's own rotation). Re-derived using the same formulas,
+// just fed the new scale/pos: foot edge world Z = Tz + s*(Zmin +
+// local_Z_range) = 1.563623 + 0.00410605*(-295.569372+538.23) = 2.56
+// (a clean number — coincidental, not rounded); Z inset stays 0.26m off
+// that edge: 2.56-0.26=2.30. X offset stays off the width centerline
+// (now 4.0, was 5.5) toward the side AWAY from the model's own lamp/table
+// cluster (still west, toward where the dresser used to be — the
+// rescale/recenter didn't change the rotation, so the overflow direction
+// is unchanged, see BedModel's comment) — same +0.10 offset: 4.0+0.10=4.10.
+// Y (on-surface height) scales linearly with the model like the lamp:
+// 0.35 * (s_new/s_old) = 0.35 * 1.0728063 = 0.3755.
+const CAT_X = 4.1;
+const CAT_Y = 0.3755;
+const CAT_Z = 2.3;
 
 // nightstand — cabinet kept (its hand-built lamp is removed; the GLB bed's
 // own lamp is now the room's hero fixture). Heights still stack off the
@@ -166,21 +173,13 @@ const MOON_PATCH_X = 0.65;
 const MOON_PATCH_W = 1.3;
 const MOON_PATCH_D = 1.7;
 
-// manga dresser (Task 8) — waist-high 2×2 drawer cabinet, cabinet-wood
-// texture family. Top surface (DR_TOP_Y) is where every clutter item's y
-// stacks from, same convention as NS_TOP_Y for the nightstand lamp.
-const DR_BODY_H = 0.72;
-const DR_TOP_T = 0.03;
-const DR_TOP_Y = DR_BODY_H + DR_TOP_T; // 0.75
-const DR_DRAWER_COL_X = 0.39; // ± column offset, 2 columns across the 1.6m width
-const DR_DRAWER_ROW_Y = [DR_BODY_H * 0.28, DR_BODY_H * 0.72]; // bottom/top row centers
-const DR_DRAWER_W = 0.68;
-const DR_DRAWER_H = 0.26;
-const DR_PANEL_Z = DRESSER_RECT.d / 2 - 0.03; // recessed 3cm off the south (room-facing) face
-const DR_KNOB_Z = DRESSER_RECT.d / 2 - 0.008;
-
-// spine-band palette for the manga stack — abstract color only, no titles.
-const MANGA_COLORS = ["#4a3a8a", "#2e6e54", "#b3475f", "#c9a06a", "#3a5a8a", "#7a4a9e"];
+// manga dresser (Task 8) — REMOVED FOR NOW (P4 recenter): its rect (x
+// 2.8-4.4) overlapped the centered/enlarged bed's x-span (3.0-5.0), and
+// centering the bed on the north wall was the owner's explicit ask, so the
+// dresser had to go. All of its consts (DR_*, MANGA_COLORS) and its JSX
+// group (body/drawers/manga stack/figurines/cactus) are deleted along with
+// it. It returns elsewhere in a later step — this is a "for now" removal,
+// not a cut feature.
 
 // dragonslayer (Task 8, moved east by P4 to clear the relocated bed) —
 // leans against the north wall inside the lean zone. DS_BASE is
@@ -246,43 +245,55 @@ const FLOOR_TEX = "/3am/tex/floor-oak.png";
  *  two-nightstand-ish layout, flagged in the report for Rohan's call.
  *
  *  BED_MODEL_SCALE fits the bed body's own length (local Z range, 538.23
- *  scene units pre-extra-scale) to BED_RECT.w minus a 4cm margin (2.06m):
- *  2.06 / 538.23 = 0.0038274. At that scale: bed-only width comes out to
- *  1.75m (BED_RECT.d is 1.70m — 2.6cm over on each side, inside the ±4cm
- *  tolerance); headboard top lands at 0.694m (window sill is 1.0m, so
- *  0.26m clear — comfortably under the 0.95m cap, no window-frame
- *  overlap). The model's own lamp/table cluster, included, widens the full
- *  footprint to 2.57m — 0.84m past BED_RECT's far z edge into open floor
- *  (clears the corner-plant collider by ~6cm; does not reach the dresser).
- *  Scaling down further to zero that overflow would put the bed itself at
- *  a comically short ~1.4m — same "report the overlap for the owner's
- *  call" tradeoff this task's brief calls out for the headboard/window
- *  case, applied here to the footprint instead.
+ *  scene units pre-extra-scale, intrinsic to the GLB) to BED_RECT.d minus
+ *  a 4cm margin. STALE (pre-P4-recenter) numbers: at BED_RECT.d=2.1 this
+ *  was 2.06/538.23=0.0038274, bed-only width 1.75m (2.6cm over BED_RECT.w
+ *  on each side), headboard top 0.694m.
  *
  *  BED_LAMP_LOCAL_POS is the centroid of the lamp cluster's own top 15%
  *  (by height) verts — the shade interior — nested INSIDE the same
  *  rotated/positioned group as the model, so it's rotation-safe by
  *  construction (never a hand-computed world position, HANDOFF §6). Same
  *  warm profile as the lamp it replaces (intensity 7, #ffcf9e, distance
- *  4.5, decay 2, no castShadow — fixed shadow-caster budget).
+ *  4.5, decay 2, no castShadow — fixed shadow-caster budget). Since it's a
+ *  raw-local offset (not itself wrapped in the primitive's own `scale`
+ *  prop), it scales linearly with BED_MODEL_SCALE — re-derived on every
+ *  scale change as (old value) × (s_new/s_old), not re-probed.
  *
  *  P4 UPDATE (bed rearranged onto the north wall, east of the dresser):
- *  all of the above scale/margin arithmetic is UNCHANGED — the new
- *  BED_RECT swaps w/d ({1.7,2.1} vs the old {2.1,1.7}) to exactly the
- *  same two numbers, so the same 2.06m length-fit and 1.75m-vs-1.70m
- *  width-overflow both still hold, just against BED_RECT.d (length) and
- *  BED_RECT.w (width) respectively instead of the other way around. Only
- *  the wrapper's rotation.y changed (π/2 → 0, see BED_MODEL_ROTATION_Y's
- *  comment) and BED_MODEL_POS was re-derived for that new mapping (see
- *  its own comment) — no new GLB probing was needed. Two derived facts
- *  DID flip as a result and are now stale above: the "headboard top vs.
- *  window sill" clearance no longer applies (the bed left the window's
- *  wall entirely); and the lamp/table cluster's ~0.84m overflow now runs
- *  WEST toward the dresser instead of into the old open floor near the
- *  plant — it does NOT clear the dresser this time (distance from the
- *  lamp's own centroid to the dresser's center is ~0.77m, well inside
- *  overlap range). Flagged for Rohan's call, same as the original
- *  asymmetric-nightstand tradeoff two paragraphs up. */
+ *  wrapper rotation.y changed π/2 → 0 (see BED_MODEL_ROTATION_Y's
+ *  comment); BED_MODEL_POS re-derived for that mapping. Two facts flipped:
+ *  "headboard top vs. window sill" clearance no longer applied (bed left
+ *  the window's wall); lamp/table cluster overflow ran WEST toward the
+ *  dresser (~0.84m, didn't clear it — flagged for Rohan's call).
+ *
+ *  P4 RECENTER (this pass — bed centered on the north wall, x 3.0-5.0,
+ *  and enlarged to w:2.0/d:2.25; manga dresser removed for now): scale
+ *  re-fit to the new BED_RECT.d: (2.25-0.04)/538.23 = 2.21/538.23 =
+ *  0.0041060513 (ratio to the P4-rearrange scale: ×1.0728063). Bed-only
+ *  width at the new scale is 1.8774m against BED_RECT.w=2.0m — now 6.13cm
+ *  INSIDE the collider on each side (flipped from over to under, still
+ *  well within tolerance, no re-tuning needed). BED_MODEL_POS re-derived
+ *  algebraically from the SAME Zmin/Xc facts the P4-rearrange task
+ *  back-derived (Zmin=-295.569372, Xc=39.629765 — both intrinsic to the
+ *  GLB, unaffected by rect/scale edits), just re-solved with the new
+ *  scale and rect — no fresh GLB probing needed (see BED_MODEL_POS's own
+ *  comment for the formula and the sanity check that it reproduces the
+ *  old published position when fed the old scale/rect). BED_LAMP_LOCAL_POS
+ *  scaled by the same 1.0728063 ratio (see its own comment).
+ *
+ *  The lamp/table cluster's overflow direction is UNCHANGED (still WEST —
+ *  rotation didn't change, and the lamp cluster's local-X position
+ *  relative to the bed's own width centroid, which determines the
+ *  direction, is intrinsic geometry) but its magnitude grew with the
+ *  scale: 0.84m × 1.0728063 ≈ 0.90m. Since the manga dresser this used to
+ *  (fail to) clear is now removed, the overflow simply lands on open
+ *  floor — no clash to report. Sconce/dragonslayer distance check (lamp
+ *  world pos ≈ (2.707, 0.774, 0.694)): ~4.32m to the dragonslayer base,
+ *  ~4.59m to the sconce — both near the lamp's own 4.5m falloff distance
+ *  (borderline either side of it), noted in the P4-recenter report but
+ *  left untouched since re-balancing the north wall's lighting is outside
+ *  this task's scope (see the sconce group's own comment below). */
 function BedModel() {
   const { scene } = useGLTF("/3am/models/bed-with-lamp.glb");
   useEffect(() => {
@@ -362,9 +373,6 @@ export function Bedroom() {
   const rugTex = usePixelTexture("/3am/tex/rug-bedroom.png", 1, 1);
   // curtain — tiled once per meter, same convention as floor/wall.
   const curtainTex = usePixelTexture("/3am/tex/curtain-weave.png", WIN_CURTAIN_W, WIN_CURTAIN_H);
-  // dresser cabinet — cabinet-wood texture family, same tile RecordConsole
-  // uses for its console body, repeat scaled down for the dresser's size.
-  const dresserWood = usePixelTexture("/3am/tex/cabinet-wood.png", 2, 1);
   // window table (P4) — same cabinet-wood family, repeat scaled down again
   // for its slimmer footprint.
   const tableWood = usePixelTexture("/3am/tex/cabinet-wood.png", 1, 1);
@@ -569,25 +577,26 @@ export function Bedroom() {
         <meshBasicMaterial color="#26304d" transparent opacity={0.18} />
       </mesh>
 
-      {/* ── bed — collider {4.65,0.35,1.7,2.1} (P4: rotated 90° onto the
-          north wall, east of the dresser — was {0.35,2.5,2.1,1.7} against
-          the west wall). Real Sketchfab GLB (see BedModel's attribution
-          comment) replaces the hand-built frame/headboard/mattress/
-          pillows/duvet. rotation.y=0 (was π/2) maps the model's local +Z
-          (head→foot) to world +Z directly and local X (width axis,
-          unrotated) to world X directly — the only Y-rotation that keeps
-          the head→foot axis correctly ordered north→south (see
-          BED_MODEL_ROTATION_Y's comment for why π/2's alternative, θ=π,
-          was rejected). BED_MODEL_POS puts the headboard face on the wall
-          plane (BED_RECT.z + 2cm clearance) and centers the bed-only
-          footprint on the collider's x-span — re-derived algebraically
-          from the ORIGINAL bed-swap task's own published constants, not
-          re-probed (see BED_MODEL_POS's comment). The GLB's own lamp is
-          now the room's hero fixture: the point light nests INSIDE this
-          same group at the model's local shade position — same
-          rotation-safe pattern as the shade-nested light it replaces, same
-          warm profile, no castShadow. Own Suspense so the fetch never
-          blocks the room's first paint. ── */}
+      {/* ── bed — collider {3.0,0.33,2.0,2.25} (P4 recenter: centered on
+          the north wall, x 3.0-5.0 around the room's x-center 4.0, and
+          enlarged from {1.7,2.1} to {2.0,2.25} — was {4.65,0.35,1.7,2.1}
+          east of the now-removed manga dresser). Real Sketchfab GLB (see
+          BedModel's attribution comment) replaces the hand-built
+          frame/headboard/mattress/pillows/duvet. rotation.y=0 maps the
+          model's local +Z (head→foot) to world +Z directly and local X
+          (width axis, unrotated) to world X directly — the only
+          Y-rotation that keeps the head→foot axis correctly ordered
+          north→south (see BED_MODEL_ROTATION_Y's comment for why π/2's
+          alternative, θ=π, was rejected). BED_MODEL_POS puts the
+          headboard face on the wall plane (BED_RECT.z + 2cm clearance)
+          and centers the bed-only footprint on the collider's x-span —
+          re-derived algebraically from the P4-rearrange task's own
+          published Zmin/Xc constants, not re-probed (see BED_MODEL_POS's
+          comment). The GLB's own lamp is now the room's hero fixture: the
+          point light nests INSIDE this same group at the model's local
+          shade position — same rotation-safe pattern as the shade-nested
+          light it replaces, same warm profile, no castShadow. Own
+          Suspense so the fetch never blocks the room's first paint. ── */}
       <group position={BED_MODEL_POS} rotation={[0, BED_MODEL_ROTATION_Y, 0]}>
         <Suspense fallback={null}>
           <BedModel />
@@ -608,15 +617,16 @@ export function Bedroom() {
           consts above for the foot-inset/surface-height derivation. */}
       <Cat x={CAT_X} y={CAT_Y} z={CAT_Z} />
 
-      {/* ── nightstand — collider {6.45,0.95,0.55,0.5} (P4: moved to the
-          bed's east flank, south of the dragonslayer lean-zone). Two-tone
-          cabinet (dark body / warm top slab) with one recessed drawer +
-          knob. Its hand-built lamp is REMOVED — the GLB bed's own lamp
-          (above) is now the room's hero light. Kept the cabinet itself:
-          the GLB's lamp/table cluster lands at the bed's OTHER (west) end
-          now, not beside this nightstand, so the two pieces don't overlap
-          or read as redundant (see BedModel's comment for why — flagged
-          for Rohan's call regardless). ── */}
+      {/* ── nightstand — collider {6.45,0.95,0.55,0.5} (unchanged by the P4
+          recenter — the bigger/centered bed's far x edge (5.0) still
+          leaves a 1.45m gap before this rect's x min, verified in the
+          P4-recenter report). Two-tone cabinet (dark body / warm top slab)
+          with one recessed drawer + knob. Its hand-built lamp is REMOVED —
+          the GLB bed's own lamp (above) is now the room's hero light. Kept
+          the cabinet itself: the GLB's lamp/table cluster lands at the
+          bed's OTHER (west) end now, not beside this nightstand, so the
+          two pieces don't overlap or read as redundant (see BedModel's
+          comment for why — flagged for Rohan's call regardless). ── */}
       <group position={[NIGHTSTAND_CENTER.x, 0, NIGHTSTAND_CENTER.z]}>
         {/* body */}
         <mesh position={[0, NS_BODY_H / 2, 0]}>
@@ -642,117 +652,12 @@ export function Bedroom() {
         </mesh>
       </group>
 
-      {/* ── manga dresser — collider {2.8,0.3,1.6,0.55} (unmoved by P4 —
-          the bed rotated in east of it, west of the dresser is now the
-          window table instead of the old nightstand spot). Waist-high 2×2
-          drawer cabinet, cabinet-wood texture, along the north wall.
-          Back face sits at world z=DRESSER_RECT.z=0.3,
-          ~0.29m clear of the north wall plane (z≈0.011) — comfortably past
-          the 6mm minimum. Clutter on top (DR_TOP_Y=0.75) is asymmetric: the
-          manga stack anchors the west/back corner, figurines and the cactus
-          step east and toward the room, reading toward the southeast where
-          the about-station camera frames this piece
-          ([5.4,3.3,3.2] → [3.0,1.35,0.4]). No real titles, logos, or IP
-          anywhere — spine color is an abstract band only. ── */}
-      <group position={[DRESSER_CENTER.x, 0, DRESSER_CENTER.z]}>
-        {/* body */}
-        <mesh position={[0, DR_BODY_H / 2, 0]}>
-          <boxGeometry args={[DRESSER_RECT.w - 0.04, DR_BODY_H, DRESSER_RECT.d - 0.04]} />
-          <meshStandardMaterial map={dresserWood} />
-        </mesh>
-        {/* top slab */}
-        <mesh position={[0, DR_BODY_H + DR_TOP_T / 2, 0]}>
-          <boxGeometry args={[DRESSER_RECT.w, DR_TOP_T, DRESSER_RECT.d]} />
-          <meshStandardMaterial map={dresserWood} />
-        </mesh>
-
-        {/* 2×2 drawer faces + knobs, south (room-facing) side — recessed
-            panel + knob pattern matches the nightstand's single drawer */}
-        {DR_DRAWER_ROW_Y.map((rowY) =>
-          [-DR_DRAWER_COL_X, DR_DRAWER_COL_X].map((colX) => (
-            <group key={`drawer-${rowY}-${colX}`}>
-              <mesh position={[colX, rowY, DR_PANEL_Z]}>
-                <boxGeometry args={[DR_DRAWER_W, DR_DRAWER_H, 0.02]} />
-                <meshStandardMaterial color="#2e2a4d" />
-              </mesh>
-              <mesh position={[colX, rowY, DR_KNOB_Z]}>
-                <sphereGeometry args={[0.016, 8, 6]} />
-                <meshStandardMaterial color="#c9a06a" />
-              </mesh>
-            </group>
-          ))
-        )}
-
-        {/* manga stack — 5 volumes lying flat + 1 leaning upright, spines
-            (south face) reading as abstract color bands only. Slight
-            per-volume jitter so the stack reads lived-in, not laser-aligned. */}
-        <group position={[-0.35, DR_TOP_Y, -0.03]}>
-          {MANGA_COLORS.map((color, i) => (
-            <mesh
-              key={color}
-              position={[((i % 3) - 1) * 0.012, 0.008 + i * 0.017, ((i % 2) - 0.5) * 0.02]}
-              rotation={[0, ((i % 3) - 1) * 0.04, 0]}
-            >
-              <boxGeometry args={[0.125, 0.016, 0.178]} />
-              <meshStandardMaterial color={color} />
-            </mesh>
-          ))}
-          {/* one volume standing, leaning on the stack's east side */}
-          <mesh position={[0.11, 0.1, 0.02]} rotation={[0, 0.1, -0.42]}>
-            <boxGeometry args={[0.016, 0.178, 0.125]} />
-            <meshStandardMaterial color="#c9784a" />
-          </mesh>
-        </group>
-
-        {/* humanoid figurine — chunky blocky silhouette, ~12cm, distinct
-            two-tone body/head so it doesn't read as a monolith */}
-        <group position={[0.12, DR_TOP_Y, 0.04]}>
-          <mesh position={[0, 0.04, 0]}>
-            <boxGeometry args={[0.05, 0.08, 0.035]} />
-            <meshStandardMaterial color="#57b6e8" />
-          </mesh>
-          <mesh position={[0, 0.095, 0]}>
-            <boxGeometry args={[0.04, 0.035, 0.04]} />
-            <meshStandardMaterial color="#f0e0c8" />
-          </mesh>
-          <mesh position={[0, 0.006, 0]}>
-            <boxGeometry args={[0.052, 0.014, 0.037]} />
-            <meshStandardMaterial color="#2e2a4d" />
-          </mesh>
-        </group>
-
-        {/* round critter figurine — sphere body + ear nubs, silhouette
-            unmistakably different from the humanoid alongside it */}
-        <group position={[0.32, DR_TOP_Y, 0.07]}>
-          <mesh position={[0, 0.04, 0]}>
-            <sphereGeometry args={[0.042, 10, 8]} />
-            <meshStandardMaterial color="#f2b84a" />
-          </mesh>
-          {[-0.022, 0.022].map((ex) => (
-            <mesh key={ex} position={[ex, 0.075, 0.01]}>
-              <sphereGeometry args={[0.012, 6, 5]} />
-              <meshStandardMaterial color="#f2b84a" />
-            </mesh>
-          ))}
-          <mesh position={[0, 0.035, 0.04]}>
-            <sphereGeometry args={[0.006, 5, 4]} />
-            <meshStandardMaterial color="#2e2a4d" />
-          </mesh>
-        </group>
-
-        {/* tiny cactus — terracotta pot, matching the house's established
-            cactus/snake-plant pot color (see corner-plant comment below) */}
-        <group position={[0.58, DR_TOP_Y, -0.06]}>
-          <mesh position={[0, 0.015, 0]}>
-            <cylinderGeometry args={[0.022, 0.018, 0.03, 8]} />
-            <meshStandardMaterial color="#a04b3a" />
-          </mesh>
-          <mesh position={[0, 0.05, 0]} scale={[1, 1.15, 1]}>
-            <sphereGeometry args={[0.024, 8, 6]} />
-            <meshStandardMaterial color="#3f8f5a" />
-          </mesh>
-        </group>
-      </group>
+      {/* ── manga dresser — REMOVED FOR NOW (P4 recenter). Its old collider
+          {2.8,0.3,1.6,0.55} overlapped the centered/enlarged bed's x-span
+          (3.0-5.0), and centering the bed on the north wall was the
+          explicit ask, so the dresser (body, drawers, manga stack,
+          figurines, cactus) is deleted here. It returns elsewhere in a
+          later step. ── */}
 
       {/* ── the dragonslayer — lean zone {5.6,0.32,0.85,0.5}, no collider
           footprint of its own (it's a wall-leaning prop, not a walk-into
@@ -812,31 +717,28 @@ export function Bedroom() {
         <meshBasicMaterial color="#0a0a0f" transparent opacity={0.3} />
       </mesh>
 
-      {/* ── dresser/dragonslayer wall sconce (Task 10) — kept, moved east
-          with the sword by P4 (position auto-follows DS_BASE_X, which is
-          derived from the relocated DRAGONSLAYER_RECT — no separate edit
-          needed here). FLAG for a future lighting pass: P4 also moved the
-          bed onto this same north wall, right next to the dresser — the
-          bed's own lamp now sits at world (~4.29,0.72,0.69), only ~0.77m
-          from the dresser's center and ~3.2m from this sconce (both well
-          inside the lamp's distance=4.5 falloff), which invalidates this
-          note's original premise ("bed lamp doesn't reach this wall, past
-          the cutoff" — true in the OLD layout, no longer true now that the
-          bed sits on the same wall). The sconce itself is left in place
-          exactly as instructed (follow the sword) rather than re-tuned,
-          since re-balancing the whole north wall's lighting is a separate
-          decision outside this rearrange's scope — window glass is still
-          an emissive SURFACE only, not a real light (task 7). One
-          fixture-attached source, House/StairsApproach's brass-half-dome
-          sconce as the pattern (same mount box + emissive cone, pointLight
-          nested INSIDE this group so it's rotation-safe by construction
-          even though this group happens to carry no rotation — matches the
-          fixture-nesting rule regardless), intensity kept ≤4, warm, no
-          castShadow. The room's SE corner (~6.6,4.9) stays unlit here on
-          purpose — a (separate, pre-existing) bonsai stand was slated to
-          land there in a follow-up plan; P4's own bonsai now lands on the
-          window table instead (WINDOW_TABLE_RECT), so there may be two
-          bonsai mentions in this file going forward — flagged for
+      {/* ── dragonslayer wall sconce (Task 10) — kept, position auto-follows
+          DS_BASE_X (unaffected by the P4 recenter — DRAGONSLAYER_RECT
+          didn't move). FLAG for a future lighting pass, updated for the P4
+          recenter: the bed's own lamp now sits at world (~2.71,0.77,0.69)
+          — the manga dresser it used to sit ~0.77m from is removed, so
+          that overlap concern is moot, but the lamp is now ~4.32m from the
+          dragonslayer base and ~4.59m from this sconce, both right at the
+          edge of the lamp's distance=4.5 falloff (borderline either side
+          of it — see BedModel's comment for the full numbers). The sconce
+          itself is left in place rather than re-tuned, since re-balancing
+          the whole north wall's lighting is outside this task's scope —
+          window glass is still an emissive SURFACE only, not a real light
+          (task 7). One fixture-attached source, House/StairsApproach's
+          brass-half-dome sconce as the pattern (same mount box + emissive
+          cone, pointLight nested INSIDE this group so it's rotation-safe
+          by construction even though this group happens to carry no
+          rotation — matches the fixture-nesting rule regardless),
+          intensity kept ≤4, warm, no castShadow. The room's SE corner
+          (~6.6,4.9) stays unlit here on purpose — a bonsai stand was
+          slated to land there in a follow-up plan; a separate bonsai also
+          lands on the window table (WINDOW_TABLE_RECT), so there may be
+          two bonsai mentions in this file going forward — flagged for
           Rohan's call on which stands. ── */}
       <group position={[DS_BASE_X, 2.4, R.z + 0.02]}>
         <mesh position={[0, -0.09, -0.02]}>
@@ -852,12 +754,13 @@ export function Bedroom() {
 
       {/* ── rug (no collider — visual only, walkable) — rug-bedroom is a
           single alpha-cutout oval image, same repeat(1,1) + transparent
-          convention as MusicNook's kilim rug. P4 rearrange: re-centered to
-          the new open floor middle (~3.3,3.6) now that the bed no longer
-          runs along the west wall — half-extents 1.2×0.85 give x-range
-          2.1–4.5, z-range 2.75–4.45, clear of every P4-moved furniture
-          rect (checked against the bed, nightstand, dragonslayer, and
-          window table in the P4 report) and of the moon patch (see
+          convention as MusicNook's kilim rug. Position unchanged by the P4
+          recenter (owner's call — still verified clear, no need to move
+          it): half-extents 1.2×0.85 give x-range 2.1–4.5, z-range
+          2.75–4.45; the new bed's far z edge is 2.58, so the z-gap
+          tightened from 0.30m to 0.17m but stays positive (no overlap) —
+          checked against the bed, nightstand, dragonslayer, and window
+          table in the P4-recenter report, and of the moon patch (see
           MOON_PATCH_X comment above). ── */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[3.3, 0.035, 3.6]}>
         <planeGeometry args={[2.4, 1.7]} />

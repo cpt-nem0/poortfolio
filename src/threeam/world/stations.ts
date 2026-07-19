@@ -39,16 +39,24 @@ export const STATIONS: Station[] = [
   {
     id: "about",
     area: "ground",
-    // standing zone in front of the manga dresser (north wall), just south
-    // of the dresser's collider (z 0.3-0.85) so the whole trigger is clear
-    trigger: { x: 2.7, z: 1.0, w: 1.9, d: 1.15 },
+    // P4 recenter: retargeted from the (now-removed) manga dresser to the
+    // bed. Standing zone on the bed's east/south approach — clear of the
+    // bed (x max 5.0, trigger x min 5.15, 0.15m gap) and the nightstand
+    // (x min 6.45, trigger x max 6.40, 0.05m gap); the exhaustive pairwise
+    // test in furniture.test.ts referees this.
+    trigger: { x: 5.15, z: 1.3, w: 1.25, d: 1.1 },
     label: "about me",
-    // pos is SE of the dresser, above head height; look is at the dresser +
-    // wall composition. pos and look share no axis coordinate (5.4/3.3/3.2
-    // vs 3.0/1.35/0.4). Sightline clearance over the trigger verified in the
-    // P4 T4 report via closest-approach analysis (min height ~1.49m at the
-    // west trigger corner, clears the 1.4m head-height requirement).
-    camera: { pos: [5.4, 3.3, 3.2], look: [3.0, 1.35, 0.4] },
+    // pos is southwest of the room (near the window side, well south of
+    // everything), look is at the bed/cat cluster near the headboard — pos
+    // and look share no axis coordinate (1.8/3.3/4.4 vs 4.3/1.1/0.9), and
+    // pos sits west + south of look (southwest framing). The ray's x-span
+    // ([1.8, 4.3]) never reaches the trigger's x-range (5.15-6.40) at all —
+    // a stronger guarantee than height clearance, since a player standing
+    // in the trigger can never fall on the ray's path (see the P4-recenter
+    // report's sightline table: the ray even hits the north wall at
+    // x≈4.94 before it could reach the trigger's x-min, so there's no
+    // extrapolated line-of-sight risk either).
+    camera: { pos: [1.8, 3.3, 4.4], look: [4.3, 1.1, 0.9] },
   },
 ];
 

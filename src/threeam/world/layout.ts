@@ -47,14 +47,16 @@ const GROUND: Area = {
   bounds: { x: 0, z: 0, w: 22, d: 6 },
   walls: [...dividerWithDoor(8, 6), ...dividerWithDoor(16, 6)],
   furniture: [
-    // bedroom — P4 rearrange: bed rotated 90° onto the north wall (east of
-    // the dresser), nightstand moved to the bed's east flank, dragonslayer
-    // lean-zone shifted east to clear the bed, new window table under the
-    // west window (see furniture.test.ts's "no two bedroom furniture rects
-    // overlap" test for the exhaustive pairwise clearance check).
-    { x: 4.65, z: 0.35, w: 1.7, d: 2.1 }, // bed (headboard north, east of dresser)
+    // bedroom — P4 recenter: bed centered on the north wall (x 3.0-5.0,
+    // room-x-center = 4.0) and enlarged (w 1.7→2.0, d 2.1→2.25). The manga
+    // dresser is REMOVED for now — its old rect (x 2.8-4.4) overlapped the
+    // centered bed's x-span, so centering forced the removal; it returns in
+    // a later step. Nightstand and dragonslayer lean-zone are unchanged
+    // (still clear of the bigger bed — see furniture.test.ts's "no two
+    // bedroom furniture rects overlap" test for the exhaustive pairwise
+    // clearance check).
+    { x: 3.0, z: 0.33, w: 2.0, d: 2.25 }, // bed (headboard north, centered on the wall)
     { x: 6.45, z: 0.95, w: 0.55, d: 0.5 }, // nightstand (bed's east flank, south of the sword)
-    { x: 2.8, z: 0.3, w: 1.6, d: 0.55 }, // manga dresser (north wall)
     { x: 6.55, z: 0.32, w: 0.85, d: 0.5 }, // dragonslayer lean-zone (north wall, east of the bed)
     { x: 0.45, z: 5.1, w: 0.4, d: 0.4 }, // plant (SW corner)
     { x: 0.35, z: 2.7, w: 0.5, d: 1.1 }, // window table (west wall, under the window)
