@@ -14,6 +14,8 @@ export const BEDROOM = { x: 0, z: 0, w: 8, d: 6 };
 const BED_RECT = { x: 0.35, z: 2.5, w: 2.1, d: 1.7 };
 const NIGHTSTAND_RECT = { x: 0.35, z: 1.85, w: 0.55, d: 0.5 };
 const PLANT_RECT = { x: 0.45, z: 5.1, w: 0.4, d: 0.4 };
+const DRESSER_RECT = { x: 2.8, z: 0.3, w: 1.6, d: 0.55 };
+const DRAGONSLAYER_RECT = { x: 5.6, z: 0.32, w: 0.85, d: 0.5 }; // lean-zone, not a furniture footprint
 
 const BED_CENTER = { x: BED_RECT.x + BED_RECT.w / 2, z: BED_RECT.z + BED_RECT.d / 2 };
 const NIGHTSTAND_CENTER = {
@@ -21,6 +23,10 @@ const NIGHTSTAND_CENTER = {
   z: NIGHTSTAND_RECT.z + NIGHTSTAND_RECT.d / 2,
 };
 const PLANT_CENTER = { x: PLANT_RECT.x + PLANT_RECT.w / 2, z: PLANT_RECT.z + PLANT_RECT.d / 2 };
+const DRESSER_CENTER = {
+  x: DRESSER_RECT.x + DRESSER_RECT.w / 2,
+  z: DRESSER_RECT.z + DRESSER_RECT.d / 2,
+};
 
 // bed — local-space layout (relative to BED_CENTER, +x toward the foot).
 // Headboard sits flush on the rect's west edge (local x = -BED_HALF_W),
@@ -111,6 +117,43 @@ const MOON_PATCH_X = 0.65;
 const MOON_PATCH_W = 1.3;
 const MOON_PATCH_D = 1.7;
 
+// manga dresser (Task 8) — waist-high 2×2 drawer cabinet, cabinet-wood
+// texture family. Top surface (DR_TOP_Y) is where every clutter item's y
+// stacks from, same convention as NS_TOP_Y for the nightstand lamp.
+const DR_BODY_H = 0.72;
+const DR_TOP_T = 0.03;
+const DR_TOP_Y = DR_BODY_H + DR_TOP_T; // 0.75
+const DR_DRAWER_COL_X = 0.39; // ± column offset, 2 columns across the 1.6m width
+const DR_DRAWER_ROW_Y = [DR_BODY_H * 0.28, DR_BODY_H * 0.72]; // bottom/top row centers
+const DR_DRAWER_W = 0.68;
+const DR_DRAWER_H = 0.26;
+const DR_PANEL_Z = DRESSER_RECT.d / 2 - 0.03; // recessed 3cm off the south (room-facing) face
+const DR_KNOB_Z = DRESSER_RECT.d / 2 - 0.008;
+
+// spine-band palette for the manga stack — abstract color only, no titles.
+const MANGA_COLORS = ["#4a3a8a", "#2e6e54", "#b3475f", "#c9a06a", "#3a5a8a", "#7a4a9e"];
+
+// dragonslayer (Task 8) — leans against the north wall inside the lean
+// zone. DS_BASE is deliberately NOT the rect center: it's biased toward the
+// zone's near (wall-side) edge so the ~12°-tilted blade reads as leaning
+// back onto the wall rather than floating mid-room. See task-8 report for
+// the corner-clearance arithmetic that confirms the tip still clears the
+// wall plane (z≈0.011) by comfortably more than the 6mm minimum.
+const DS_BASE_X = DRAGONSLAYER_RECT.x + 0.4; // 6.0
+const DS_BASE_Z = DRAGONSLAYER_RECT.z + 0.18; // 0.5
+const DS_TILT = -Math.PI * (12 / 180); // -12°; negative rotation.x walks the
+// tip toward -z (north wall) under three.js's X-rotation convention
+// (z' = y·sinθ + z·cosθ) — see report for the signed derivation.
+const DS_POMMEL_H = 0.04;
+const DS_GRIP_LEN = 0.16;
+const DS_GUARD_H = 0.04;
+const DS_HILT_LEN = DS_POMMEL_H + DS_GRIP_LEN + DS_GUARD_H; // 0.24, floor → blade root
+const DS_BLADE_LEN = 1.9;
+const DS_TOTAL_LEN = DS_HILT_LEN + DS_BLADE_LEN; // 2.14, floor → tip, unrotated
+const DS_BLADE_W = 0.28;
+const DS_BLADE_THICK = 0.055;
+const DS_GUARD_W = 0.4;
+
 /* ── style-gate tuning toggles (temp code, stripped once Rohan picks —
    precedent commits e545fd1/6347c04). Key 1 cycles walls, key 2 cycles
    floors. Both lists start at the owner's current best guess (sand walls,
@@ -191,6 +234,9 @@ export function Bedroom() {
   const rugTex = usePixelTexture("/3am/tex/rug-bedroom.png", 1, 1);
   // curtain — tiled once per meter, same convention as quilt/floor/wall.
   const curtainTex = usePixelTexture("/3am/tex/curtain-weave.png", WIN_CURTAIN_W, WIN_CURTAIN_H);
+  // dresser cabinet — cabinet-wood texture family, same tile RecordConsole
+  // uses for its console body, repeat scaled down for the dresser's size.
+  const dresserWood = usePixelTexture("/3am/tex/cabinet-wood.png", 2, 1);
 
   return (
     <group ref={rootRef}>
@@ -476,6 +522,174 @@ export function Bedroom() {
           </group>
         </group>
       </group>
+
+      {/* ── manga dresser — collider {2.8,0.3,1.6,0.55}. Waist-high 2×2
+          drawer cabinet, cabinet-wood texture, east of the nightstand along
+          the north wall. Back face sits at world z=DRESSER_RECT.z=0.3,
+          ~0.29m clear of the north wall plane (z≈0.011) — comfortably past
+          the 6mm minimum. Clutter on top (DR_TOP_Y=0.75) is asymmetric: the
+          manga stack anchors the west/back corner, figurines and the cactus
+          step east and toward the room, reading toward the southeast where
+          the about-station camera frames this piece
+          ([5.4,3.3,3.2] → [3.0,1.35,0.4]). No real titles, logos, or IP
+          anywhere — spine color is an abstract band only. ── */}
+      <group position={[DRESSER_CENTER.x, 0, DRESSER_CENTER.z]}>
+        {/* body */}
+        <mesh position={[0, DR_BODY_H / 2, 0]}>
+          <boxGeometry args={[DRESSER_RECT.w - 0.04, DR_BODY_H, DRESSER_RECT.d - 0.04]} />
+          <meshStandardMaterial map={dresserWood} />
+        </mesh>
+        {/* top slab */}
+        <mesh position={[0, DR_BODY_H + DR_TOP_T / 2, 0]}>
+          <boxGeometry args={[DRESSER_RECT.w, DR_TOP_T, DRESSER_RECT.d]} />
+          <meshStandardMaterial map={dresserWood} />
+        </mesh>
+
+        {/* 2×2 drawer faces + knobs, south (room-facing) side — recessed
+            panel + knob pattern matches the nightstand's single drawer */}
+        {DR_DRAWER_ROW_Y.map((rowY) =>
+          [-DR_DRAWER_COL_X, DR_DRAWER_COL_X].map((colX) => (
+            <group key={`drawer-${rowY}-${colX}`}>
+              <mesh position={[colX, rowY, DR_PANEL_Z]}>
+                <boxGeometry args={[DR_DRAWER_W, DR_DRAWER_H, 0.02]} />
+                <meshStandardMaterial color="#2e2a4d" />
+              </mesh>
+              <mesh position={[colX, rowY, DR_KNOB_Z]}>
+                <sphereGeometry args={[0.016, 8, 6]} />
+                <meshStandardMaterial color="#c9a06a" />
+              </mesh>
+            </group>
+          ))
+        )}
+
+        {/* manga stack — 5 volumes lying flat + 1 leaning upright, spines
+            (south face) reading as abstract color bands only. Slight
+            per-volume jitter so the stack reads lived-in, not laser-aligned. */}
+        <group position={[-0.35, DR_TOP_Y, -0.03]}>
+          {MANGA_COLORS.map((color, i) => (
+            <mesh
+              key={color}
+              position={[((i % 3) - 1) * 0.012, 0.008 + i * 0.017, ((i % 2) - 0.5) * 0.02]}
+              rotation={[0, ((i % 3) - 1) * 0.04, 0]}
+            >
+              <boxGeometry args={[0.125, 0.016, 0.178]} />
+              <meshStandardMaterial color={color} />
+            </mesh>
+          ))}
+          {/* one volume standing, leaning on the stack's east side */}
+          <mesh position={[0.11, 0.1, 0.02]} rotation={[0, 0.1, -0.42]}>
+            <boxGeometry args={[0.016, 0.178, 0.125]} />
+            <meshStandardMaterial color="#c9784a" />
+          </mesh>
+        </group>
+
+        {/* humanoid figurine — chunky blocky silhouette, ~12cm, distinct
+            two-tone body/head so it doesn't read as a monolith */}
+        <group position={[0.12, DR_TOP_Y, 0.04]}>
+          <mesh position={[0, 0.04, 0]}>
+            <boxGeometry args={[0.05, 0.08, 0.035]} />
+            <meshStandardMaterial color="#57b6e8" />
+          </mesh>
+          <mesh position={[0, 0.095, 0]}>
+            <boxGeometry args={[0.04, 0.035, 0.04]} />
+            <meshStandardMaterial color="#f0e0c8" />
+          </mesh>
+          <mesh position={[0, 0.006, 0]}>
+            <boxGeometry args={[0.052, 0.014, 0.037]} />
+            <meshStandardMaterial color="#2e2a4d" />
+          </mesh>
+        </group>
+
+        {/* round critter figurine — sphere body + ear nubs, silhouette
+            unmistakably different from the humanoid alongside it */}
+        <group position={[0.32, DR_TOP_Y, 0.07]}>
+          <mesh position={[0, 0.04, 0]}>
+            <sphereGeometry args={[0.042, 10, 8]} />
+            <meshStandardMaterial color="#f2b84a" />
+          </mesh>
+          {[-0.022, 0.022].map((ex) => (
+            <mesh key={ex} position={[ex, 0.075, 0.01]}>
+              <sphereGeometry args={[0.012, 6, 5]} />
+              <meshStandardMaterial color="#f2b84a" />
+            </mesh>
+          ))}
+          <mesh position={[0, 0.035, 0.04]}>
+            <sphereGeometry args={[0.006, 5, 4]} />
+            <meshStandardMaterial color="#2e2a4d" />
+          </mesh>
+        </group>
+
+        {/* tiny cactus — terracotta pot, matching the house's established
+            cactus/snake-plant pot color (see corner-plant comment below) */}
+        <group position={[0.58, DR_TOP_Y, -0.06]}>
+          <mesh position={[0, 0.015, 0]}>
+            <cylinderGeometry args={[0.022, 0.018, 0.03, 8]} />
+            <meshStandardMaterial color="#a04b3a" />
+          </mesh>
+          <mesh position={[0, 0.05, 0]} scale={[1, 1.15, 1]}>
+            <sphereGeometry args={[0.024, 8, 6]} />
+            <meshStandardMaterial color="#3f8f5a" />
+          </mesh>
+        </group>
+      </group>
+
+      {/* ── the dragonslayer — lean zone {5.6,0.32,0.85,0.5}, no collider
+          footprint of its own (it's a wall-leaning prop, not a walk-into
+          obstacle). Deliberately oversized Berserk-slab silhouette: a
+          1.9m×0.28m×5.5cm iron slab on a simple hilt, tilted 12° off
+          vertical so the tip leans back toward the north wall (z≈0.011)
+          without clipping it — see task-8 report for the corner-clearance
+          math. Flat iron grays + one lighter edge-highlight strip; no
+          emissive anywhere (Bloom threshold 0.6 stays intact). NO
+          interaction this task — the eclipse wires it up later. ── */}
+      <group position={[DS_BASE_X, 0, DS_BASE_Z]} rotation={[DS_TILT, 0, 0]}>
+        {/* pommel cap */}
+        <mesh position={[0, DS_POMMEL_H / 2, 0]}>
+          <cylinderGeometry args={[0.028, 0.022, DS_POMMEL_H, 8]} />
+          <meshStandardMaterial color="#3a2a1e" />
+        </mesh>
+        {/* wrapped grip */}
+        <mesh position={[0, DS_POMMEL_H + DS_GRIP_LEN / 2, 0]}>
+          <cylinderGeometry args={[0.02, 0.02, DS_GRIP_LEN, 8]} />
+          <meshStandardMaterial color="#3a2a1e" />
+        </mesh>
+        {[0.06, 0.12, 0.18].map((y) => (
+          <mesh key={y} position={[0, y, 0]}>
+            <cylinderGeometry args={[0.023, 0.023, 0.012, 8]} />
+            <meshStandardMaterial color="#221a14" />
+          </mesh>
+        ))}
+        {/* simple crossguard */}
+        <mesh position={[0, DS_POMMEL_H + DS_GRIP_LEN + DS_GUARD_H / 2, 0]}>
+          <boxGeometry args={[DS_GUARD_W, DS_GUARD_H, 0.07]} />
+          <meshStandardMaterial color="#4a4a52" />
+        </mesh>
+        {/* the slab blade — flat iron gray, thick */}
+        <mesh position={[0, DS_HILT_LEN + DS_BLADE_LEN / 2, 0]}>
+          <boxGeometry args={[DS_BLADE_W, DS_BLADE_LEN, DS_BLADE_THICK]} />
+          <meshStandardMaterial color="#7d7d88" />
+        </mesh>
+        {/* edge highlight band, one long edge, sat proud of the flat face */}
+        <mesh
+          position={[DS_BLADE_W / 2 - 0.02, DS_HILT_LEN + DS_BLADE_LEN / 2, 0]}
+        >
+          <boxGeometry args={[0.03, DS_BLADE_LEN - 0.04, DS_BLADE_THICK + 0.004]} />
+          <meshStandardMaterial color="#c7c7d4" />
+        </mesh>
+      </group>
+
+      {/* floor contact shadow — dark oval decal, NOT nested in the tilted
+          sword group above (it must stay flat on the floor). Offset slightly
+          toward the wall from the base point since the blade's mass leans
+          that way. */}
+      {/* eclipse trigger lands here (plan 8) */}
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[DS_BASE_X, 0.036, DS_BASE_Z - 0.05]}
+      >
+        <planeGeometry args={[0.5, 0.35]} />
+        <meshBasicMaterial color="#0a0a0f" transparent opacity={0.3} />
+      </mesh>
 
       {/* ── rug (no collider — visual only, walkable) — rug-bedroom is a
           single alpha-cutout oval image, same repeat(1,1) + transparent
