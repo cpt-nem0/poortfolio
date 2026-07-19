@@ -123,6 +123,7 @@ describe("bedroom furniture colliders", () => {
       { x: 7.05, z: 0.45, w: 0.55, d: 0.55 }, // cat bed
       { x: 3.5, z: 2.95, w: 1.2, d: 0.4 }, // bed-front bench
       { x: 3.3, z: 5.35, w: 2.2, d: 0.5 }, // clothes hanger stand
+      { x: 5.62, z: 5.35, w: 0.8, d: 0.45 }, // shoe storage cubby (wardrobe corner upgrade)
       { x: 6.55, z: 5.3, w: 1.0, d: 0.5 }, // perfume stand
     ];
 
@@ -173,6 +174,7 @@ describe("bedroom furniture colliders", () => {
       { name: "cat bed", r: { x: 7.05, z: 0.45, w: 0.55, d: 0.55 } },
       { name: "bed-front bench", r: { x: 3.5, z: 2.95, w: 1.2, d: 0.4 } },
       { name: "clothes hanger stand", r: { x: 3.3, z: 5.35, w: 2.2, d: 0.5 } },
+      { name: "shoe storage cubby", r: { x: 5.62, z: 5.35, w: 0.8, d: 0.45 } },
       { name: "perfume stand", r: { x: 6.55, z: 5.3, w: 1.0, d: 0.5 } },
       { name: "balcony west rail", r: { x: -1.56, z: 2.3, w: 0.06, d: 2.2 } },
       { name: "balcony north rail", r: { x: -1.5, z: 2.3, w: 1.5, d: 0.06 } },
@@ -266,6 +268,10 @@ describe("bedroom furniture colliders", () => {
 
   it("perfume stand blocks players standing on it", () => {
     expect(isBlocked(ground, 6.55, 5.3)).toBe(true); // rect corner
+  });
+
+  it("shoe storage cubby blocks players standing on it", () => {
+    expect(isBlocked(ground, 5.62, 5.35)).toBe(true); // rect corner
   });
 
   it("the old bed/nightstand spots along the west wall are open floor now", () => {
@@ -365,18 +371,37 @@ describe("west balcony (P4 balcony wave)", () => {
     }
   });
 
-  it("the flanking wall rects (blocks + door jambs) are present verbatim", () => {
-    const wallRects = [
-      { x: -1.7, z: 0, w: 1.7, d: 2.3 }, // north block
-      { x: -1.7, z: 4.5, w: 1.7, d: 1.5 }, // south block
+  it("the door-jamb rects are present verbatim IN walls (real, visible west wall)", () => {
+    const jambRects = [
       { x: -0.14, z: 2.3, w: 0.14, d: 0.4 }, // north door jamb
       { x: -0.14, z: 4.1, w: 0.14, d: 0.4 }, // south door jamb
     ];
-    for (const rect of wallRects) {
+    for (const rect of jambRects) {
       const found = ground.walls.some(
         (f) => f.x === rect.x && f.z === rect.z && f.w === rect.w && f.d === rect.d
       );
-      expect(found, `wall rect ${JSON.stringify(rect)} not found`).toBe(true);
+      expect(found, `wall rect ${JSON.stringify(rect)} not found in walls`).toBe(true);
+    }
+  });
+
+  it("BALCONY FREED: the flanking wall blocks moved to furniture (invisible), not walls", () => {
+    // House.tsx only draws visible WallBox meshes for `walls` rects — these
+    // two blocks previously rendered as giant dark slabs boxing the deck in
+    // (owner's complaint). They still collide identically (collision.ts ORs
+    // walls + furniture), just from the array House.tsx doesn't render.
+    const blockRects = [
+      { x: -1.7, z: 0, w: 1.7, d: 2.3 }, // north block
+      { x: -1.7, z: 4.5, w: 1.7, d: 1.5 }, // south block
+    ];
+    for (const rect of blockRects) {
+      const inFurniture = ground.furniture.some(
+        (f) => f.x === rect.x && f.z === rect.z && f.w === rect.w && f.d === rect.d
+      );
+      expect(inFurniture, `block rect ${JSON.stringify(rect)} not found in furniture`).toBe(true);
+      const inWalls = ground.walls.some(
+        (f) => f.x === rect.x && f.z === rect.z && f.w === rect.w && f.d === rect.d
+      );
+      expect(inWalls, `block rect ${JSON.stringify(rect)} should NOT be in walls anymore`).toBe(false);
     }
   });
 });

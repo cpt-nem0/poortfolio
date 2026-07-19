@@ -54,22 +54,48 @@ function dividerWithDoor(x: number, d: number): Rect[] {
 //
 // Extending `bounds` west (so the balcony footprint is walkable) moves
 // that implicit wall along with it, so the old x=0 boundary has to be
-// rebuilt EXPLICITLY out of `walls`: a north block and a south block
-// (each spanning the full x -1.7..0 depth) reconstruct the solid wall for
-// z 0-2.3 and z 4.5-6, and two thin door-jamb rects (x -0.14..0) close the
-// remaining sliver of that plane for z 2.3-2.7 and z 4.1-4.5 — leaving z
-// 2.7-4.1 as the ONLY gap in the x=0 plane: the sliding door's walk-through.
+// rebuilt EXPLICITLY: a north block and a south block (each spanning the
+// full x -1.7..0 depth) reconstruct the solid wall for z 0-2.3 and
+// z 4.5-6, and two thin door-jamb rects (x -0.14..0) close the remaining
+// sliver of that plane for z 2.3-2.7 and z 4.1-4.5 — leaving z 2.7-4.1 as
+// the ONLY gap in the x=0 plane: the sliding door's walk-through.
 // (0..2.3) ∪ (2.3..2.7) ∪ [gap 2.7..4.1] ∪ (4.1..4.5) ∪ (4.5..6) covers
 // the full z 0-6 span exactly once, so there's no double-walled seam and
 // no accidental extra gap.
+//
+// BALCONY FREED (owner ask, 2026-07-19 — screenshot showed the deck boxed
+// in by "giant dark slabs"): `isBlocked`/`resolveMovement` OR together
+// `walls` and `furniture` (collision.ts) — the two arrays are
+// collision-IDENTICAL, they only differ in who renders them. House.tsx's
+// generic perimeter loop (`a.walls.map(...)`) draws every `walls` rect as
+// a full-height, full-opacity WallBox — that's fine for real house walls,
+// but the north/south balcony blocks were never meant to be SEEN, only to
+// stand in for the pre-wave implicit x=0 boundary. Living in `walls` made
+// them render as two literal 1.7m-wide, 2.3-2.8m-deep dark slabs flanking
+// the deck, which is exactly what boxed the balcony in. Fix: BALCONY_WALL_
+// BLOCK_N/S move to `furniture` — same precedent as the already-invisible
+// south rail (BALCONY_RAIL_S, kept below) — so collision is byte-for-byte
+// unchanged (still full walls, still block movement) but nothing draws
+// them; the void west of the deck now reads open, no boxed-in feel. The
+// two door-JAMB rects stay in `walls` on purpose: they're the house's real
+// west wall (the thin slivers of solid wall still standing flush with x=0
+// north/south of the sliding-door gap), so they SHOULD render — removing
+// them would open a visual gap where the wall plane is still structurally
+// there. Only the two flanking blocks — which existed purely to backstop
+// collision, not to be seen — go invisible.
 //
 // The balcony deck itself (x -1.5..0, z 2.3-4.5) is furniture-free (an
 // open floor), fenced only by three thin railing rects (west/north/south)
 // that block the player at the deck's outer edges — the void beyond the
 // west rail has no wall at all; it reads via the scene background, per
-// the owner's ask (no sky geometry this wave). Visuals (deck floor,
-// railing meshes, door frame + glass panels) render in Bedroom.tsx since
-// it's the bedroom's own balcony.
+// the owner's ask (no sky geometry this wave). BALCONY FREED also strips
+// the west + north railing MESHES from Bedroom.tsx (owner: "no restriction
+// from the sides, the whole 270° view") — south was already invisible,
+// west/north now match it. All three railing COLLIDER rects (below) are
+// untouched: players still can't walk off any edge of the deck, only the
+// visuals changed. Deck floor, doorframe + glass panels, and the bonsai
+// pedestal still render in Bedroom.tsx since it's the bedroom's own
+// balcony.
 const BALCONY_WALL_BLOCK_N: Rect = { x: -1.7, z: 0, w: 1.7, d: 2.3 };
 const BALCONY_WALL_BLOCK_S: Rect = { x: -1.7, z: 4.5, w: 1.7, d: 1.5 };
 const BALCONY_DOOR_JAMB_N: Rect = { x: -0.14, z: 2.3, w: 0.14, d: 0.4 };
@@ -84,8 +110,10 @@ const GROUND: Area = {
   walls: [
     ...dividerWithDoor(8, 6),
     ...dividerWithDoor(16, 6),
-    BALCONY_WALL_BLOCK_N,
-    BALCONY_WALL_BLOCK_S,
+    // BALCONY_WALL_BLOCK_N/S deliberately NOT here — see the BALCONY FREED
+    // comment above: they live in `furniture` now (invisible, same
+    // collision). Only the real, visible west-wall slivers stay in
+    // `walls`.
     BALCONY_DOOR_JAMB_N,
     BALCONY_DOOR_JAMB_S,
   ],
@@ -111,7 +139,14 @@ const GROUND: Area = {
     { x: 5.85, z: 0.42, w: 0.4, d: 0.4 }, // sunset-lamp stool (NE-ish, east of the east nightstand)
     { x: 7.05, z: 0.45, w: 0.55, d: 0.55 }, // cat's round bed (NE corner)
     { x: 3.5, z: 2.95, w: 1.2, d: 0.4 }, // bed-front bench (bed's foot, south of the bed's z-max 2.83)
-    { x: 3.3, z: 5.35, w: 2.2, d: 0.5 }, // clothes hanger stand (south-center)
+    { x: 3.3, z: 5.35, w: 2.2, d: 0.5 }, // clothes hanger stand (south-center, A-frame rack + boutique clothes)
+    // shoe storage — NEW (wardrobe corner upgrade, 2026-07-19), beside the
+    // rack's east flank. TDD'd against its neighbors: rack's x-max is
+    // 3.3+2.2=5.5, so 5.62-5.5=0.12m (12cm) clearance; perfume stand's
+    // x-min is 6.55, so 6.55-(5.62+0.8)=0.13m (13cm) clearance — both clear
+    // the pairwise-overlap check below with room to spare, no adjustment
+    // needed from the owner's spec'd numbers.
+    { x: 5.62, z: 5.35, w: 0.8, d: 0.45 }, // shoe storage cubby (2-shelf, east of the rack)
     { x: 6.55, z: 5.3, w: 1.0, d: 0.5 }, // perfume stand / slim dresser (SE)
     // window table + its west-window neighbor are REMOVED this pass — the
     // owner's final design replaces them with a west balcony (glass sliding
@@ -126,6 +161,15 @@ const GROUND: Area = {
     // camera-side south wall (House.tsx's SOUTH_STUB_H comment) — collision
     // keeps the full rect, the render just doesn't draw it.
     BALCONY_RAIL_S,
+    // BALCONY FREED — moved here from `walls` (see that array's comment):
+    // House.tsx only renders `walls` rects as visible WallBox meshes, and
+    // furniture is collision-identical (collision.ts ORs both arrays), so
+    // this move makes the two flanking blocks invisible without touching
+    // collision at all. Nothing in Bedroom.tsx (or anywhere else) renders a
+    // mesh for these two rects — same "invisible boundary" precedent as the
+    // south rail just above.
+    BALCONY_WALL_BLOCK_N,
+    BALCONY_WALL_BLOCK_S,
     { x: 17.6, z: 0.3, w: 2.8, d: 0.9 }, // record console, centered on the wall (turntable + speakers on top)
     { x: 20.675, z: 0.475, w: 0.35, d: 0.35 }, // floor lamp (right of console)
     { x: 16.5, z: 0.5, w: 0.35, d: 0.35 }, // snake plant (console's left flank)

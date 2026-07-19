@@ -50,6 +50,10 @@ const STOOL_RECT = { x: 5.85, z: 0.42, w: 0.4, d: 0.4 };
 const CATBED_RECT = { x: 7.05, z: 0.45, w: 0.55, d: 0.55 };
 const BENCH_RECT = { x: 3.5, z: 2.95, w: 1.2, d: 0.4 };
 const HANGER_RECT = { x: 3.3, z: 5.35, w: 2.2, d: 0.5 };
+// shoe storage cubby — NEW (wardrobe corner upgrade, 2026-07-19), collider
+// verbatim from layout.ts. Sits east of the rack (see layout.ts's comment
+// for the 12cm/13cm TDD'd clearances to the rack and the perfume stand).
+const SHOE_RECT = { x: 5.62, z: 5.35, w: 0.8, d: 0.45 };
 const PERFUME_RECT = { x: 6.55, z: 5.3, w: 1.0, d: 0.5 };
 const PLANT2_RECT = { x: 0.95, z: 5.15, w: 0.35, d: 0.35 };
 
@@ -66,6 +70,13 @@ const STOOL_CENTER = { x: STOOL_RECT.x + STOOL_RECT.w / 2, z: STOOL_RECT.z + STO
 const CATBED_CENTER = { x: CATBED_RECT.x + CATBED_RECT.w / 2, z: CATBED_RECT.z + CATBED_RECT.d / 2 };
 const BENCH_CENTER = { x: BENCH_RECT.x + BENCH_RECT.w / 2, z: BENCH_RECT.z + BENCH_RECT.d / 2 };
 const HANGER_CENTER = { x: HANGER_RECT.x + HANGER_RECT.w / 2, z: HANGER_RECT.z + HANGER_RECT.d / 2 };
+const SHOE_CENTER = { x: SHOE_RECT.x + SHOE_RECT.w / 2, z: SHOE_RECT.z + SHOE_RECT.d / 2 };
+// shoe cubby — low 2-shelf open unit (floor board + one mid shelf, open
+// front/top), wardrobe corner upgrade. Every span below derives from
+// SHOE_RECT (never hand-guessed).
+const SHOE_H = 0.46; // overall cubby height (low — reads as a shoe bench, not a wardrobe)
+const SHOE_MID_Y = 0.22; // mid-shelf height, splitting the cubby into 2 open tiers
+const SHOE_PANEL_T = 0.03; // side/back panel + shelf-board thickness
 // A-FRAME RACK REDO (owner reference photo, 2026-07-19) — every span below
 // derives from HANGER_RECT (never hand-guessed), see p4-furnish-report.md
 // "A-frame rack redo" for the full arithmetic.
@@ -184,17 +195,14 @@ const BAL_DOOR_ZC = (BAL_DOOR_Z0 + BAL_DOOR_Z1) / 2; // 3.4
 const BAL_DOOR_W = BAL_DOOR_Z1 - BAL_DOOR_Z0; // 1.4
 
 const DECK_RECT = { x: -1.5, z: 2.3, w: 1.5, d: 2.2 }; // deck floor footprint, inside the rails
-// railing rects — verbatim, layout.ts's BALCONY_RAIL_W/N/S (source of truth
-// for collision; duplicated here only because Bedroom.tsx doesn't import
-// layout.ts's private consts, same pattern as every other furniture rect
-// in this file, e.g. BED_RECT/NIGHTSTAND_W_RECT above). RAIL_S — layout.ts's
-// BALCONY_RAIL_S — is deliberately NOT duplicated here: its collider stays
-// (layout.ts is still the source of truth for it), but this wave makes the
-// south rail invisible (owner's ask, dollhouse-cutaway convention — see the
-// railing JSX below), so there's nothing here that needs its own rect copy.
-const RAIL_W_RECT = { x: -1.56, z: 2.3, w: 0.06, d: 2.2 };
-const RAIL_N_RECT = { x: -1.5, z: 2.3, w: 1.5, d: 0.06 };
-const RAIL_TOP_Y = 0.95; // top-rail height off the deck
+// railing rects — layout.ts's BALCONY_RAIL_W/N/S are the sole source of
+// truth for collision (all three colliders are untouched). BALCONY FREED
+// (owner's ask, 2026-07-19: "no restriction from the sides, the whole 270°
+// view") makes ALL THREE rails invisible now — west and north join south
+// (already invisible pre-wave) — so none of them get a rect copy or a mesh
+// in this file anymore; unlike every other collider in this file (e.g.
+// BED_RECT/NIGHTSTAND_W_RECT), a rail rect with nothing to render has no
+// reason to be duplicated here at all.
 
 // sliding-door frame — dark wood, +x outward stack off the wall plane
 // (x = R.x + 0.011), same layering convention the old window used: wall
@@ -624,40 +632,17 @@ export function Bedroom() {
         <meshStandardMaterial map={deckFloor} />
       </mesh>
 
-      {/* railing — chunky top rails ON the collider rects (west/north),
-          plus corner + midspan posts, warm wood (matches the stair
-          stringer's tone). The SOUTH rail is INVISIBLE this wave (owner's
-          ask): same dollhouse-cutaway convention as the house's camera-side
-          south wall (House.tsx's SOUTH_STUB_H comment — "collision still
-          uses the full wall," the visual just doesn't draw it) — the
-          collider (RAIL_S_RECT, layout.ts's BALCONY_RAIL_S) is untouched,
-          players still can't walk off the deck's south edge, but nothing
-          renders there so the camera sees clean over the boundary. Only
-          RAIL_W_RECT/RAIL_N_RECT get a visible top-rail bar below; the SW
-          corner post (which visually read as "here's the south rail") is
-          dropped too, so no post hints at a line that isn't drawn. */}
-      {[RAIL_W_RECT, RAIL_N_RECT].map((rect, i) => (
-        <mesh
-          key={`rail-bar-${i}`}
-          position={[
-            R.x + rect.x + rect.w / 2,
-            RAIL_TOP_Y - 0.025,
-            R.z + rect.z + rect.d / 2,
-          ]}
-        >
-          <boxGeometry args={[rect.w, 0.05, rect.d]} />
-          <meshStandardMaterial color="#6b4128" />
-        </mesh>
-      ))}
-      {[
-        { x: -1.5, z: 2.3 }, // NW corner
-        { x: -1.5, z: 3.4 }, // west rail midspan (2.2m run — one extra post for chunkiness)
-      ].map((p, i) => (
-        <mesh key={`rail-post-${i}`} position={[R.x + p.x, RAIL_TOP_Y / 2, R.z + p.z]}>
-          <boxGeometry args={[0.08, RAIL_TOP_Y, 0.08]} />
-          <meshStandardMaterial color="#6b4128" />
-        </mesh>
-      ))}
+      {/* railing — ALL THREE sides (west/north/south) are now INVISIBLE
+          (BALCONY FREED, owner's ask, 2026-07-19: "no restriction from the
+          sides, the whole 270° view" — screenshot showed the deck boxed in
+          by the visible rail bars + posts). South was already invisible
+          (dollhouse-cutaway convention — House.tsx's SOUTH_STUB_H comment:
+          "collision still uses the full wall," the visual just doesn't draw
+          it); west/north now match it, same convention. The COLLIDER rects
+          (layout.ts's BALCONY_RAIL_W/N/S) are completely untouched —
+          players still can't walk off any edge of the deck, this is a
+          render-only change. No mesh, no posts: nothing here hints at a
+          boundary line that isn't drawn. */}
 
       {/* sliding-door frame — dark wood jambs + header around the z
           2.7-4.1 opening. Jambs sit just inside the SOLID wall bands
@@ -1124,15 +1109,21 @@ export function Bedroom() {
 
       {/* ── clothes hanger stand — collider {3.3,5.35,2.2,0.5},
           south-center. A-FRAME RACK REDO (owner reference photo,
-          2026-07-19), replacing the old two-pole-and-rail build entirely.
-          Two trapezoid side frames (each a pair of legs splayed wide at the
+          2026-07-19; recolored/re-hung in the wardrobe-corner upgrade, same
+          day), replacing the old two-pole-and-rail build entirely. Two
+          trapezoid side frames (each a pair of legs splayed wide at the
           floor, converging under the rail — the signature A silhouette),
           a single round top rail with finial nubs poking past each frame,
-          9 varied hangers/garments in a warm palette, a bottom shelf with
-          storage box/basket/blanket stack, 3 pairs of floor shoes, and a
-          side peg with a sunhat. All spans derive from HANGER_* consts
-          above (rect-derived) — see p4-furnish-report.md "A-frame rack
-          redo" for the leg-angle/footprint arithmetic. ── */}
+          7 curated garments hanging VERTICALLY (boutique-rail mix: 2
+          structured jackets, 3 shirts, 2 T-shirts — see the garments array
+          below), a bottom shelf with 3 folded denim/pants/shorts stacks,
+          3 pairs of floor shoes, and a side peg with a sunhat. All spans
+          derive from HANGER_* consts above (rect-derived) — see
+          p4-furnish-report.md "A-frame rack redo" + "Balcony freed +
+          wardrobe v2" for the full arithmetic.
+
+          FUTURE: interact → outfit change; clothes/characters unlock via
+          easter eggs (owner roadmap). ── */}
       <group position={[HANGER_CENTER.x, 0, HANGER_CENTER.z]}>
         {/* two A-frame sides */}
         {[-1, 1].map((side) => {
@@ -1177,55 +1168,105 @@ export function Bedroom() {
           <meshStandardMaterial color="#4a3a2e" />
         </mesh>
 
-        {/* 8-10 hangers — pale hanger bar + hook, chunky tapered garment in
-            a warm palette (creams/tans/camel/off-white), one soft-yellow
-            accent piece, one or two longer than the rest, subtle sleeve
-            hints on alternating pieces. ── */}
+        {/* 7 garments — boutique rail (wardrobe-corner upgrade, owner ask:
+            "read EXPENSIVE, hang VERTICALLY"). Each garment is clearly
+            taller than wide (drapey straight-down silhouette, not the old
+            wave's horizontal-leaning slabs), evenly spaced at a tight,
+            consistent 0.22m — a boutique rail, not a random hanger jumble.
+            Mix, west→east: dark tailored jacket, white/sky-blue/sage
+            shirts (slight taper toward the hem), a camel overcoat (the
+            longest piece), then two shorter T-shirts (one graphic-block
+            accent). Jackets get a lower roughness (0.35, vs. the shirts'/
+            tees' matte 0.85-0.9) so they catch the lamp light — the
+            brief's "subtle material touch." ── */}
         {[
-          { dx: -0.78, w: 0.2, h: 0.42, c: "#c9a877", sleeves: true },
-          { dx: -0.58, w: 0.24, h: 0.54, c: "#ece3cf", sleeves: false }, // longer piece
-          { dx: -0.36, w: 0.18, h: 0.4, c: "#f2ede0", sleeves: true },
-          { dx: -0.16, w: 0.22, h: 0.46, c: "#b98a52", sleeves: false },
-          { dx: 0.04, w: 0.2, h: 0.56, c: "#e8c96a", sleeves: true }, // soft-yellow accent, longer
-          { dx: 0.24, w: 0.19, h: 0.4, c: "#ece3cf", sleeves: false },
-          { dx: 0.44, w: 0.23, h: 0.48, c: "#c9a877", sleeves: true },
-          { dx: 0.64, w: 0.18, h: 0.38, c: "#f2ede0", sleeves: false },
-          { dx: 0.82, w: 0.2, h: 0.44, c: "#b98a52", sleeves: true },
-        ].map(({ dx, w, h, c, sleeves }, i) => (
-          <group key={i}>
-            {/* hook + pale hanger bar */}
-            <mesh position={[dx, HANGER_RAIL_Y - 0.06, 0]}>
-              <torusGeometry args={[0.026, 0.006, 6, 8, Math.PI]} />
-              <meshStandardMaterial color="#e7e0cf" />
-            </mesh>
-            <mesh position={[dx, HANGER_RAIL_Y - 0.12, 0]}>
-              <boxGeometry args={[w * 0.9, 0.014, 0.014]} />
-              <meshStandardMaterial color="#e7e0cf" />
-            </mesh>
-            {/* chunky tapered garment: wider shoulder slab over a narrower
-                body slab, not a flat plane ── */}
-            <mesh position={[dx, HANGER_RAIL_Y - 0.16 - h * 0.125, 0]}>
-              <boxGeometry args={[w, h * 0.25, 0.06]} />
-              <meshStandardMaterial color={c} />
-            </mesh>
-            <mesh position={[dx, HANGER_RAIL_Y - 0.16 - h * 0.25 - (h * 0.75) / 2, 0]}>
-              <boxGeometry args={[w * 0.82, h * 0.75, 0.05]} />
-              <meshStandardMaterial color={c} />
-            </mesh>
-            {sleeves && (
-              <>
-                <mesh position={[dx - w / 2 - 0.02, HANGER_RAIL_Y - 0.16 - h * 0.125, 0]}>
-                  <boxGeometry args={[0.04, h * 0.3, 0.045]} />
-                  <meshStandardMaterial color={c} />
-                </mesh>
-                <mesh position={[dx + w / 2 + 0.02, HANGER_RAIL_Y - 0.16 - h * 0.125, 0]}>
-                  <boxGeometry args={[0.04, h * 0.3, 0.045]} />
-                  <meshStandardMaterial color={c} />
-                </mesh>
-              </>
-            )}
-          </group>
-        ))}
+          { dx: -0.66, kind: "jacket" as const, h: 0.6, w: 0.22, c: "#22222c", collar: "#3a3a45", seam: "#161619" }, // dark tailored jacket
+          { dx: -0.44, kind: "shirt" as const, h: 0.5, w: 0.2, c: "#f5f0e6", taperC: "#ece3d4" }, // crisp white shirt
+          { dx: -0.22, kind: "shirt" as const, h: 0.48, w: 0.19, c: "#9fc8e8", taperC: "#8fb8db" }, // sky-blue shirt
+          { dx: 0, kind: "shirt" as const, h: 0.46, w: 0.19, c: "#a8b89a", taperC: "#98a88a" }, // sage shirt
+          { dx: 0.22, kind: "jacket" as const, h: 0.64, w: 0.24, c: "#c9a877", collar: "#dcc090", seam: "#9c7f56" }, // camel overcoat, longest piece
+          { dx: 0.44, kind: "tshirt" as const, h: 0.34, w: 0.2, c: "#e7e0cf", graphic: "#b3475f" }, // graphic-block tee
+          { dx: 0.66, kind: "tshirt" as const, h: 0.32, w: 0.19, c: "#5f6a8c" }, // plain dusk-blue tee
+        ].map((g, i) => {
+          const topY = HANGER_RAIL_Y - 0.16; // garment top anchor, same convention as the prior wave
+          return (
+            <group key={i}>
+              {/* hook + pale hanger bar */}
+              <mesh position={[g.dx, HANGER_RAIL_Y - 0.06, 0]}>
+                <torusGeometry args={[0.026, 0.006, 6, 8, Math.PI]} />
+                <meshStandardMaterial color="#e7e0cf" />
+              </mesh>
+              <mesh position={[g.dx, HANGER_RAIL_Y - 0.12, 0]}>
+                <boxGeometry args={[g.w * 0.9, 0.014, 0.014]} />
+                <meshStandardMaterial color="#e7e0cf" />
+              </mesh>
+
+              {g.kind === "jacket" && (
+                <>
+                  {/* structured shoulder yoke */}
+                  <mesh position={[g.dx, topY - g.h * 0.09, 0]}>
+                    <boxGeometry args={[g.w, g.h * 0.18, 0.075]} />
+                    <meshStandardMaterial color={g.c} roughness={0.35} metalness={0.05} />
+                  </mesh>
+                  {/* body — hangs straight down, clearly taller than wide */}
+                  <mesh position={[g.dx, topY - g.h * 0.18 - (g.h * 0.82) / 2, 0]}>
+                    <boxGeometry args={[g.w * 0.86, g.h * 0.82, 0.06]} />
+                    <meshStandardMaterial color={g.c} roughness={0.35} metalness={0.05} />
+                  </mesh>
+                  {/* collar/lapel hint — an open notch pair at the yoke */}
+                  <mesh position={[g.dx - g.w * 0.16, topY - g.h * 0.03, 0.045]} rotation={[0, 0, 0.5]}>
+                    <boxGeometry args={[0.03, g.h * 0.16, 0.02]} />
+                    <meshStandardMaterial color={g.collar} />
+                  </mesh>
+                  <mesh position={[g.dx + g.w * 0.16, topY - g.h * 0.03, 0.045]} rotation={[0, 0, -0.5]}>
+                    <boxGeometry args={[0.03, g.h * 0.16, 0.02]} />
+                    <meshStandardMaterial color={g.collar} />
+                  </mesh>
+                  {/* sleeve seams — thin vertical inset lines down each side */}
+                  <mesh position={[g.dx - g.w * 0.4, topY - g.h * 0.18 - (g.h * 0.82) / 2, 0.033]}>
+                    <boxGeometry args={[0.014, g.h * 0.78, 0.006]} />
+                    <meshStandardMaterial color={g.seam} />
+                  </mesh>
+                  <mesh position={[g.dx + g.w * 0.4, topY - g.h * 0.18 - (g.h * 0.82) / 2, 0.033]}>
+                    <boxGeometry args={[0.014, g.h * 0.78, 0.006]} />
+                    <meshStandardMaterial color={g.seam} />
+                  </mesh>
+                </>
+              )}
+
+              {g.kind === "shirt" && (
+                <>
+                  {/* chest — full width */}
+                  <mesh position={[g.dx, topY - g.h * 0.175, 0]}>
+                    <boxGeometry args={[g.w, g.h * 0.35, 0.05]} />
+                    <meshStandardMaterial color={g.c} roughness={0.85} />
+                  </mesh>
+                  {/* slight taper toward the hem, same-family tone */}
+                  <mesh position={[g.dx, topY - g.h * 0.35 - (g.h * 0.65) / 2, 0]}>
+                    <boxGeometry args={[g.w * 0.8, g.h * 0.65, 0.045]} />
+                    <meshStandardMaterial color={g.taperC} roughness={0.85} />
+                  </mesh>
+                </>
+              )}
+
+              {g.kind === "tshirt" && (
+                <>
+                  {/* short single drop — shorter than the jackets/shirts */}
+                  <mesh position={[g.dx, topY - g.h / 2, 0]}>
+                    <boxGeometry args={[g.w, g.h, 0.045]} />
+                    <meshStandardMaterial color={g.c} roughness={0.9} />
+                  </mesh>
+                  {g.graphic && (
+                    <mesh position={[g.dx, topY - g.h * 0.42, 0.025]}>
+                      <boxGeometry args={[g.w * 0.42, g.h * 0.3, 0.008]} />
+                      <meshStandardMaterial color={g.graphic} />
+                    </mesh>
+                  )}
+                </>
+              )}
+            </group>
+          );
+        })}
 
         {/* bottom shelf, spanning between the legs at HANGER_SHELF_Y */}
         <mesh position={[0, HANGER_SHELF_Y - 0.015, 0]}>
@@ -1233,55 +1274,59 @@ export function Bedroom() {
           <meshStandardMaterial color="#4a3a2e" />
         </mesh>
 
-        {/* lidded storage box (cream), west end of the shelf */}
-        <group position={[-0.55, HANGER_SHELF_Y, 0]}>
-          <mesh position={[0, 0.08, 0]}>
-            <boxGeometry args={[0.24, 0.16, 0.18]} />
-            <meshStandardMaterial color="#ece3cf" />
-          </mesh>
-          <mesh position={[0, 0.167, 0]}>
-            <boxGeometry args={[0.25, 0.014, 0.19]} />
-            <meshStandardMaterial color="#d9cdb0" />
-          </mesh>
-        </group>
-
-        {/* woven basket (tan), center of the shelf — lattice hint via thin
-            darker strips around the body ── */}
-        <group position={[0.02, HANGER_SHELF_Y, 0]}>
-          <mesh position={[0, 0.07, 0]}>
-            <cylinderGeometry args={[0.1, 0.085, 0.14, 10]} />
-            <meshStandardMaterial color="#b98a52" />
-          </mesh>
-          {[0, 1, 2, 3].map((i) => {
-            const a = (i / 4) * Math.PI * 2 + 0.4;
-            return (
-              <mesh
-                key={i}
-                position={[Math.sin(a) * 0.093, 0.07, Math.cos(a) * 0.093]}
-                rotation={[0, -a, 0]}
-              >
-                <boxGeometry args={[0.012, 0.14, 0.01]} />
-                <meshStandardMaterial color="#8a6238" />
-              </mesh>
-            );
-          })}
-        </group>
-
-        {/* folded blanket stack (2-3 warm tones), east end of the shelf */}
-        <group position={[0.58, HANGER_SHELF_Y, 0]}>
-          <mesh position={[0, 0.035, 0]}>
-            <boxGeometry args={[0.26, 0.07, 0.2]} />
-            <meshStandardMaterial color="#b98a52" />
-          </mesh>
-          <mesh position={[0, 0.09, 0]}>
-            <boxGeometry args={[0.24, 0.05, 0.19]} />
-            <meshStandardMaterial color="#c9a877" />
-          </mesh>
-          <mesh position={[0, 0.135, 0]}>
-            <boxGeometry args={[0.22, 0.045, 0.17]} />
-            <meshStandardMaterial color="#ece3cf" />
-          </mesh>
-        </group>
+        {/* folded clothing stacks — wardrobe-corner upgrade: the old
+            box/basket/blanket trio is replaced by 3 neat folded-slab
+            stacks (denim blues / charcoal pants / tan shorts). Each stack
+            is 2-3 folded slabs; a thin darker band inset on each slab's
+            front face reads as the fold line. ── */}
+        {[
+          {
+            gx: -0.55, // denim stack (west) — blue tones
+            slabs: [
+              { h: 0.06, w: 0.26, d: 0.2, c: "#3f5a8c", band: "#324a75" },
+              { h: 0.055, w: 0.24, d: 0.19, c: "#557bb0", band: "#44659a" },
+              { h: 0.05, w: 0.22, d: 0.18, c: "#7a97c2", band: "#6483ad" },
+            ],
+          },
+          {
+            gx: 0.02, // pants stack (center) — charcoal tones
+            slabs: [
+              { h: 0.055, w: 0.24, d: 0.19, c: "#3a3a45", band: "#2c2c35" },
+              { h: 0.05, w: 0.22, d: 0.18, c: "#55555f", band: "#44444e" },
+            ],
+          },
+          {
+            gx: 0.58, // shorts stack (east) — tan tones, shallower slabs
+            slabs: [
+              { h: 0.045, w: 0.22, d: 0.17, c: "#c9a877", band: "#b3925f" },
+              { h: 0.04, w: 0.2, d: 0.16, c: "#d9c9a0", band: "#c4b088" },
+              { h: 0.04, w: 0.19, d: 0.15, c: "#b98a52", band: "#a37743" },
+            ],
+          },
+        ].map(({ gx, slabs }, si) => {
+          let y = 0;
+          return (
+            <group key={si} position={[gx, HANGER_SHELF_Y, 0]}>
+              {slabs.map((s, i) => {
+                const cy = y + s.h / 2;
+                y += s.h;
+                return (
+                  <group key={i}>
+                    <mesh position={[0, cy, 0]}>
+                      <boxGeometry args={[s.w, s.h, s.d]} />
+                      <meshStandardMaterial color={s.c} roughness={0.9} />
+                    </mesh>
+                    {/* fold line — thin darker band across the front face */}
+                    <mesh position={[0, cy, s.d / 2 + 0.002]}>
+                      <boxGeometry args={[s.w * 0.94, s.h * 0.28, 0.004]} />
+                      <meshStandardMaterial color={s.band} />
+                    </mesh>
+                  </group>
+                );
+              })}
+            </group>
+          );
+        })}
 
         {/* floor shoes — three simple pairs beneath/beside the rack */}
         {[
@@ -1321,6 +1366,78 @@ export function Bedroom() {
             <meshStandardMaterial color="#d9c9a0" />
           </mesh>
         </group>
+      </group>
+
+      {/* ── shoe storage — collider {5.62,5.35,0.8,0.45}, NEW
+          (wardrobe-corner upgrade, 2026-07-19), beside the rack's east
+          flank (12cm gap to the rack, 13cm to the perfume stand — TDD'd,
+          see layout.ts's comment + furniture.test.ts). Low 2-shelf open
+          cubby: dark side/back panels, floor board + one mid shelf + top
+          slab, open front so the shoes read. 5 pairs across the two tiers
+          (sneakers, boots, slides — varied colors, chunky pixel look).
+          All spans derive from SHOE_RECT via the SHOE_* consts above. ── */}
+      <group position={[SHOE_CENTER.x, 0, SHOE_CENTER.z]}>
+        {/* side panels */}
+        {[-1, 1].map((side) => (
+          <mesh
+            key={side}
+            position={[side * (SHOE_RECT.w / 2 - SHOE_PANEL_T / 2), SHOE_H / 2, 0]}
+          >
+            <boxGeometry args={[SHOE_PANEL_T, SHOE_H, SHOE_RECT.d]} />
+            <meshStandardMaterial color="#4a3a2e" />
+          </mesh>
+        ))}
+        {/* back panel (south face — the unit backs onto the south wall) */}
+        <mesh position={[0, SHOE_H / 2, SHOE_RECT.d / 2 - SHOE_PANEL_T / 2]}>
+          <boxGeometry args={[SHOE_RECT.w - SHOE_PANEL_T * 2, SHOE_H, SHOE_PANEL_T]} />
+          <meshStandardMaterial color="#4a3a2e" />
+        </mesh>
+        {/* floor board, mid shelf, top slab */}
+        {[SHOE_PANEL_T / 2, SHOE_MID_Y, SHOE_H - SHOE_PANEL_T / 2].map((sy, i) => (
+          <mesh key={i} position={[0, sy, 0]}>
+            <boxGeometry
+              args={[SHOE_RECT.w - SHOE_PANEL_T * 2, SHOE_PANEL_T, SHOE_RECT.d - 0.02]}
+            />
+            <meshStandardMaterial color={i === 2 ? "#6b4128" : "#5a4632"} />
+          </mesh>
+        ))}
+        {/* shoes — 5 chunky pixel pairs across the two tiers: sneakers
+            (toe-cap accent), boots (taller shaft block), slides (low flat
+            slab). Bottom tier sits on the floor board, top tier on the mid
+            shelf. Toes face the room (-z, open front). */}
+        {[
+          // bottom tier
+          { dx: -0.24, ty: SHOE_PANEL_T, kind: "sneaker" as const, c: "#e7e0cf", cap: "#b3475f" },
+          { dx: 0.0, ty: SHOE_PANEL_T, kind: "boot" as const, c: "#6b4128" },
+          { dx: 0.24, ty: SHOE_PANEL_T, kind: "slide" as const, c: "#57b6e8" },
+          // top tier
+          { dx: -0.18, ty: SHOE_MID_Y + SHOE_PANEL_T / 2, kind: "sneaker" as const, c: "#22222c", cap: "#e7e0cf" },
+          { dx: 0.18, ty: SHOE_MID_Y + SHOE_PANEL_T / 2, kind: "boot" as const, c: "#3a3a45" },
+        ].map(({ dx, ty, kind, c, cap }, i) => (
+          <group key={i} position={[dx, ty, -0.03]}>
+            {[-0.045, 0.045].map((sx) => (
+              <group key={sx} position={[sx, 0, 0]}>
+                {/* sole + body */}
+                <mesh position={[0, 0.02, 0]}>
+                  <boxGeometry args={[0.07, 0.04, kind === "slide" ? 0.12 : 0.15]} />
+                  <meshStandardMaterial color={c} />
+                </mesh>
+                {kind === "sneaker" && cap && (
+                  <mesh position={[0, 0.02, -0.075]}>
+                    <boxGeometry args={[0.07, 0.04, 0.03]} />
+                    <meshStandardMaterial color={cap} />
+                  </mesh>
+                )}
+                {kind === "boot" && (
+                  <mesh position={[0, 0.075, 0.035]}>
+                    <boxGeometry args={[0.06, 0.07, 0.07]} />
+                    <meshStandardMaterial color={c} />
+                  </mesh>
+                )}
+              </group>
+            ))}
+          </group>
+        ))}
       </group>
 
       {/* ── perfume stand — collider {6.55,5.3,1.0,0.5}, SE corner,
