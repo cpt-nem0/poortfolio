@@ -13,19 +13,25 @@ export const BEDROOM = { x: 0, z: 0, w: 8, d: 6 };
    — every mesh in the furniture section below derives its position from
    these rect constants; the plan mandates no re-hardcoding a collider's
    numbers into a mesh position. ── */
-// P4 recenter: bed centered on the north wall (x 3.0-5.0, room-x-center
-// 4.0) and enlarged (w 1.7→2.0, d 2.1→2.25). The manga dresser is REMOVED
-// FOR NOW — its old rect (x 2.8-4.4) overlapped the centered bed's x-span,
-// so centering it forced the removal; it returns in a later step.
-// Nightstand and dragonslayer lean-zone are unchanged (verified still clear
-// of the bigger bed — see layout.ts's `// bedroom` section, the verbatim
-// source of truth, and furniture.test.ts's exhaustive pairwise clearance
-// check).
-const BED_RECT = { x: 3.0, z: 0.33, w: 2.0, d: 2.25 };
+// SUPER-KING pass: bed enlarged again (w 2.0→2.2, d 2.25→2.5), still
+// centered on the north wall (x 2.9-5.1, room-x-center 4.0 — unchanged).
+// The dragonslayer lean-zone rect is GONE — the sword is parked for the
+// future gaming den (owner's call, 2026-07-19); behelit trigger + sword
+// relocation land with the eclipse/den plans. The manga dresser is still
+// REMOVED FOR NOW (P4 recenter, unrelated to this pass) — its old rect (x
+// 2.8-4.4) overlapped the centered bed's x-span; it returns in a later
+// step. Nightstand is unchanged (verified still clear of the bigger bed —
+// see layout.ts's `// bedroom` section, the verbatim source of truth, and
+// furniture.test.ts's exhaustive pairwise clearance check).
+const BED_RECT = { x: 2.9, z: 0.33, w: 2.2, d: 2.5 };
 const NIGHTSTAND_RECT = { x: 6.45, z: 0.95, w: 0.55, d: 0.5 };
 const PLANT_RECT = { x: 0.45, z: 5.1, w: 0.4, d: 0.4 };
-const DRAGONSLAYER_RECT = { x: 6.55, z: 0.32, w: 0.85, d: 0.5 }; // lean-zone, not a furniture footprint
 const WINDOW_TABLE_RECT = { x: 0.35, z: 2.7, w: 0.5, d: 1.1 }; // under the west window
+// sconce X — the dragonslayer lean-zone rect that used to anchor the sconce
+// is gone (sword parked for the den); the sconce now hangs centered above
+// the bed's headboard, so it derives from BED_RECT's own centerline instead
+// (never hand-guessed, same rule as every other mesh in this section).
+const SCONCE_X = BED_RECT.x + BED_RECT.w / 2; // 4.0
 
 const NIGHTSTAND_CENTER = {
   x: NIGHTSTAND_RECT.x + NIGHTSTAND_RECT.w / 2,
@@ -42,68 +48,70 @@ const WINDOW_TABLE_CENTER = {
 // pillows/duvet. BED_MODEL_SCALE/POS/ROTATION_Y and the lamp's local
 // nesting position are all derived there from the mesh's own vertex
 // cloud — nothing here is hand-guessed.
-// P4 recenter: rotation.y stays 0 (unchanged from the P4 rearrange — the
-// bed still faces headboard-north, only BED_RECT's size/position changed,
-// not its orientation). Scale is re-derived below because the rect's
-// length axis (d, the local-Z/head→foot fit target) grew from 2.1 to 2.25.
+// SUPER-KING pass: rotation.y stays 0 (unchanged — the bed still faces
+// headboard-north, only BED_RECT's size changed, not its orientation).
+// Scale is re-derived below because the rect's length axis (d, the
+// local-Z/head→foot fit target) grew from 2.25 to 2.5.
 const BED_MODEL_ROTATION_Y = 0;
 // BED_MODEL_SCALE re-fits the bed body's own length (local Z range, the
-// same 538.23 scene units the original bed-swap task measured — intrinsic
-// to the GLB, unaffected by any rect change) to the new BED_RECT.d minus
-// the same 4cm margin: (2.25 - 0.04) / 538.23 = 2.21 / 538.23 =
-// 0.0041060513... At that scale the bed-only WIDTH (local X range,
-// 457.230 units, itself back-derived from the P4-rearrange scale's
-// published 1.75m-at-old-scale fact: 1.75 / 0.003827393054572264 =
-// 457.230) comes out to 1.8774m — BED_RECT.w is 2.0m, so the bed body now
-// sits 6.13cm INSIDE the collider on each side (comfortably contained,
-// the inverse of the old 2.6cm-over case; no re-tuning needed since it's
-// well within the same ±4cm-class tolerance).
-const BED_MODEL_SCALE = 0.00410605131635174553629489251807;
+// same 538.23 scene units every prior pass measured — intrinsic to the
+// GLB, unaffected by any rect change) to the new BED_RECT.d minus the same
+// 4cm margin: (2.5 - 0.04) / 538.23 = 2.46 / 538.23 = 0.0045705368
+// (ratio to the P4-recenter scale: ×1.1131221719, = 2.46/2.21 exactly,
+// since both scales share the same /538.23 denominator). At that scale the
+// bed-only WIDTH (local X range, 457.230 units, intrinsic to the GLB,
+// unaffected by rect/scale edits) comes out to 2.0898m — BED_RECT.w is now
+// 2.2m, so the bed body sits 5.51cm INSIDE the collider on each side
+// (comfortably contained, same ±4cm-class tolerance as every prior pass).
+const BED_MODEL_SCALE = 0.00457053675937796109469929212418;
 // headboard face lands BED_RECT.z + 2cm (clearance off the wall plane,
 // same convention as every other wall-adjacent piece in this room); bed
-// (excluding the model's own lamp/table cluster) is centered on the
-// collider's x-span. Re-derived (not re-probed) algebraically, reusing the
-// P4-rearrange task's own back-derived Zmin/Xc facts (Zmin = -295.569372
-// units, local head→foot axis; Xc = 39.629765 units, local width-axis
-// centroid — both intrinsic to the GLB, so they carry over unchanged
-// across a scale/rect edit): with the new scale s = BED_MODEL_SCALE,
-//   Tz = (BED_RECT.z + 0.02) - s * Zmin = 0.35 - s*(-295.569372) = 1.563623
-//   Tx = (BED_RECT.x + BED_RECT.w/2) - s * Xc = 4.0 - s*39.629765 = 3.837278
-// See the P4-recenter report for the full arithmetic table, including the
+// (excluding the model's own lamp/table cluster, itself already cut from
+// the GLB — see BedModel's comment) is centered on the collider's x-span.
+// Re-derived (not re-probed) algebraically, reusing the same back-derived
+// Zmin/Xc facts every prior pass has (Zmin = -295.569372 units, local
+// head→foot axis; Xc = 39.629765 units, local width-axis centroid — both
+// intrinsic to the GLB, so they carry over unchanged across a scale/rect
+// edit): with the new scale s = BED_MODEL_SCALE,
+//   Tz = (BED_RECT.z + 0.02) - s * Zmin = 0.35 - s*(-295.569372) = 1.700911
+//   Tx = (BED_RECT.x + BED_RECT.w/2) - s * Xc = 4.0 - s*39.629765 = 3.818871
+// See the p4-superking report for the full arithmetic table, including the
 // sanity check that reapplying this same formula with the OLD scale/rect
 // reproduces the OLD published BED_MODEL_POS to 4 decimal places.
-const BED_MODEL_POS: [number, number, number] = [3.83727815054034470147114023158, 0, 1.56362301040176360102890162797];
+const BED_MODEL_POS: [number, number, number] = [3.81887070230198985563792430745, 0, 1.70091067967225907140070230198];
 // BED_LAMP_LOCAL_POS / the nested hero pointLight are GONE (lamp-cut pass):
 // the lamp/table cluster that this offset pointed into no longer exists in
 // the GLB (triangle-level cut, see BedModel's comment below), so an
 // unparented light there would violate the no-invisible-lights rule. The
-// dragonslayer wall sconce (below) is now the room's only warm light on
-// this wall — bumped one step to compensate (see its own comment).
+// wall sconce (below, relocated over the headboard in the SUPER-KING pass)
+// is now the room's only warm light on this wall — bumped one step to
+// compensate (see its own comment).
 
-// cat (Task 9, re-seated P4, re-seated again for the P4 recenter) — curls
-// at the GLB bed's foot corner, ON its measured top surface (foot-area
-// vertex cluster, ~90th-percentile height — see BedModel's comment).
-// World-space (no longer nested in a bed-local group, since that group
-// carries the model's own rotation). Re-derived using the same formulas,
-// just fed the new scale/pos: foot edge world Z = Tz + s*(Zmin +
-// local_Z_range) = 1.563623 + 0.00410605*(-295.569372+538.23) = 2.56
-// (a clean number — coincidental, not rounded); Z inset stays 0.26m off
-// that edge: 2.56-0.26=2.30. X offset stays off the width centerline (now
-// 4.0, was 5.5), same +0.10 offset: 4.0+0.10=4.10 — historically biased
-// west, away from where the model's own lamp/table cluster used to overflow
-// (now cut from the GLB, see BedModel's comment); the offset itself is
-// untouched by the cut (it was never derived from the cluster's geometry,
-// just biased away from its side), kept as-is rather than re-centered.
-// Y (on-surface height) scales linearly with the model like the lamp:
-// 0.35 * (s_new/s_old) = 0.35 * 1.0728063 = 0.3755.
+// cat (Task 9, re-seated P4, re-seated again for the P4 recenter, and
+// again for the SUPER-KING pass) — curls at the GLB bed's foot corner, ON
+// its measured top surface (foot-area vertex cluster, ~90th-percentile
+// height — see BedModel's comment). World-space (no longer nested in a
+// bed-local group, since that group carries the model's own rotation).
+// Re-derived using the same formulas, just fed the new scale/pos: foot
+// edge world Z = Tz + s*(Zmin + local_Z_range) = 1.700911 +
+// 0.00457054*(-295.569372+538.23) = 2.81 (a clean number — coincidental,
+// not rounded, same as the P4-recenter pass's 2.56); Z inset stays 0.26m
+// off that edge: 2.81-0.26=2.55. X offset stays off the width centerline
+// (still 4.0 — BED_RECT's center didn't move, only its size grew), same
+// +0.10 offset: 4.0+0.10=4.10, unchanged from the P4-recenter pass. Y
+// (on-surface height) scales linearly with the model, same rule as every
+// prior pass: 0.3755 * (s_new/s_old) = 0.3755 * 1.1131221719 = 0.4180
+// (ratio = 2.46/2.21 exactly, the two BED_RECT.d-minus-margin figures,
+// since both scales share the /538.23 denominator).
 const CAT_X = 4.1;
-const CAT_Y = 0.3755;
-const CAT_Z = 2.3;
+const CAT_Y = 0.418;
+const CAT_Z = 2.55;
 
 // nightstand — cabinet kept (its hand-built lamp was removed when the GLB
 // bed's own lamp took over as hero fixture; that GLB lamp is now ALSO gone,
-// lamp-cut pass — the dragonslayer sconce is the room's only warm light on
-// this wall, see its own comment). Heights still stack off the nightstand's
+// lamp-cut pass — the wall sconce (relocated over the headboard, SUPER-KING
+// pass) is the room's only warm light on this wall, see its own comment).
+// Heights still stack off the nightstand's
 // actual top surface (NS_TOP_Y), never a hand-guessed y.
 const NS_BODY_H = 0.46;
 const NS_TOP_T = 0.03;
@@ -179,28 +187,11 @@ const MOON_PATCH_D = 1.7;
 // it. It returns elsewhere in a later step — this is a "for now" removal,
 // not a cut feature.
 
-// dragonslayer (Task 8, moved east by P4 to clear the relocated bed) —
-// leans against the north wall inside the lean zone. DS_BASE is
-// deliberately NOT the rect center: it's biased toward the zone's near
-// (wall-side) edge so the ~12°-tilted blade reads as leaning back onto the
-// wall rather than floating mid-room. See task-8 report for the
-// corner-clearance arithmetic that confirms the tip still clears the wall
-// plane (z≈0.011) by comfortably more than the 6mm minimum — unaffected by
-// the P4 x-shift, since only DRAGONSLAYER_RECT.x moved, not .z.
-const DS_BASE_X = DRAGONSLAYER_RECT.x + 0.4; // 6.95
-const DS_BASE_Z = DRAGONSLAYER_RECT.z + 0.18; // 0.5
-const DS_TILT = -Math.PI * (12 / 180); // -12°; negative rotation.x walks the
-// tip toward -z (north wall) under three.js's X-rotation convention
-// (z' = y·sinθ + z·cosθ) — see report for the signed derivation.
-const DS_POMMEL_H = 0.04;
-const DS_GRIP_LEN = 0.16;
-const DS_GUARD_H = 0.04;
-const DS_HILT_LEN = DS_POMMEL_H + DS_GRIP_LEN + DS_GUARD_H; // 0.24, floor → blade root
-const DS_BLADE_LEN = 1.9;
-const DS_TOTAL_LEN = DS_HILT_LEN + DS_BLADE_LEN; // 2.14, floor → tip, unrotated
-const DS_BLADE_W = 0.28;
-const DS_BLADE_THICK = 0.055;
-const DS_GUARD_W = 0.4;
+// dragonslayer — REMOVED (Task 8's lean-zone rect + sword meshes + its
+// floor contact shadow are gone). Parked for now — it's destined for the
+// future gaming den; behelit trigger + sword relocation land with the
+// eclipse/den plans. Its wall sconce (below) is KEPT and relocated — see
+// the sconce's own comment.
 
 /* ── style LOCKED at the gate (Rohan, 2026-07-19): sage walls + parallel-oak
    floor. Toggle machinery stripped per precedent (e545fd1/6347c04). ── */
@@ -215,8 +206,10 @@ const FLOOR_TEX = "/3am/tex/floor-oak.png";
  *  frame/headboard/mattress/pillows/duvet. LAMP-CUT PASS (this pass): the
  *  model's own lamp/table cluster is triangle-level CUT from the GLB (see
  *  the dedicated comment block below) — it is no longer the room's hero
- *  fixture. The dragonslayer sconce is now the room's only warm light on
- *  this wall (bumped one step, see its own comment).
+ *  fixture. The wall sconce is now the room's only warm light on this wall
+ *  (bumped one step, see its own comment). STALE as of the SUPER-KING pass
+ *  below: the sconce it refers to no longer hangs over the (now-removed)
+ *  dragonslayer — it's relocated over the headboard.
  *
  *  GLB drill: healthy file (no skin, no animations; 1 mesh/1 material/3
  *  textures). The Sketchfab corrective node chain (root rotation × fbx-node
@@ -262,7 +255,7 @@ const FLOOR_TEX = "/3am/tex/floor-oak.png";
  *  the window's wall); lamp/table cluster overflow ran WEST toward the
  *  dresser (~0.84m, didn't clear it — flagged for Rohan's call).
  *
- *  P4 RECENTER (this pass — bed centered on the north wall, x 3.0-5.0,
+ *  P4 RECENTER (bed centered on the north wall, x 3.0-5.0,
  *  and enlarged to w:2.0/d:2.25; manga dresser removed for now): scale
  *  re-fit to the new BED_RECT.d: (2.25-0.04)/538.23 = 2.21/538.23 =
  *  0.0041060513 (ratio to the P4-rearrange scale: ×1.0728063). Bed-only
@@ -316,7 +309,28 @@ const FLOOR_TEX = "/3am/tex/floor-oak.png";
  *  per-vertex rule), and the bed body's western face reads as an
  *  already-capped solid surface with no triangle needing to cross the cut
  *  plane to close it; no patch geometry was added. Owner should still
- *  eyeball the west side of the bed in-scene for the final call. */
+ *  eyeball the west side of the bed in-scene for the final call.
+ *
+ *  SUPER-KING PASS (this pass — owner's ask: make the bed SUPER KING size;
+ *  dragonslayer removed, parked for the future gaming den): BED_RECT grown
+ *  again, w:2.0→2.2 / d:2.25→2.5, x-center unchanged at 4.0 (x 2.9-5.1).
+ *  Scale re-fit to the new BED_RECT.d: (2.5-0.04)/538.23 = 2.46/538.23 =
+ *  0.0045705368 (ratio to the P4-recenter scale: ×1.1131221719 = 2.46/2.21
+ *  exactly, since both scales share the /538.23 denominator). Bed-only
+ *  width at the new scale is 2.0898m against BED_RECT.w=2.2m — 5.51cm
+ *  INSIDE the collider on each side (still comfortably contained, same
+ *  ±4cm-class tolerance as every prior pass). BED_MODEL_POS re-derived
+ *  algebraically from the SAME Zmin/Xc facts every prior pass has used
+ *  (Zmin=-295.569372, Xc=39.629765 — both intrinsic to the GLB, unaffected
+ *  by rect/scale edits), just re-solved with the new scale and rect — no
+ *  fresh GLB probing needed (see BED_MODEL_POS's own comment for the
+ *  formula). The dragonslayer lean-zone, its sword meshes, and its floor
+ *  contact shadow are all REMOVED — parked for the future gaming den (see
+ *  the dedicated comment block at the sword's old JSX spot). Its wall
+ *  sconce is KEPT and relocated to SCONCE_X = 4.0 (centered above the
+ *  bed's headboard) — same y/intensity/distance/decay, only x moved (see
+ *  the sconce's own comment). See the p4-superking report for the full
+ *  arithmetic table. */
 function BedModel() {
   const { scene } = useGLTF("/3am/models/bed-with-lamp.glb");
   useEffect(() => {
@@ -600,11 +614,10 @@ export function Bedroom() {
         <meshBasicMaterial color="#26304d" transparent opacity={0.18} />
       </mesh>
 
-      {/* ── bed — collider {3.0,0.33,2.0,2.25} (P4 recenter: centered on
-          the north wall, x 3.0-5.0 around the room's x-center 4.0, and
-          enlarged from {1.7,2.1} to {2.0,2.25} — was {4.65,0.35,1.7,2.1}
-          east of the now-removed manga dresser). Real Sketchfab GLB (see
-          BedModel's attribution comment) replaces the hand-built
+      {/* ── bed — collider {2.9,0.33,2.2,2.5} (SUPER-KING pass: centered on
+          the north wall, x 2.9-5.1 around the room's x-center 4.0 —
+          unchanged — enlarged from {2.0,2.25} to {2.2,2.5}). Real Sketchfab
+          GLB (see BedModel's attribution comment) replaces the hand-built
           frame/headboard/mattress/pillows/duvet. rotation.y=0 maps the
           model's local +Z (head→foot) to world +Z directly and local X
           (width axis, unrotated) to world X directly — the only
@@ -613,34 +626,36 @@ export function Bedroom() {
           alternative, θ=π, was rejected). BED_MODEL_POS puts the
           headboard face on the wall plane (BED_RECT.z + 2cm clearance)
           and centers the bed-only footprint on the collider's x-span —
-          re-derived algebraically from the P4-rearrange task's own
-          published Zmin/Xc constants, not re-probed (see BED_MODEL_POS's
-          comment). LAMP-CUT PASS: the GLB's own lamp/table cluster is
-          triangle-level cut from the model (see BedModel's comment) — no
-          fixture, no light nested here anymore, so nothing to keep
-          rotation-safe on that front. Own Suspense so the fetch never
-          blocks the room's first paint. ── */}
+          re-derived algebraically from the same published Zmin/Xc
+          constants every prior pass has used, not re-probed (see
+          BED_MODEL_POS's comment). LAMP-CUT PASS: the GLB's own lamp/table
+          cluster is triangle-level cut from the model (see BedModel's
+          comment) — no fixture, no light nested here anymore, so nothing
+          to keep rotation-safe on that front. Own Suspense so the fetch
+          never blocks the room's first paint. ── */}
       <group position={BED_MODEL_POS} rotation={[0, BED_MODEL_ROTATION_Y, 0]}>
         <Suspense fallback={null}>
           <BedModel />
         </Suspense>
       </group>
 
-      {/* sleeping cat (Task 9, re-seated P4) — sits on the GLB bed's
-          foot-area top surface (world-space, no longer nested in a
-          bed-local group — that group carries the model's own rotation,
-          which would reorient the cat's body too). See the CAT_X/Y/Z
-          consts above for the foot-inset/surface-height derivation. */}
+      {/* sleeping cat (Task 9, re-seated P4, re-seated again SUPER-KING) —
+          sits on the GLB bed's foot-area top surface (world-space, no
+          longer nested in a bed-local group — that group carries the
+          model's own rotation, which would reorient the cat's body too).
+          See the CAT_X/Y/Z consts above for the foot-inset/surface-height
+          derivation. */}
       <Cat x={CAT_X} y={CAT_Y} z={CAT_Z} />
 
-      {/* ── nightstand — collider {6.45,0.95,0.55,0.5} (unchanged by the P4
-          recenter — the bigger/centered bed's far x edge (5.0) still
-          leaves a 1.45m gap before this rect's x min, verified in the
-          P4-recenter report). Two-tone cabinet (dark body / warm top slab)
-          with one recessed drawer + knob. Its hand-built lamp was REMOVED
-          when the GLB bed's own lamp took over as hero light — that GLB
-          lamp is now ALSO gone (lamp-cut pass, see BedModel's comment), so
-          this cabinet currently sits unlit; the dragonslayer sconce is the
+      {/* ── nightstand — collider {6.45,0.95,0.55,0.5} (unchanged by the
+          SUPER-KING pass — the bigger/centered bed's far x edge (5.1)
+          still leaves a 1.35m gap before this rect's x min, verified in
+          the p4-superking report). Two-tone cabinet (dark body / warm top
+          slab) with one recessed drawer + knob. Its hand-built lamp was
+          REMOVED when the GLB bed's own lamp took over as hero light —
+          that GLB lamp is now ALSO gone (lamp-cut pass, see BedModel's
+          comment), so this cabinet currently sits unlit; the sconce
+          (relocated over the headboard, see its own comment) is the
           room's one warm fixture on this wall. Kept the cabinet itself
           regardless — it never overlapped the bed or its (now-cut)
           lamp/table cluster. ── */}
@@ -669,95 +684,45 @@ export function Bedroom() {
         </mesh>
       </group>
 
-      {/* ── manga dresser — REMOVED FOR NOW (P4 recenter). Its old collider
-          {2.8,0.3,1.6,0.55} overlapped the centered/enlarged bed's x-span
-          (3.0-5.0), and centering the bed on the north wall was the
-          explicit ask, so the dresser (body, drawers, manga stack,
-          figurines, cactus) is deleted here. It returns elsewhere in a
-          later step. ── */}
+      {/* ── manga dresser — REMOVED FOR NOW (P4 recenter, unrelated to the
+          SUPER-KING pass). Its old collider {2.8,0.3,1.6,0.55} overlapped
+          the centered/enlarged bed's x-span, and centering the bed on the
+          north wall was the explicit ask, so the dresser (body, drawers,
+          manga stack, figurines, cactus) is deleted here. It returns
+          elsewhere in a later step. ── */}
 
-      {/* ── the dragonslayer — lean zone {5.6,0.32,0.85,0.5}, no collider
-          footprint of its own (it's a wall-leaning prop, not a walk-into
-          obstacle). Deliberately oversized Berserk-slab silhouette: a
-          1.9m×0.28m×5.5cm iron slab on a simple hilt, tilted 12° off
-          vertical so the tip leans back toward the north wall (z≈0.011)
-          without clipping it — see task-8 report for the corner-clearance
-          math. Flat iron grays + one lighter edge-highlight strip; no
-          emissive anywhere (Bloom threshold 0.6 stays intact). NO
-          interaction this task — the eclipse wires it up later. ── */}
-      <group position={[DS_BASE_X, 0, DS_BASE_Z]} rotation={[DS_TILT, 0, 0]}>
-        {/* pommel cap */}
-        <mesh position={[0, DS_POMMEL_H / 2, 0]}>
-          <cylinderGeometry args={[0.028, 0.022, DS_POMMEL_H, 8]} />
-          <meshStandardMaterial color="#3a2a1e" />
-        </mesh>
-        {/* wrapped grip */}
-        <mesh position={[0, DS_POMMEL_H + DS_GRIP_LEN / 2, 0]}>
-          <cylinderGeometry args={[0.02, 0.02, DS_GRIP_LEN, 8]} />
-          <meshStandardMaterial color="#3a2a1e" />
-        </mesh>
-        {[0.06, 0.12, 0.18].map((y) => (
-          <mesh key={y} position={[0, y, 0]}>
-            <cylinderGeometry args={[0.023, 0.023, 0.012, 8]} />
-            <meshStandardMaterial color="#221a14" />
-          </mesh>
-        ))}
-        {/* simple crossguard */}
-        <mesh position={[0, DS_POMMEL_H + DS_GRIP_LEN + DS_GUARD_H / 2, 0]}>
-          <boxGeometry args={[DS_GUARD_W, DS_GUARD_H, 0.07]} />
-          <meshStandardMaterial color="#4a4a52" />
-        </mesh>
-        {/* the slab blade — flat iron gray, thick */}
-        <mesh position={[0, DS_HILT_LEN + DS_BLADE_LEN / 2, 0]}>
-          <boxGeometry args={[DS_BLADE_W, DS_BLADE_LEN, DS_BLADE_THICK]} />
-          <meshStandardMaterial color="#7d7d88" />
-        </mesh>
-        {/* edge highlight band, one long edge, sat proud of the flat face */}
-        <mesh
-          position={[DS_BLADE_W / 2 - 0.02, DS_HILT_LEN + DS_BLADE_LEN / 2, 0]}
-        >
-          <boxGeometry args={[0.03, DS_BLADE_LEN - 0.04, DS_BLADE_THICK + 0.004]} />
-          <meshStandardMaterial color="#c7c7d4" />
-        </mesh>
-      </group>
+      {/* ── dragonslayer — REMOVED (parked for now). The sword's lean-zone
+          rect, its meshes (pommel/grip/wraps/crossguard/blade/edge
+          highlight), and its floor contact shadow are all gone — it's
+          destined for the future gaming den; behelit trigger + sword
+          relocation land with the eclipse/den plans. ── */}
 
-      {/* floor contact shadow — dark oval decal, NOT nested in the tilted
-          sword group above (it must stay flat on the floor). Offset slightly
-          toward the wall from the base point since the blade's mass leans
-          that way. */}
-      {/* eclipse trigger lands here (plan 8) */}
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[DS_BASE_X, 0.036, DS_BASE_Z - 0.05]}
-      >
-        <planeGeometry args={[0.5, 0.35]} />
-        <meshBasicMaterial color="#0a0a0f" transparent opacity={0.3} />
-      </mesh>
-
-      {/* ── dragonslayer wall sconce (Task 10) — kept, position auto-follows
-          DS_BASE_X (unaffected by the P4 recenter — DRAGONSLAYER_RECT
-          didn't move). LAMP-CUT PASS lighting rebalance: the GLB bed's own
-          lamp (the room's other warm source on this wall) is now cut from
-          the model entirely (see BedModel's comment) — this sconce is the
-          room's ONLY warm light left on the north wall, so intensity is
-          bumped one step, 3.5→5 (still under the ≤6 ceiling this fixture
-          class caps at), to keep the wall legible without it. Distance
-          (3.6) and decay (2) untouched — only the falloff strength changed,
-          not its reach. The window-table/bonsai corner (WINDOW_TABLE_RECT,
-          under the west window) may get its own small lamp in a later
-          pass — flagged here rather than solved now, since a second
-          fixture wasn't this task's ask. One fixture-attached source,
-          House/StairsApproach's brass-half-dome sconce as the pattern (same
-          mount box + emissive cone, pointLight nested INSIDE this group so
-          it's rotation-safe by construction even though this group happens
-          to carry no rotation — matches the fixture-nesting rule
-          regardless), warm, no castShadow. The room's SE corner (~6.6,4.9)
-          stays unlit here on purpose — a bonsai stand was slated to land
-          there in a follow-up plan; a separate bonsai also lands on the
-          window table (WINDOW_TABLE_RECT), so there may be two bonsai
-          mentions in this file going forward — flagged for Rohan's call on
-          which stands. ── */}
-      <group position={[DS_BASE_X, 2.4, R.z + 0.02]}>
+      {/* ── wall sconce — relocated (SUPER-KING pass) from over the
+          now-gone dragonslayer lean-zone to centered above the bed's
+          headboard (SCONCE_X = BED_RECT.x + BED_RECT.w/2 = 4.0, same y=2.4
+          and R.z+0.02 z-plane as before — only x moved). A sconce over the
+          bed head is the natural composition now that the sword is gone.
+          LAMP-CUT PASS lighting rebalance (still true): the GLB bed's own
+          lamp (the room's other warm source on this wall) is cut from the
+          model entirely (see BedModel's comment) — this sconce is the
+          room's ONLY warm light left on the north wall, so intensity stays
+          bumped at 5 (still under the ≤6 ceiling this fixture class caps
+          at). Distance (3.6) and decay (2) untouched — only the falloff
+          strength changed, not its reach. The window-table/bonsai corner
+          (WINDOW_TABLE_RECT, under the west window) may get its own small
+          lamp in a later pass — flagged here rather than solved now, since
+          a second fixture wasn't this task's ask. One fixture-attached
+          source, House/StairsApproach's brass-half-dome sconce as the
+          pattern (same mount box + emissive cone, pointLight nested INSIDE
+          this group so it's rotation-safe by construction even though this
+          group happens to carry no rotation — matches the fixture-nesting
+          rule regardless), warm, no castShadow. The room's SE corner
+          (~6.6,4.9, where the sword used to stand) stays unlit here on
+          purpose — a bonsai stand was slated to land there in a follow-up
+          plan; a separate bonsai also lands on the window table
+          (WINDOW_TABLE_RECT), so there may be two bonsai mentions in this
+          file going forward — flagged for Rohan's call on which stands. ── */}
+      <group position={[SCONCE_X, 2.4, R.z + 0.02]}>
         <mesh position={[0, -0.09, -0.02]}>
           <boxGeometry args={[0.1, 0.05, 0.06]} />
           <meshStandardMaterial color="#4a3a2e" />
@@ -771,14 +736,19 @@ export function Bedroom() {
 
       {/* ── rug (no collider — visual only, walkable) — rug-bedroom is a
           single alpha-cutout oval image, same repeat(1,1) + transparent
-          convention as MusicNook's kilim rug. Position unchanged by the P4
-          recenter (owner's call — still verified clear, no need to move
-          it): half-extents 1.2×0.85 give x-range 2.1–4.5, z-range
-          2.75–4.45; the new bed's far z edge is 2.58, so the z-gap
-          tightened from 0.30m to 0.17m but stays positive (no overlap) —
-          checked against the bed, nightstand, dragonslayer, and window
-          table in the P4-recenter report, and of the moon patch (see
-          MOON_PATCH_X comment above). ── */}
+          convention as MusicNook's kilim rug. Position untouched by the
+          SUPER-KING pass (not in this task's scope, no collider so no test
+          catches it): half-extents 1.2×0.85 give x-range 2.1–4.5, z-range
+          2.75–4.45. STALE flag: the bed's far z edge grew 2.58→2.83 this
+          pass, which now runs 0.08m PAST the rug's z-min (2.75) — a visual
+          overlap (rug corner under the bed skirt), not a collision bug (no
+          collider on the rug). Not moved here since it's outside this
+          task's ask and the owner wanted no-browser verification; flagged
+          for the owner to eyeball and, if needed, nudge the rug south in a
+          follow-up pass. Previously checked against the bed, nightstand,
+          and window table in the P4-recenter report, and of the moon patch
+          (see MOON_PATCH_X comment above) — those clearances are
+          unaffected by this pass. ── */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[3.3, 0.035, 3.6]}>
         <planeGeometry args={[2.4, 1.7]} />
         <meshStandardMaterial map={rugTex} transparent />

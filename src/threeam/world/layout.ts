@@ -47,17 +47,20 @@ const GROUND: Area = {
   bounds: { x: 0, z: 0, w: 22, d: 6 },
   walls: [...dividerWithDoor(8, 6), ...dividerWithDoor(16, 6)],
   furniture: [
-    // bedroom — P4 recenter: bed centered on the north wall (x 3.0-5.0,
-    // room-x-center = 4.0) and enlarged (w 1.7→2.0, d 2.1→2.25). The manga
-    // dresser is REMOVED for now — its old rect (x 2.8-4.4) overlapped the
-    // centered bed's x-span, so centering forced the removal; it returns in
-    // a later step. Nightstand and dragonslayer lean-zone are unchanged
-    // (still clear of the bigger bed — see furniture.test.ts's "no two
-    // bedroom furniture rects overlap" test for the exhaustive pairwise
-    // clearance check).
-    { x: 3.0, z: 0.33, w: 2.0, d: 2.25 }, // bed (headboard north, centered on the wall)
-    { x: 6.45, z: 0.95, w: 0.55, d: 0.5 }, // nightstand (bed's east flank, south of the sword)
-    { x: 6.55, z: 0.32, w: 0.85, d: 0.5 }, // dragonslayer lean-zone (north wall, east of the bed)
+    // bedroom — SUPER-KING pass: bed enlarged again (w 2.0→2.2, d 2.25→2.5),
+    // still centered on the north wall (x 2.9-5.1, room-x-center = 4.0 —
+    // unchanged). The dragonslayer lean-zone rect is REMOVED — the sword is
+    // parked for the future gaming den (owner's call, 2026-07-19); behelit
+    // trigger + sword relocation land with the eclipse/den plans. The manga
+    // dresser is still REMOVED for now (P4 recenter, unrelated to this
+    // pass) — its old rect (x 2.8-4.4) overlapped the centered bed's
+    // x-span; it returns in a later step. Nightstand is unchanged (still
+    // clear of the bigger bed — see furniture.test.ts's "no two bedroom
+    // furniture rects overlap" test for the exhaustive pairwise clearance
+    // check). SPAWN moved {4,3}→{4,3.6} below: the bed's new far z edge
+    // (2.83) + player radius (0.35) = 3.18 pushed past the old spawn z.
+    { x: 2.9, z: 0.33, w: 2.2, d: 2.5 }, // bed (headboard north, centered on the wall, SUPER-KING)
+    { x: 6.45, z: 0.95, w: 0.55, d: 0.5 }, // nightstand (bed's east flank)
     { x: 0.45, z: 5.1, w: 0.4, d: 0.4 }, // plant (SW corner)
     { x: 0.35, z: 2.7, w: 0.5, d: 1.1 }, // window table (west wall, under the window)
     { x: 17.6, z: 0.3, w: 2.8, d: 0.9 }, // record console, centered on the wall (turntable + speakers on top)
@@ -128,4 +131,11 @@ export const HOUSE: { areas: Record<AreaId, Area>; portals: Portal[] } = {
   ],
 };
 
-export const SPAWN = { area: "ground" as AreaId, x: 4, z: 3 };
+// SPAWN — SUPER-KING pass moved this from {4,3}: the bed's new far z edge
+// (0.33 + 2.5 = 2.83) + player radius (0.35) = 3.18 > 3.0, so the old spawn
+// point is now inside the bed's collider. {4,3.6} clears the bed by 0.42m
+// (3.6 - 3.18), the rug (no collider, so not a hard requirement, but still
+// true — rug z-min 2.75 < 3.6), and the about trigger
+// {5.15,1.3,1.25,1.1} (x 4 is west of the trigger's x-min 5.15) — see
+// furniture.test.ts and invariants.test.ts for the exhaustive checks.
+export const SPAWN = { area: "ground" as AreaId, x: 4, z: 3.6 };

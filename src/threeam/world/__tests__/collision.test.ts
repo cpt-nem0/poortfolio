@@ -10,7 +10,11 @@ const ground = HOUSE.areas.ground;
 
 describe("isBlocked", () => {
   it("open floor is walkable", () => {
-    expect(isBlocked(ground, 4, 3)).toBe(false);
+    // was (4,3) — the old SPAWN point — but the SUPER-KING bed (far z edge
+    // 2.83 + player radius 0.35 = 3.18) now reaches past it; (4,3.6) is the
+    // new SPAWN point and stays clear (see furniture.test.ts for the exact
+    // margin arithmetic).
+    expect(isBlocked(ground, 4, 3.6)).toBe(false);
   });
 
   it("outside bounds is blocked", () => {
@@ -30,8 +34,11 @@ describe("isBlocked", () => {
 
 describe("resolveMovement", () => {
   it("moves freely on open floor", () => {
-    const p = resolveMovement(ground, { x: 4, z: 3 }, { x: 0.5, z: 0 });
-    expect(p.x).toBeCloseTo(4.5);
+    // was (4,3) — the old SPAWN point — but the SUPER-KING bed now reaches
+    // past it (see the isBlocked test above); (12,3) is open workspace
+    // floor, unrelated to any furniture rect this task touches.
+    const p = resolveMovement(ground, { x: 12, z: 3 }, { x: 0.5, z: 0 });
+    expect(p.x).toBeCloseTo(12.5);
     expect(p.z).toBeCloseTo(3);
   });
 
@@ -48,7 +55,9 @@ describe("resolveMovement", () => {
   });
 
   it("never returns a blocked position", () => {
-    const p = resolveMovement(ground, { x: 4, z: 3 }, { x: -10, z: -10 });
+    // was (4,3) — the old SPAWN point, now inside the SUPER-KING bed's
+    // collider — start from (12,3) instead, still open workspace floor.
+    const p = resolveMovement(ground, { x: 12, z: 3 }, { x: -10, z: -10 });
     expect(isBlocked(ground, p.x, p.z, PLAYER_RADIUS)).toBe(false);
   });
 });

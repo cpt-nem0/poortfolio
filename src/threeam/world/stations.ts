@@ -41,9 +41,12 @@ export const STATIONS: Station[] = [
     area: "ground",
     // P4 recenter: retargeted from the (now-removed) manga dresser to the
     // bed. Standing zone on the bed's east/south approach — clear of the
-    // bed (x max 5.0, trigger x min 5.15, 0.15m gap) and the nightstand
-    // (x min 6.45, trigger x max 6.40, 0.05m gap); the exhaustive pairwise
-    // test in furniture.test.ts referees this.
+    // bed (SUPER-KING pass grew the bed to x max 5.1; trigger x min 5.15,
+    // now a 0.05m gap, tighter than the P4-recenter's 0.15m but still
+    // strictly clear — 5.15 is not close enough to 5.1 for float error to
+    // matter) and the nightstand (x min 6.45, trigger x max 6.40, 0.05m
+    // gap, unaffected by the bed change); the exhaustive pairwise test in
+    // furniture.test.ts referees this.
     trigger: { x: 5.15, z: 1.3, w: 1.25, d: 1.1 },
     label: "about me",
     // pos is southwest of the room (near the window side, well south of
