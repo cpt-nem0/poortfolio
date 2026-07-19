@@ -73,17 +73,12 @@ const BED_MODEL_SCALE = 0.00410605131635174553629489251807;
 // sanity check that reapplying this same formula with the OLD scale/rect
 // reproduces the OLD published BED_MODEL_POS to 4 decimal places.
 const BED_MODEL_POS: [number, number, number] = [3.83727815054034470147114023158, 0, 1.56362301040176360102890162797];
-// lamp shade/bulb position IN THE MODEL'S OWN LOCAL SPACE (same space as
-// the scaled <primitive>, pre the wrapper group's rotation/translation) —
-// nesting the pointLight here inside that same rotated group keeps it
-// rotation-safe by construction (HANDOFF §6 fixture-offset class). Since
-// this is a raw-local-space offset (not itself passed through the
-// primitive's own `scale` prop), it scales linearly with the model:
-// re-derived as the OLD published value × (s_new / s_old) = × 1.0728063
-// (both scales are proportional multipliers of the same underlying GLB
-// geometry, so this ratio carries over exactly without re-probing the
-// mesh). See the report for the full per-axis table.
-const BED_LAMP_LOCAL_POS: [number, number, number] = [-1.13053146000485401472699077112, 0.774287460657614462650322468323, -0.869399279321101536730872489078];
+// BED_LAMP_LOCAL_POS / the nested hero pointLight are GONE (lamp-cut pass):
+// the lamp/table cluster that this offset pointed into no longer exists in
+// the GLB (triangle-level cut, see BedModel's comment below), so an
+// unparented light there would violate the no-invisible-lights rule. The
+// dragonslayer wall sconce (below) is now the room's only warm light on
+// this wall — bumped one step to compensate (see its own comment).
 
 // cat (Task 9, re-seated P4, re-seated again for the P4 recenter) — curls
 // at the GLB bed's foot corner, ON its measured top surface (foot-area
@@ -93,20 +88,23 @@ const BED_LAMP_LOCAL_POS: [number, number, number] = [-1.13053146000485401472699
 // just fed the new scale/pos: foot edge world Z = Tz + s*(Zmin +
 // local_Z_range) = 1.563623 + 0.00410605*(-295.569372+538.23) = 2.56
 // (a clean number — coincidental, not rounded); Z inset stays 0.26m off
-// that edge: 2.56-0.26=2.30. X offset stays off the width centerline
-// (now 4.0, was 5.5) toward the side AWAY from the model's own lamp/table
-// cluster (still west, toward where the dresser used to be — the
-// rescale/recenter didn't change the rotation, so the overflow direction
-// is unchanged, see BedModel's comment) — same +0.10 offset: 4.0+0.10=4.10.
+// that edge: 2.56-0.26=2.30. X offset stays off the width centerline (now
+// 4.0, was 5.5), same +0.10 offset: 4.0+0.10=4.10 — historically biased
+// west, away from where the model's own lamp/table cluster used to overflow
+// (now cut from the GLB, see BedModel's comment); the offset itself is
+// untouched by the cut (it was never derived from the cluster's geometry,
+// just biased away from its side), kept as-is rather than re-centered.
 // Y (on-surface height) scales linearly with the model like the lamp:
 // 0.35 * (s_new/s_old) = 0.35 * 1.0728063 = 0.3755.
 const CAT_X = 4.1;
 const CAT_Y = 0.3755;
 const CAT_Z = 2.3;
 
-// nightstand — cabinet kept (its hand-built lamp is removed; the GLB bed's
-// own lamp is now the room's hero fixture). Heights still stack off the
-// nightstand's actual top surface (NS_TOP_Y), never a hand-guessed y.
+// nightstand — cabinet kept (its hand-built lamp was removed when the GLB
+// bed's own lamp took over as hero fixture; that GLB lamp is now ALSO gone,
+// lamp-cut pass — the dragonslayer sconce is the room's only warm light on
+// this wall, see its own comment). Heights still stack off the nightstand's
+// actual top surface (NS_TOP_Y), never a hand-guessed y.
 const NS_BODY_H = 0.46;
 const NS_TOP_T = 0.03;
 const NS_TOP_Y = NS_BODY_H + NS_TOP_T; // top surface, world y = 0.49
@@ -214,8 +212,11 @@ const FLOOR_TEX = "/3am/tex/floor-oak.png";
  *  (http://creativecommons.org/licenses/by/4.0/), source:
  *  https://sketchfab.com/3d-models/bed-with-lamp-b9b6f7dce9df4d719acc37b5e05a3ea3.
  *  Attribution lives in the GLB's asset.extras too. Replaces the hand-built
- *  frame/headboard/mattress/pillows/duvet AND the nightstand's hand-built
- *  lamp — this model's own lamp is now the room's hero fixture.
+ *  frame/headboard/mattress/pillows/duvet. LAMP-CUT PASS (this pass): the
+ *  model's own lamp/table cluster is triangle-level CUT from the GLB (see
+ *  the dedicated comment block below) — it is no longer the room's hero
+ *  fixture. The dragonslayer sconce is now the room's only warm light on
+ *  this wall (bumped one step, see its own comment).
  *
  *  GLB drill: healthy file (no skin, no animations; 1 mesh/1 material/3
  *  textures). The Sketchfab corrective node chain (root rotation × fbx-node
@@ -250,15 +251,9 @@ const FLOOR_TEX = "/3am/tex/floor-oak.png";
  *  was 2.06/538.23=0.0038274, bed-only width 1.75m (2.6cm over BED_RECT.w
  *  on each side), headboard top 0.694m.
  *
- *  BED_LAMP_LOCAL_POS is the centroid of the lamp cluster's own top 15%
- *  (by height) verts — the shade interior — nested INSIDE the same
- *  rotated/positioned group as the model, so it's rotation-safe by
- *  construction (never a hand-computed world position, HANDOFF §6). Same
- *  warm profile as the lamp it replaces (intensity 7, #ffcf9e, distance
- *  4.5, decay 2, no castShadow — fixed shadow-caster budget). Since it's a
- *  raw-local offset (not itself wrapped in the primitive's own `scale`
- *  prop), it scales linearly with BED_MODEL_SCALE — re-derived on every
- *  scale change as (old value) × (s_new/s_old), not re-probed.
+ *  BED_LAMP_LOCAL_POS and its nested pointLight are GONE (lamp-cut pass,
+ *  see the dedicated comment block below) — the shade they pointed into no
+ *  longer exists in the GLB.
  *
  *  P4 UPDATE (bed rearranged onto the north wall, east of the dresser):
  *  wrapper rotation.y changed π/2 → 0 (see BED_MODEL_ROTATION_Y's
@@ -280,20 +275,48 @@ const FLOOR_TEX = "/3am/tex/floor-oak.png";
  *  scale and rect — no fresh GLB probing needed (see BED_MODEL_POS's own
  *  comment for the formula and the sanity check that it reproduces the
  *  old published position when fed the old scale/rect). BED_LAMP_LOCAL_POS
- *  scaled by the same 1.0728063 ratio (see its own comment).
+ *  used to scale by the same 1.0728063 ratio — STALE, see the lamp-cut pass
+ *  below (the constant and its fixture no longer exist).
  *
- *  The lamp/table cluster's overflow direction is UNCHANGED (still WEST —
- *  rotation didn't change, and the lamp cluster's local-X position
- *  relative to the bed's own width centroid, which determines the
- *  direction, is intrinsic geometry) but its magnitude grew with the
- *  scale: 0.84m × 1.0728063 ≈ 0.90m. Since the manga dresser this used to
- *  (fail to) clear is now removed, the overflow simply lands on open
- *  floor — no clash to report. Sconce/dragonslayer distance check (lamp
- *  world pos ≈ (2.707, 0.774, 0.694)): ~4.32m to the dragonslayer base,
- *  ~4.59m to the sconce — both near the lamp's own 4.5m falloff distance
- *  (borderline either side of it), noted in the P4-recenter report but
- *  left untouched since re-balancing the north wall's lighting is outside
- *  this task's scope (see the sconce group's own comment below). */
+ *  The lamp/table cluster's overflow direction was WEST (rotation didn't
+ *  change, and the lamp cluster's local-X position relative to the bed's
+ *  own width centroid, which determined the direction, was intrinsic
+ *  geometry) — STALE as of the lamp-cut pass below; the cluster (and its
+ *  overflow) no longer exists.
+ *
+ *  LAMP-CUT PASS (owner's ask: remove the lamp/table cluster from the bed
+ *  GLB — it's a single fused mesh, so this is a triangle-level cut, not a
+ *  node deletion). Cut plane: raw-local X = -192 (a 3-unit margin west of
+ *  the bed body's own western face, which sits at raw-local X ≈ -189 —
+ *  Xc=39.629765 above being the bed-body-derived centroid CONFIRMS this
+ *  face position, re-verified this pass: whole-mesh mean-X over all
+ *  vertices is -5.46 (pulled hard negative by the cluster's mass), while
+ *  the bed-body-only mean-X is +41.0 — close to the published 39.629765,
+ *  not the whole-mesh figure, so BED_MODEL_SCALE/POS's Zmin/Xc facts were
+ *  already bed-body-derived and did NOT need re-deriving; unchanged by the
+ *  cut, since cutting drops only cluster triangles and never moves a kept
+ *  vertex). Rule actually applied: drop a triangle if ANY of its 3
+ *  vertices has raw-local X < -192 — escalated from the naive "drop only if
+ *  all 3 vertices are past the plane" rule, which left a 21-triangle
+ *  floor-level connector strip (y ∈ [0, 0.8] raw units, i.e. ~3mm tall at
+ *  scale — a thin floor decal/trim, not a wall) bridging bed-side vertices
+ *  (x ≈ -114) to cluster-side vertices out to x ≈ -239; neither the all-3
+ *  rule nor the brief's centroid-tightening fallback fully closed it
+ *  (centroids stayed bed-side, pulled by the two bed-side verts on each
+ *  bridge triangle), so per-vertex dropping was used instead. Result:
+ *  6954→5949 triangles (-1005, -14.5%), 9655→8285 vertices (-1370, -14.2%),
+ *  811,600→778,168 bytes (-33,432, -4.1%; most of the file is textures,
+ *  untouched). Post-cut bbox: X -191.21..268.50 (was -402.17..268.50 — the
+ *  +268.50 east face, entirely bed body, is untouched, confirming no
+ *  over-cut), Y -0.01..180.65 (was -0.01..201.58 — the missing ~21 units
+ *  is the lamp shade's own height, gone with it), Z unchanged
+ *  (-295.58..242.22, confirming the bed body's own head→foot extent is
+ *  fully intact). Hole risk: LOW — the only triangles spanning the cut
+ *  plane were the 21-triangle floor strip above (now fully removed by the
+ *  per-vertex rule), and the bed body's western face reads as an
+ *  already-capped solid surface with no triangle needing to cross the cut
+ *  plane to close it; no patch geometry was added. Owner should still
+ *  eyeball the west side of the bed in-scene for the final call. */
 function BedModel() {
   const { scene } = useGLTF("/3am/models/bed-with-lamp.glb");
   useEffect(() => {
@@ -592,22 +615,15 @@ export function Bedroom() {
           and centers the bed-only footprint on the collider's x-span —
           re-derived algebraically from the P4-rearrange task's own
           published Zmin/Xc constants, not re-probed (see BED_MODEL_POS's
-          comment). The GLB's own lamp is now the room's hero fixture: the
-          point light nests INSIDE this same group at the model's local
-          shade position — same rotation-safe pattern as the shade-nested
-          light it replaces, same warm profile, no castShadow. Own
-          Suspense so the fetch never blocks the room's first paint. ── */}
+          comment). LAMP-CUT PASS: the GLB's own lamp/table cluster is
+          triangle-level cut from the model (see BedModel's comment) — no
+          fixture, no light nested here anymore, so nothing to keep
+          rotation-safe on that front. Own Suspense so the fetch never
+          blocks the room's first paint. ── */}
       <group position={BED_MODEL_POS} rotation={[0, BED_MODEL_ROTATION_Y, 0]}>
         <Suspense fallback={null}>
           <BedModel />
         </Suspense>
-        <pointLight
-          position={BED_LAMP_LOCAL_POS}
-          color="#ffcf9e"
-          intensity={7}
-          distance={4.5}
-          decay={2}
-        />
       </group>
 
       {/* sleeping cat (Task 9, re-seated P4) — sits on the GLB bed's
@@ -621,12 +637,13 @@ export function Bedroom() {
           recenter — the bigger/centered bed's far x edge (5.0) still
           leaves a 1.45m gap before this rect's x min, verified in the
           P4-recenter report). Two-tone cabinet (dark body / warm top slab)
-          with one recessed drawer + knob. Its hand-built lamp is REMOVED —
-          the GLB bed's own lamp (above) is now the room's hero light. Kept
-          the cabinet itself: the GLB's lamp/table cluster lands at the
-          bed's OTHER (west) end now, not beside this nightstand, so the
-          two pieces don't overlap or read as redundant (see BedModel's
-          comment for why — flagged for Rohan's call regardless). ── */}
+          with one recessed drawer + knob. Its hand-built lamp was REMOVED
+          when the GLB bed's own lamp took over as hero light — that GLB
+          lamp is now ALSO gone (lamp-cut pass, see BedModel's comment), so
+          this cabinet currently sits unlit; the dragonslayer sconce is the
+          room's one warm fixture on this wall. Kept the cabinet itself
+          regardless — it never overlapped the bed or its (now-cut)
+          lamp/table cluster. ── */}
       <group position={[NIGHTSTAND_CENTER.x, 0, NIGHTSTAND_CENTER.z]}>
         {/* body */}
         <mesh position={[0, NS_BODY_H / 2, 0]}>
@@ -719,27 +736,27 @@ export function Bedroom() {
 
       {/* ── dragonslayer wall sconce (Task 10) — kept, position auto-follows
           DS_BASE_X (unaffected by the P4 recenter — DRAGONSLAYER_RECT
-          didn't move). FLAG for a future lighting pass, updated for the P4
-          recenter: the bed's own lamp now sits at world (~2.71,0.77,0.69)
-          — the manga dresser it used to sit ~0.77m from is removed, so
-          that overlap concern is moot, but the lamp is now ~4.32m from the
-          dragonslayer base and ~4.59m from this sconce, both right at the
-          edge of the lamp's distance=4.5 falloff (borderline either side
-          of it — see BedModel's comment for the full numbers). The sconce
-          itself is left in place rather than re-tuned, since re-balancing
-          the whole north wall's lighting is outside this task's scope —
-          window glass is still an emissive SURFACE only, not a real light
-          (task 7). One fixture-attached source, House/StairsApproach's
-          brass-half-dome sconce as the pattern (same mount box + emissive
-          cone, pointLight nested INSIDE this group so it's rotation-safe
-          by construction even though this group happens to carry no
-          rotation — matches the fixture-nesting rule regardless),
-          intensity kept ≤4, warm, no castShadow. The room's SE corner
-          (~6.6,4.9) stays unlit here on purpose — a bonsai stand was
-          slated to land there in a follow-up plan; a separate bonsai also
-          lands on the window table (WINDOW_TABLE_RECT), so there may be
-          two bonsai mentions in this file going forward — flagged for
-          Rohan's call on which stands. ── */}
+          didn't move). LAMP-CUT PASS lighting rebalance: the GLB bed's own
+          lamp (the room's other warm source on this wall) is now cut from
+          the model entirely (see BedModel's comment) — this sconce is the
+          room's ONLY warm light left on the north wall, so intensity is
+          bumped one step, 3.5→5 (still under the ≤6 ceiling this fixture
+          class caps at), to keep the wall legible without it. Distance
+          (3.6) and decay (2) untouched — only the falloff strength changed,
+          not its reach. The window-table/bonsai corner (WINDOW_TABLE_RECT,
+          under the west window) may get its own small lamp in a later
+          pass — flagged here rather than solved now, since a second
+          fixture wasn't this task's ask. One fixture-attached source,
+          House/StairsApproach's brass-half-dome sconce as the pattern (same
+          mount box + emissive cone, pointLight nested INSIDE this group so
+          it's rotation-safe by construction even though this group happens
+          to carry no rotation — matches the fixture-nesting rule
+          regardless), warm, no castShadow. The room's SE corner (~6.6,4.9)
+          stays unlit here on purpose — a bonsai stand was slated to land
+          there in a follow-up plan; a separate bonsai also lands on the
+          window table (WINDOW_TABLE_RECT), so there may be two bonsai
+          mentions in this file going forward — flagged for Rohan's call on
+          which stands. ── */}
       <group position={[DS_BASE_X, 2.4, R.z + 0.02]}>
         <mesh position={[0, -0.09, -0.02]}>
           <boxGeometry args={[0.1, 0.05, 0.06]} />
@@ -749,7 +766,7 @@ export function Bedroom() {
           <coneGeometry args={[0.11, 0.14, 8, 1, true]} />
           <meshStandardMaterial color="#ffcf8f" emissive="#ffcf8f" emissiveIntensity={0.8} side={2} />
         </mesh>
-        <pointLight color="#ffcf8f" intensity={3.5} distance={3.6} decay={2} />
+        <pointLight color="#ffcf8f" intensity={5} distance={3.6} decay={2} />
       </group>
 
       {/* ── rug (no collider — visual only, walkable) — rug-bedroom is a
