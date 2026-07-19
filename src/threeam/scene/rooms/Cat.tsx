@@ -75,7 +75,9 @@ export function Cat({ x, y, z, rotationY = 0.35 }: CatProps) {
 
   const clockRef = useRef(0);
   const twitchCountRef = useRef(1);
-  const nextTwitchRef = useRef(EAR_TWITCH_MIN + hash(twitchCountRef.current) * EAR_TWITCH_RANGE);
+  // seed from the literal initial count (1) — reading twitchCountRef.current
+  // here would be a ref-access-during-render lint error, and it's the same value
+  const nextTwitchRef = useRef(EAR_TWITCH_MIN + hash(1) * EAR_TWITCH_RANGE);
   const twitchStartRef = useRef<number | null>(null);
   const lastBurstRef = useRef(-Infinity);
   const heartIdRef = useRef(0);
