@@ -26,7 +26,12 @@ export const BEDROOM = { x: 0, z: 0, w: 8, d: 6 };
 const BED_RECT = { x: 2.9, z: 0.33, w: 2.2, d: 2.5 };
 const NIGHTSTAND_RECT = { x: 6.45, z: 0.95, w: 0.55, d: 0.5 };
 const PLANT_RECT = { x: 0.45, z: 5.1, w: 0.4, d: 0.4 };
-const WINDOW_TABLE_RECT = { x: 0.35, z: 2.7, w: 0.5, d: 1.1 }; // under the west window
+// window table + west window — REMOVED (P4 balcony wave, owner's final
+// design sketch): the whole west-wall night-window unit (frame, glass,
+// moon, stars, curtain, rod), the faux moon floor patch, and the window
+// table are superseded by a walkable step-out balcony (glass sliding
+// door). See the ── west balcony ── section below for what replaces them,
+// and layout.ts's BALCONY_* rects for the collision side.
 // sconce X — the dragonslayer lean-zone rect that used to anchor the sconce
 // is gone (sword parked for the den); the sconce now hangs centered above
 // the bed's headboard, so it derives from BED_RECT's own centerline instead
@@ -38,10 +43,6 @@ const NIGHTSTAND_CENTER = {
   z: NIGHTSTAND_RECT.z + NIGHTSTAND_RECT.d / 2,
 };
 const PLANT_CENTER = { x: PLANT_RECT.x + PLANT_RECT.w / 2, z: PLANT_RECT.z + PLANT_RECT.d / 2 };
-const WINDOW_TABLE_CENTER = {
-  x: WINDOW_TABLE_RECT.x + WINDOW_TABLE_RECT.w / 2,
-  z: WINDOW_TABLE_RECT.z + WINDOW_TABLE_RECT.d / 2,
-};
 
 // bed — real Sketchfab GLB (see BedModel's attribution comment below for
 // the full derivation) replaces the hand-built frame/headboard/mattress/
@@ -117,67 +118,63 @@ const NS_BODY_H = 0.46;
 const NS_TOP_T = 0.03;
 const NS_TOP_Y = NS_BODY_H + NS_TOP_T; // top surface, world y = 0.49
 
-// window table (P4) — slim wooden console table under the west window,
-// footprint {0.35,2.7,0.5,1.1}. Top surface lands at TABLE_TOP_Y = 0.85,
-// comfortably below the window sill (1.0, WIN_SILL_Y below) so nothing
-// clips the frame. Four thin legs, no drawers — a deliberately CLEAR top,
-// left empty for a bonsai model to land on in a later step.
-const TABLE_TOP_T = 0.03;
-const TABLE_TOP_Y = 0.85; // top surface height (below WIN_SILL_Y = 1.0)
-const TABLE_LEG_H = TABLE_TOP_Y - TABLE_TOP_T; // legs run floor → underside of the slab
-const TABLE_LEG_T = 0.04; // square leg thickness
-const TABLE_LEG_INSET = 0.05; // legs inset this much from each footprint edge
+// ── west balcony (P4 balcony wave, owner's final design sketch) — the
+// bedroom's west wall becomes a glass sliding door onto a small step-out
+// balcony. Collision lives in layout.ts (GROUND bounds extended west to
+// -1.7; the BALCONY_* wall/rail rects there are the verbatim source of
+// truth for the numbers below — see that file's comment for the full
+// derivation of the door gap). This file renders the visuals, since it's
+// the bedroom's own balcony: deck floor, chunky railing, sliding-door
+// frame + two glass panels, and a reserved bonsai-pedestal spot.
+const BAL_DOOR_Z0 = 2.7; // walk-through gap — matches layout.ts's door jambs exactly
+const BAL_DOOR_Z1 = 4.1;
+const BAL_DOOR_ZC = (BAL_DOOR_Z0 + BAL_DOOR_Z1) / 2; // 3.4
+const BAL_DOOR_W = BAL_DOOR_Z1 - BAL_DOOR_Z0; // 1.4
 
-// west window (Task 7) — surface-mounted unit on the west wall's interior
-// face (x = R.x + 0.011, same plane as the wallW mesh). Sill (y=1.0) sits
-// 0.15m above the window table's top (TABLE_TOP_Y=0.85, P4 rearrange —
-// the bed moved off this wall entirely, so the table is now the only
-// piece sharing the window's wall/z-band; the old bed-headboard-clearance
-// note no longer applies).
-const WIN_Z0 = 2.55;
-const WIN_Z1 = 3.95;
-const WIN_W = WIN_Z1 - WIN_Z0; // 1.4
-const WIN_ZC = (WIN_Z0 + WIN_Z1) / 2; // 3.25
-const WIN_SILL_Y = 1.0;
-const WIN_TOP_Y = 2.3;
-const WIN_H = WIN_TOP_Y - WIN_SILL_Y; // 1.3
-const WIN_YC = (WIN_SILL_Y + WIN_TOP_Y) / 2; // 1.65
+const DECK_RECT = { x: -1.5, z: 2.3, w: 1.5, d: 2.2 }; // deck floor footprint, inside the rails
+// railing rects — verbatim, layout.ts's BALCONY_RAIL_W/N/S (source of truth
+// for collision; duplicated here only because Bedroom.tsx doesn't import
+// layout.ts's private consts, same pattern as every other furniture rect
+// in this file, e.g. BED_RECT/NIGHTSTAND_RECT above).
+const RAIL_W_RECT = { x: -1.56, z: 2.3, w: 0.06, d: 2.2 };
+const RAIL_N_RECT = { x: -1.5, z: 2.3, w: 1.5, d: 0.06 };
+const RAIL_S_RECT = { x: -1.5, z: 4.44, w: 1.5, d: 0.06 };
+const RAIL_TOP_Y = 0.95; // top-rail height off the deck
 
-// stack, +x outward from the wall plane (x = R.x + 0.011) — each layer
-// ≥6mm clear of the previous (wall → frame → glass → curtain).
-const WIN_FRAME_RAIL_T = 0.06; // jamb/rail thickness
-const WIN_FRAME_NEAR_X = 0.02; // 9mm off the wall (0.02 - 0.011)
-const WIN_FRAME_DEPTH = 0.05;
-const WIN_FRAME_FAR_X = WIN_FRAME_NEAR_X + WIN_FRAME_DEPTH; // 0.07
-const WIN_FRAME_CX = WIN_FRAME_NEAR_X + WIN_FRAME_DEPTH / 2; // 0.045
-const WIN_GLASS_X = WIN_FRAME_FAR_X + 0.01; // 0.08 — 10mm off the frame's far face
-const WIN_CURTAIN_X = WIN_GLASS_X + 0.012; // 0.092 — 12mm off the glass
-const WIN_ROD_X = WIN_CURTAIN_X + 0.003; // same "curtain" layer as the fabric, just proud of it
+// sliding-door frame — dark wood, +x outward stack off the wall plane
+// (x = R.x + 0.011), same layering convention the old window used: wall
+// → frame → glass, each ≥6mm clear of the previous.
+const DOOR_FRAME_DEPTH = 0.05;
+const DOOR_FRAME_NEAR_X = 0.02; // 9mm off the wall (0.02 - 0.011)
+const DOOR_FRAME_CX = DOOR_FRAME_NEAR_X + DOOR_FRAME_DEPTH / 2; // 0.045
+const DOOR_FRAME_FAR_X = DOOR_FRAME_NEAR_X + DOOR_FRAME_DEPTH; // 0.07
+const DOOR_JAMB_T = 0.08; // jamb thickness along z
+const DOOR_PANEL_Y0 = 0.04; // panel bottom, just clear of the floor
+const DOOR_PANEL_Y1 = 2.4; // panel top — a header band fills the rest up to WALL_H
+const DOOR_PANEL_H = DOOR_PANEL_Y1 - DOOR_PANEL_Y0;
+const DOOR_PANEL_W = BAL_DOOR_W / 2; // 0.7 — each panel covers half the opening
 
-// glass opening (inset inside the jambs/rails)
-const WIN_GLASS_Z0 = WIN_Z0 + WIN_FRAME_RAIL_T;
-const WIN_GLASS_Z1 = WIN_Z1 - WIN_FRAME_RAIL_T;
-const WIN_GLASS_W = WIN_GLASS_Z1 - WIN_GLASS_Z0; // 1.28
-const WIN_GLASS_Y0 = WIN_SILL_Y + WIN_FRAME_RAIL_T;
-const WIN_GLASS_Y1 = WIN_TOP_Y - WIN_FRAME_RAIL_T;
-const WIN_GLASS_H = WIN_GLASS_Y1 - WIN_GLASS_Y0; // 1.18
+// glass panels — TWO, same width, stacked over the SAME z-band (the fixed
+// pane's: z 2.7-3.4), reading as "one panel slid open in front of the
+// other," leaving z 3.4-4.1 clear as the walk gap. Static this wave (an
+// actual slide animation is a future nicety — see the JSX below). Fixed
+// pane sits 10mm off the frame's far face (same offset the old window
+// used for its glass); the open pane is slid 3cm further outward —
+// comfortably past the ≥6mm-offset rule.
+const DOOR_GLASS_FIXED_X = DOOR_FRAME_FAR_X + 0.01; // 0.08
+const DOOR_GLASS_OPEN_X = DOOR_GLASS_FIXED_X + 0.03; // 0.11 — slid 3cm outward
 
-// curtain — covers ~40% of the window width, hung from the west (Z0) side;
-// top/bottom pulled in 2cm from the rail/sill so it can't clip the frame.
-const WIN_CURTAIN_W = WIN_W * 0.4; // 0.56
-const WIN_CURTAIN_TOP = WIN_TOP_Y - 0.02; // 2.28
-const WIN_CURTAIN_BOT = WIN_SILL_Y + 0.02; // 1.02
-const WIN_CURTAIN_H = WIN_CURTAIN_TOP - WIN_CURTAIN_BOT; // 1.26
-const WIN_CURTAIN_YC = (WIN_CURTAIN_TOP + WIN_CURTAIN_BOT) / 2; // 1.65
-const WIN_CURTAIN_ZC = WIN_Z0 + WIN_CURTAIN_W / 2;
-
-// faux moon floor patch — stays clear of the rug (mesh below, P4-recentered
-// to 3.3,3.6, half-extents 1.2×0.85 → rug's x-range starts at 2.1). Patch's
-// x max (1.3) sits 0.8m short of that, so no z-fight risk at y=0.04 (more
-// margin than before the rearrange, since the rug moved further east).
-const MOON_PATCH_X = 0.65;
-const MOON_PATCH_W = 1.3;
-const MOON_PATCH_D = 1.7;
+// bonsai pedestal — reserved deck spot awaiting the bonsai GLB (owner to
+// supply it later). North end of the deck: clear of the walk path (the
+// door gap's south half, z 3.4-4.1 — the pedestal's z-span, 2.575-2.925,
+// never enters it) and clear of both nearby rails (north rail's z max is
+// 2.36, 21.5cm short of the pedestal's z min 2.575; west rail's x max is
+// -1.5, 17.5cm short of the pedestal's x min -1.325). No collider yet —
+// it's a placeholder marker, not real furniture; the bonsai GLB gets its
+// own rect when it lands.
+const PEDESTAL_CENTER = { x: -1.15, z: 2.75 };
+const PEDESTAL_SIZE = 0.35;
+const PEDESTAL_H = 0.12;
 
 // manga dresser (Task 8) — REMOVED FOR NOW (P4 recenter): its rect (x
 // 2.8-4.4) overlapped the centered/enlarged bed's x-span (3.0-5.0), and
@@ -367,14 +364,15 @@ useGLTF.preload("/3am/models/bed-with-lamp.glb");
  * wall, divider faces, south stub band, baseboards, shadow traverse), with
  * two differences: the divider this room shares is on its EAST side (x=8,
  * facing west into the room) instead of straddling both sides like
- * Workspace, and this room also owns a full exterior wall (west, x=0) that
- * Workspace never had to paint — the window (task 7) mounts ON that face,
- * so it's left fully painted here, no cutout.
+ * Workspace, and this room also owns a full exterior wall (west, x=0) —
+ * P4 balcony wave: that wall now has a REAL cutout (z 2.7-4.1), the walk-
+ * through gap for the west balcony's sliding glass door. The wall face is
+ * split into two segments (wallWN/wallWS) flanking the gap, same pattern
+ * the east divider already uses for its own doorway.
  */
 export function Bedroom() {
   const R = BEDROOM;
   const rootRef = useRef<THREE.Group>(null);
-  const moonPatchRef = useRef<THREE.Mesh>(null);
 
   useEffect(() => {
     rootRef.current?.traverse((obj) => {
@@ -385,18 +383,12 @@ export function Bedroom() {
     });
   }, []);
 
-  // faux moon patch (Task 7) must not receive shadows (brief: "receiveShadow
-  // false" — a fake light pool getting a real shadow cast across it reads as
-  // a bug). The traverse effect above runs first (declared earlier) and
-  // blanket-sets every descendant mesh to receiveShadow=true, so re-assert
-  // false here, after it, same single-mount-only pattern.
-  useEffect(() => {
-    if (moonPatchRef.current) moonPatchRef.current.receiveShadow = false;
-  }, []);
-
   const floor = usePixelTexture(FLOOR_TEX, R.w, R.d);
   const wallN = usePixelTexture(WALL_TEX, R.w, WALL_H);
-  const wallW = usePixelTexture(WALL_TEX, R.d, WALL_H); // west exterior wall, full span (window mounts ON this face later)
+  // west exterior wall — split around the balcony door gap (z 2.7-4.1),
+  // same two-segment pattern as the east divider's wallSegN/wallSegS.
+  const wallWN = usePixelTexture(WALL_TEX, BAL_DOOR_Z0, WALL_H); // north of the gap, z 0-2.7
+  const wallWS = usePixelTexture(WALL_TEX, R.d - BAL_DOOR_Z1, WALL_H); // south of the gap, z 4.1-6
   const wallSegN = usePixelTexture(WALL_TEX, 2.2, WALL_H); // east divider, north-of-door segment
   const wallSegS = usePixelTexture(WALL_TEX, 2.2, WALL_H); // east divider, south-of-door segment
   const wallStub = usePixelTexture(WALL_TEX, R.w, 0.2, 0, 0.5);
@@ -408,11 +400,9 @@ export function Bedroom() {
   // rug — single alpha-cutout image (oval shape baked into the PNG), same
   // repeat(1,1) + transparent convention as MusicNook's rugKilim.
   const rugTex = usePixelTexture("/3am/tex/rug-bedroom.png", 1, 1);
-  // curtain — tiled once per meter, same convention as floor/wall.
-  const curtainTex = usePixelTexture("/3am/tex/curtain-weave.png", WIN_CURTAIN_W, WIN_CURTAIN_H);
-  // window table (P4) — same cabinet-wood family, repeat scaled down again
-  // for its slimmer footprint.
-  const tableWood = usePixelTexture("/3am/tex/cabinet-wood.png", 1, 1);
+  // deck floor — same floor-oak family as the room, own repeat for its
+  // smaller footprint.
+  const deckFloor = usePixelTexture(FLOOR_TEX, DECK_RECT.w, DECK_RECT.d);
 
   return (
     <group ref={rootRef}>
@@ -428,12 +418,23 @@ export function Bedroom() {
         <meshStandardMaterial map={wallN} />
       </mesh>
 
-      {/* west wall (inner face of the perimeter wall at x=0) — full span,
-          no door: window unit (task 7) mounts on this face, so it's left
-          fully painted here. +x normal (rotY=π/2) faces into the room. */}
-      <mesh rotation={[0, Math.PI / 2, 0]} position={[R.x + 0.011, WALL_H / 2, R.z + R.d / 2]}>
-        <planeGeometry args={[R.d, WALL_H]} />
-        <meshStandardMaterial map={wallW} />
+      {/* west wall (inner face of the perimeter wall at x=0) — P4 balcony
+          wave: split into two segments flanking the sliding-door gap (z
+          2.7-4.1), same pattern as the east divider's own doorway. +x
+          normal (rotY=π/2) faces into the room. */}
+      <mesh
+        rotation={[0, Math.PI / 2, 0]}
+        position={[R.x + 0.011, WALL_H / 2, R.z + BAL_DOOR_Z0 / 2]}
+      >
+        <planeGeometry args={[BAL_DOOR_Z0, WALL_H]} />
+        <meshStandardMaterial map={wallWN} />
+      </mesh>
+      <mesh
+        rotation={[0, Math.PI / 2, 0]}
+        position={[R.x + 0.011, WALL_H / 2, R.z + BAL_DOOR_Z1 + (R.d - BAL_DOOR_Z1) / 2]}
+      >
+        <planeGeometry args={[R.d - BAL_DOOR_Z1, WALL_H]} />
+        <meshStandardMaterial map={wallWS} />
       </mesh>
 
       {/* east divider face (shared wall with Workspace at x=8), two
@@ -456,13 +457,18 @@ export function Bedroom() {
         <meshStandardMaterial map={wallStub} />
       </mesh>
 
-      {/* baseboards (north, west, both divider segments) */}
+      {/* baseboards (north, west — split around the balcony door gap, both
+          divider segments) */}
       <mesh position={[R.x + R.w / 2, 0.09, R.z + 0.045]}>
         <boxGeometry args={[R.w, 0.18, 0.07]} />
         <meshStandardMaterial color="#4a3a2e" />
       </mesh>
-      <mesh position={[R.x + 0.045, 0.09, R.z + R.d / 2]}>
-        <boxGeometry args={[0.07, 0.18, R.d]} />
+      <mesh position={[R.x + 0.045, 0.09, R.z + BAL_DOOR_Z0 / 2]}>
+        <boxGeometry args={[0.07, 0.18, BAL_DOOR_Z0]} />
+        <meshStandardMaterial color="#4a3a2e" />
+      </mesh>
+      <mesh position={[R.x + 0.045, 0.09, R.z + BAL_DOOR_Z1 + (R.d - BAL_DOOR_Z1) / 2]}>
+        <boxGeometry args={[0.07, 0.18, R.d - BAL_DOOR_Z1]} />
         <meshStandardMaterial color="#4a3a2e" />
       </mesh>
       <mesh position={[R.x + R.w - 0.145, 0.09, 1.1]}>
@@ -474,144 +480,137 @@ export function Bedroom() {
         <meshStandardMaterial color="#4a3a2e" />
       </mesh>
 
-      {/* ── west window (Task 7) — surface-mounted night-window unit on the
-          wall's interior face (x = R.x + 0.011). +x outward stack: wall →
-          frame → jamb far face → glass → curtain, each ≥6mm clear (see
-          task-7 report table). Sits directly above the bed headboard
-          (top 0.86) with a 14cm clear gap to the sill (1.0) — same wall
-          face, same z-band, non-overlapping by construction. The glass is
-          an emissive SURFACE only (moon ≤0.8 intensity, tiny star dots,
-          Bloom threshold 0.6) — zero new lights, no-invisible-lights rule
-          stays intact. ── */}
-      {/* frame — dark wood border box set: two jambs + top rail + inner
-          sill trim, all WIN_FRAME_DEPTH deep, centered on WIN_FRAME_CX */}
-      <mesh position={[R.x + WIN_FRAME_CX, WIN_YC, R.z + WIN_Z0 + WIN_FRAME_RAIL_T / 2]}>
-        <boxGeometry args={[WIN_FRAME_DEPTH, WIN_H, WIN_FRAME_RAIL_T]} />
-        <meshStandardMaterial color="#3a2a1e" />
-      </mesh>
-      <mesh position={[R.x + WIN_FRAME_CX, WIN_YC, R.z + WIN_Z1 - WIN_FRAME_RAIL_T / 2]}>
-        <boxGeometry args={[WIN_FRAME_DEPTH, WIN_H, WIN_FRAME_RAIL_T]} />
-        <meshStandardMaterial color="#3a2a1e" />
-      </mesh>
-      <mesh position={[R.x + WIN_FRAME_CX, WIN_TOP_Y - WIN_FRAME_RAIL_T / 2, R.z + WIN_ZC]}>
-        <boxGeometry args={[WIN_FRAME_DEPTH, WIN_FRAME_RAIL_T, WIN_W]} />
-        <meshStandardMaterial color="#3a2a1e" />
-      </mesh>
-      <mesh position={[R.x + WIN_FRAME_CX, WIN_SILL_Y + WIN_FRAME_RAIL_T / 2, R.z + WIN_ZC]}>
-        <boxGeometry args={[WIN_FRAME_DEPTH, WIN_FRAME_RAIL_T, WIN_W]} />
-        <meshStandardMaterial color="#3a2a1e" />
-      </mesh>
+      {/* ── west balcony (P4 balcony wave, owner's final design) — deck
+          floor, chunky railing, and the sliding-door assembly around the
+          walk-through gap (z 2.7-4.1). Collision lives in layout.ts (the
+          BALCONY_* rects — this file's DECK_RECT/RAIL_*_RECT consts above
+          are verbatim copies for rendering, source of truth stays there).
+          The void beyond the west rail has no geometry — it reads via the
+          scene background, per the owner's ask (no sky geometry this
+          wave). ── */}
 
-      {/* protruding sill ledge — top surface flush at WIN_SILL_Y, sticks
-          out past the frame's far face (0.07) for a real windowsill read */}
-      <mesh position={[R.x + 0.06, WIN_SILL_Y - 0.015, R.z + WIN_ZC]}>
-        <boxGeometry args={[0.1, 0.03, WIN_W + 0.1]} />
-        <meshStandardMaterial color="#2e2116" />
-      </mesh>
-
-      {/* glass — night-sky base plane (flat unlit color, no texture) plus
-          a tiny emissive moon disc and 3 star dots layered a sub-mm in
-          front to dodge z-fighting (not a new stack layer — see report).
-          moon emissiveIntensity 0.7 (≤0.8 ceiling); stars 0.55, radius
-          0.008 — tiny enough that neither clips under Bloom (thresh 0.6). */}
-      <mesh position={[R.x + WIN_GLASS_X, WIN_YC, R.z + WIN_ZC]} rotation={[0, Math.PI / 2, 0]}>
-        <planeGeometry args={[WIN_GLASS_W, WIN_GLASS_H]} />
-        <meshBasicMaterial color="#101830" />
-      </mesh>
+      {/* deck floor — floor-oak, flush with the room floor (y=0.02) */}
       <mesh
-        position={[R.x + WIN_GLASS_X + 0.002, 1.95, R.z + 3.65]}
-        rotation={[0, Math.PI / 2, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[R.x + DECK_RECT.x + DECK_RECT.w / 2, 0.02, R.z + DECK_RECT.z + DECK_RECT.d / 2]}
       >
-        <circleGeometry args={[0.11, 20]} />
-        <meshStandardMaterial color="#dfe6ff" emissive="#dfe6ff" emissiveIntensity={0.7} />
+        <planeGeometry args={[DECK_RECT.w, DECK_RECT.d]} />
+        <meshStandardMaterial map={deckFloor} />
       </mesh>
-      {[
-        { y: 1.85, z: 2.75 },
-        { y: 2.1, z: 2.9 },
-        { y: 1.75, z: 3.35 },
-      ].map(({ y, z }) => (
+
+      {/* railing — chunky top rails ON the collider rects (west/north/
+          south), plus corner + midspan posts, warm wood (matches the
+          stair stringer's tone). */}
+      {[RAIL_W_RECT, RAIL_N_RECT, RAIL_S_RECT].map((rect, i) => (
         <mesh
-          key={`star-${y}-${z}`}
-          position={[R.x + WIN_GLASS_X + 0.002, y, R.z + z]}
-          rotation={[0, Math.PI / 2, 0]}
+          key={`rail-bar-${i}`}
+          position={[
+            R.x + rect.x + rect.w / 2,
+            RAIL_TOP_Y - 0.025,
+            R.z + rect.z + rect.d / 2,
+          ]}
         >
-          <circleGeometry args={[0.008, 8]} />
-          <meshStandardMaterial color="#f0f4ff" emissive="#f0f4ff" emissiveIntensity={0.55} />
+          <boxGeometry args={[rect.w, 0.05, rect.d]} />
+          <meshStandardMaterial color="#6b4128" />
+        </mesh>
+      ))}
+      {[
+        { x: -1.5, z: 2.3 }, // NW corner
+        { x: -1.5, z: 4.5 }, // SW corner
+        { x: -1.5, z: 3.4 }, // west rail midspan (2.2m run — one extra post for chunkiness)
+      ].map((p, i) => (
+        <mesh key={`rail-post-${i}`} position={[R.x + p.x, RAIL_TOP_Y / 2, R.z + p.z]}>
+          <boxGeometry args={[0.08, RAIL_TOP_Y, 0.08]} />
+          <meshStandardMaterial color="#6b4128" />
         </mesh>
       ))}
 
-      {/* curtain rod — thin bar above the frame top, slight overhang past
-          the jambs each side */}
+      {/* sliding-door frame — dark wood jambs + header around the z
+          2.7-4.1 opening. Jambs sit just inside the SOLID wall bands
+          (z<2.7 / z>4.1) so they never intrude on the walk gap itself. */}
       <mesh
-        position={[R.x + WIN_ROD_X, WIN_TOP_Y + 0.06, R.z + WIN_ZC]}
-        rotation={[Math.PI / 2, 0, 0]}
+        position={[R.x + DOOR_FRAME_CX, DOOR_PANEL_Y1 / 2, R.z + BAL_DOOR_Z0 - DOOR_JAMB_T / 2]}
       >
-        <cylinderGeometry args={[0.012, 0.012, WIN_W + 0.2, 8]} />
-        <meshStandardMaterial color="#2e2a4d" />
+        <boxGeometry args={[DOOR_FRAME_DEPTH, DOOR_PANEL_Y1, DOOR_JAMB_T]} />
+        <meshStandardMaterial color="#3a2a1e" />
+      </mesh>
+      <mesh
+        position={[R.x + DOOR_FRAME_CX, DOOR_PANEL_Y1 / 2, R.z + BAL_DOOR_Z1 + DOOR_JAMB_T / 2]}
+      >
+        <boxGeometry args={[DOOR_FRAME_DEPTH, DOOR_PANEL_Y1, DOOR_JAMB_T]} />
+        <meshStandardMaterial color="#3a2a1e" />
+      </mesh>
+      {/* header — closes the wall above the door up to WALL_H */}
+      <mesh
+        position={[
+          R.x + DOOR_FRAME_CX,
+          DOOR_PANEL_Y1 + (WALL_H - DOOR_PANEL_Y1) / 2,
+          R.z + BAL_DOOR_ZC,
+        ]}
+      >
+        <boxGeometry
+          args={[DOOR_FRAME_DEPTH, WALL_H - DOOR_PANEL_Y1, BAL_DOOR_W + DOOR_JAMB_T * 2]}
+        />
+        <meshStandardMaterial color="#3a2a1e" />
+      </mesh>
+      {/* low threshold trim — visual only, flush with the floor */}
+      <mesh position={[R.x + 0.06, 0.015, R.z + BAL_DOOR_ZC]}>
+        <boxGeometry args={[0.1, 0.03, BAL_DOOR_W]} />
+        <meshStandardMaterial color="#2e2116" />
       </mesh>
 
-      {/* curtain — curtain-weave texture, hung from the rod covering ~40%
-          of the window from the west side. Small added z-rotation on top
-          of the wall-facing y-rotation so it reads as hanging fabric, not
-          a flat board. transparent:false per brief — a solid drape, not a
-          cutout like the rug. */}
-      <mesh
-        position={[R.x + WIN_CURTAIN_X, WIN_CURTAIN_YC, R.z + WIN_CURTAIN_ZC]}
-        rotation={[0, Math.PI / 2, 0.05]}
-      >
-        <planeGeometry args={[WIN_CURTAIN_W, WIN_CURTAIN_H]} />
-        <meshStandardMaterial map={curtainTex} transparent={false} side={2} />
-      </mesh>
+      {/* two glass panels — turntable-lid convention (thin transparent
+          pane + dark frame strips). Both cover the SAME z-band (the fixed
+          pane's, z 2.7-3.4); the "open" pane is just slid 3cm further
+          outward, so together they read as a door slid open, leaving z
+          3.4-4.1 clear as the walk gap. Static this wave — an actual
+          slide animation is a future nicety. */}
+      {[
+        { x: DOOR_GLASS_FIXED_X, handle: false },
+        { x: DOOR_GLASS_OPEN_X, handle: true },
+      ].map(({ x, handle }, i) => {
+        const z0 = BAL_DOOR_Z0;
+        const zc = z0 + DOOR_PANEL_W / 2;
+        return (
+          <group key={`glass-panel-${i}`} position={[R.x + x, 0, R.z]}>
+            <mesh position={[0, DOOR_PANEL_Y0 + DOOR_PANEL_H / 2, zc]}>
+              <boxGeometry args={[0.012, DOOR_PANEL_H, DOOR_PANEL_W]} />
+              <meshStandardMaterial color="#a8c8d8" transparent opacity={0.25} />
+            </mesh>
+            {/* frame border: top, bottom, two sides */}
+            <mesh position={[0, DOOR_PANEL_Y1, zc]}>
+              <boxGeometry args={[0.02, 0.03, DOOR_PANEL_W + 0.03]} />
+              <meshStandardMaterial color="#22222c" />
+            </mesh>
+            <mesh position={[0, DOOR_PANEL_Y0, zc]}>
+              <boxGeometry args={[0.02, 0.03, DOOR_PANEL_W + 0.03]} />
+              <meshStandardMaterial color="#22222c" />
+            </mesh>
+            <mesh position={[0, DOOR_PANEL_Y0 + DOOR_PANEL_H / 2, z0]}>
+              <boxGeometry args={[0.02, DOOR_PANEL_H + 0.03, 0.03]} />
+              <meshStandardMaterial color="#22222c" />
+            </mesh>
+            <mesh position={[0, DOOR_PANEL_Y0 + DOOR_PANEL_H / 2, z0 + DOOR_PANEL_W]}>
+              <boxGeometry args={[0.02, DOOR_PANEL_H + 0.03, 0.03]} />
+              <meshStandardMaterial color="#22222c" />
+            </mesh>
+            {/* pull handle on the open leaf's leading (south) edge */}
+            {handle && (
+              <mesh position={[0.02, DOOR_PANEL_Y0 + DOOR_PANEL_H * 0.5, z0 + DOOR_PANEL_W - 0.06]}>
+                <boxGeometry args={[0.02, 0.3, 0.025]} />
+                <meshStandardMaterial color="#15151b" />
+              </mesh>
+            )}
+          </group>
+        );
+      })}
 
-      {/* ── window table (P4) — collider {0.35,2.7,0.5,1.1}, under the west
-          window. Slim four-legged console: cabinet-wood top slab + thin
-          square legs, deliberately CLEAR top (no clutter) — a bonsai model
-          lands here in a later step. Top surface (TABLE_TOP_Y=0.85) sits
-          0.15m below the sill (1.0), same "stay under the sill" rule as
-          the bed headboard. ── */}
-      <group position={[WINDOW_TABLE_CENTER.x, 0, WINDOW_TABLE_CENTER.z]}>
-        {/* top slab */}
-        <mesh position={[0, TABLE_TOP_Y - TABLE_TOP_T / 2, 0]}>
-          <boxGeometry args={[WINDOW_TABLE_RECT.w, TABLE_TOP_T, WINDOW_TABLE_RECT.d]} />
-          <meshStandardMaterial map={tableWood} />
-        </mesh>
-        {/* four thin legs, inset from each footprint corner */}
-        {[
-          [-1, -1],
-          [1, -1],
-          [-1, 1],
-          [1, 1],
-        ].map(([sx, sz]) => (
-          <mesh
-            key={`table-leg-${sx}-${sz}`}
-            position={[
-              (sx * (WINDOW_TABLE_RECT.w - TABLE_LEG_INSET * 2)) / 2,
-              TABLE_LEG_H / 2,
-              (sz * (WINDOW_TABLE_RECT.d - TABLE_LEG_INSET * 2)) / 2,
-            ]}
-          >
-            <boxGeometry args={[TABLE_LEG_T, TABLE_LEG_H, TABLE_LEG_T]} />
-            <meshStandardMaterial color="#3a2a1e" />
-          </mesh>
-        ))}
-      </group>
-
-      {/* faux moon floor patch — barely-visible cool overlay sloping from
-          the window into the room. Zero lights added (fake light pool
-          only); stays clear of the rug in x (see MOON_PATCH_W comment
-          above), so no z-fight risk at y=0.04. receiveShadow re-forced
-          false in the effect above (mount traverse otherwise flips every
-          descendant mesh back to true). Delete this one mesh if it reads
-          wrong at the gate. */}
-      <mesh
-        ref={moonPatchRef}
-        name="moon-floor-patch"
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[R.x + MOON_PATCH_X, 0.04, R.z + WIN_ZC]}
-        receiveShadow={false}
-      >
-        <planeGeometry args={[MOON_PATCH_W, MOON_PATCH_D]} />
-        <meshBasicMaterial color="#26304d" transparent opacity={0.18} />
+      {/* bonsai pedestal — reserved spot, awaiting the bonsai GLB (see
+          PEDESTAL_CENTER's comment above for the clearance derivation).
+          Flat wooden slab, no collider yet (placeholder marker). */}
+      <mesh position={[R.x + PEDESTAL_CENTER.x, PEDESTAL_H / 2, R.z + PEDESTAL_CENTER.z]}>
+        <boxGeometry args={[PEDESTAL_SIZE, PEDESTAL_H, PEDESTAL_SIZE]} />
+        <meshStandardMaterial color="#6b4128" />
       </mesh>
 
       {/* ── bed — collider {2.9,0.33,2.2,2.5} (SUPER-KING pass: centered on
@@ -708,20 +707,22 @@ export function Bedroom() {
           room's ONLY warm light left on the north wall, so intensity stays
           bumped at 5 (still under the ≤6 ceiling this fixture class caps
           at). Distance (3.6) and decay (2) untouched — only the falloff
-          strength changed, not its reach. The window-table/bonsai corner
-          (WINDOW_TABLE_RECT, under the west window) may get its own small
-          lamp in a later pass — flagged here rather than solved now, since
-          a second fixture wasn't this task's ask. One fixture-attached
-          source, House/StairsApproach's brass-half-dome sconce as the
-          pattern (same mount box + emissive cone, pointLight nested INSIDE
-          this group so it's rotation-safe by construction even though this
+          strength changed, not its reach. The balcony's bonsai pedestal
+          (PEDESTAL_CENTER, P4 balcony wave) may get its own small lamp in
+          a later pass — flagged here rather than solved now, since a
+          second fixture wasn't this task's ask either (the balcony wave's
+          own lighting note: NO new lights this wave, it reads by scene
+          ambient + door glow). One fixture-attached source,
+          House/StairsApproach's brass-half-dome sconce as the pattern
+          (same mount box + emissive cone, pointLight nested INSIDE this
+          group so it's rotation-safe by construction even though this
           group happens to carry no rotation — matches the fixture-nesting
           rule regardless), warm, no castShadow. The room's SE corner
           (~6.6,4.9, where the sword used to stand) stays unlit here on
           purpose — a bonsai stand was slated to land there in a follow-up
-          plan; a separate bonsai also lands on the window table
-          (WINDOW_TABLE_RECT), so there may be two bonsai mentions in this
-          file going forward — flagged for Rohan's call on which stands. ── */}
+          plan; the balcony pedestal is now a SECOND bonsai spot, so there
+          may be two bonsai mentions in this file going forward — flagged
+          for Rohan's call on which stands. ── */}
       <group position={[SCONCE_X, 2.4, R.z + 0.02]}>
         <mesh position={[0, -0.09, -0.02]}>
           <boxGeometry args={[0.1, 0.05, 0.06]} />
@@ -745,10 +746,10 @@ export function Bedroom() {
           collider on the rug). Not moved here since it's outside this
           task's ask and the owner wanted no-browser verification; flagged
           for the owner to eyeball and, if needed, nudge the rug south in a
-          follow-up pass. Previously checked against the bed, nightstand,
-          and window table in the P4-recenter report, and of the moon patch
-          (see MOON_PATCH_X comment above) — those clearances are
-          unaffected by this pass. ── */}
+          follow-up pass. Previously checked against the bed and nightstand
+          in the P4-recenter report (the window table and its moon patch,
+          also checked there, are gone as of the P4 balcony wave) — those
+          clearances are unaffected by this pass. ── */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[3.3, 0.035, 3.6]}>
         <planeGeometry args={[2.4, 1.7]} />
         <meshStandardMaterial map={rugTex} transparent />

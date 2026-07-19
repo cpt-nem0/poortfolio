@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { HOUSE, type Rect } from "@/threeam/world/layout";
-import { isBlocked } from "@/threeam/world/collision";
+import { isBlocked, resolveMovement } from "@/threeam/world/collision";
 import { STATIONS } from "@/threeam/world/stations";
 
 const ground = HOUSE.areas.ground;
@@ -113,7 +113,6 @@ describe("bedroom furniture colliders", () => {
       { x: 2.9, z: 0.33, w: 2.2, d: 2.5 }, // bed (headboard north, centered on the wall, SUPER-KING)
       { x: 6.45, z: 0.95, w: 0.55, d: 0.5 }, // nightstand (bed's east flank)
       { x: 0.45, z: 5.1, w: 0.4, d: 0.4 }, // plant
-      { x: 0.35, z: 2.7, w: 0.5, d: 1.1 }, // window table (under the west window)
     ];
 
     for (const rect of bedroomRects) {
@@ -149,7 +148,9 @@ describe("bedroom furniture colliders", () => {
       { name: "bed", r: { x: 2.9, z: 0.33, w: 2.2, d: 2.5 } },
       { name: "nightstand", r: { x: 6.45, z: 0.95, w: 0.55, d: 0.5 } },
       { name: "plant", r: { x: 0.45, z: 5.1, w: 0.4, d: 0.4 } },
-      { name: "window table", r: { x: 0.35, z: 2.7, w: 0.5, d: 1.1 } },
+      { name: "balcony west rail", r: { x: -1.56, z: 2.3, w: 0.06, d: 2.2 } },
+      { name: "balcony north rail", r: { x: -1.5, z: 2.3, w: 1.5, d: 0.06 } },
+      { name: "balcony south rail", r: { x: -1.5, z: 4.44, w: 1.5, d: 0.06 } },
     ];
     for (let i = 0; i < bedroomRects.length; i++) {
       for (let j = i + 1; j < bedroomRects.length; j++) {
@@ -183,7 +184,7 @@ describe("bedroom furniture colliders", () => {
   it("bedroom walkway probes all walkable", () => {
     expect(isBlocked(ground, 4.5, 3.6)).toBe(false); // open floor, south of the centered bed
     expect(isBlocked(ground, 7.5, 3.0)).toBe(false); // door approach
-    expect(isBlocked(ground, 1.6, 4.6)).toBe(false); // open floor south of the window table
+    expect(isBlocked(ground, 1.6, 4.6)).toBe(false); // open floor west of the room, south side
     expect(isBlocked(ground, 2.0, 0.5)).toBe(false); // open floor — the manga dresser's old spot (removed for now)
   });
 
@@ -199,13 +200,13 @@ describe("bedroom furniture colliders", () => {
     expect(isBlocked(ground, 0.45, 5.1)).toBe(true); // plant center
   });
 
-  it("window table blocks players standing on it", () => {
-    expect(isBlocked(ground, 0.35, 2.7)).toBe(true); // table rect corner
-  });
-
   it("the old bed/nightstand spots along the west wall are open floor now", () => {
     expect(isBlocked(ground, 1.5, 3.5)).toBe(false); // old bed footprint
     expect(isBlocked(ground, 0.6, 2.1)).toBe(false); // old nightstand footprint
+  });
+
+  it("the old window table spot (removed — balcony wave) is open floor now", () => {
+    expect(isBlocked(ground, 0.35, 2.7)).toBe(false);
   });
 
   it("the old dragonslayer spot is open floor again — the super-king bed doesn't reach it", () => {
@@ -217,6 +218,90 @@ describe("bedroom furniture colliders", () => {
     // furniture; not a useful probe for "is the dragonslayer gone".
     expect(isBlocked(ground, 6.55, 0.55)).toBe(false);
     expect(isBlocked(ground, 6.0, 0.55)).toBe(false);
+  });
+});
+
+describe("west balcony (P4 balcony wave)", () => {
+  // The bedroom's west wall (x=0) was, pre-wave, a purely IMPLICIT collider
+  // — `isBlocked` blocks anything past the area's `bounds.x`, and there was
+  // never a matching entry in `walls`; House.tsx's generic perimeter loop
+  // drew the *visual* box, but collision-wise `bounds.x = 0` alone did all
+  // the work. Extending `bounds` west (to -1.7, for the balcony/deck) means
+  // that implicit wall moves with it — so the old "west wall" behavior at
+  // x=0 has to be rebuilt explicitly out of `walls` rects: a north block
+  // and a south block (each spanning the full x -1.7..0 depth) reconstruct
+  // the solid wall for z 0-2.3 and z 4.5-6, and two thin jamb rects (x
+  // -0.14..0) close the wall for z 2.3-2.7 and z 4.1-4.5 — leaving z
+  // 2.7-4.1 as the only gap in the x=0 plane: the sliding-door walk-through.
+
+  it("bounds now include the balcony footprint west of x=0", () => {
+    expect(isBlocked(ground, -0.75, 3.4)).toBe(false); // was out-of-bounds pre-wave
+  });
+
+  it("standing on the deck is walkable", () => {
+    expect(isBlocked(ground, -0.75, 3.4)).toBe(false);
+  });
+
+  it("walking through the sliding-door gap (z 2.7-4.1) crosses x=0 freely", () => {
+    expect(isBlocked(ground, 0.05, 3.4)).toBe(false);
+    expect(isBlocked(ground, -0.2, 3.4)).toBe(false);
+    const p = resolveMovement(ground, { x: 0.05, z: 3.4 }, { x: -0.25, z: 0 });
+    expect(p.x).toBeCloseTo(-0.2);
+  });
+
+  it("the wall is solid at x=0 outside the door gap (north and south of it)", () => {
+    expect(isBlocked(ground, -0.05, 2.5)).toBe(true); // north of the gap (jamb band)
+    expect(isBlocked(ground, -0.05, 4.3)).toBe(true); // south of the gap (jamb band)
+  });
+
+  it("the blocked interior west of x=0 (outside the deck) cannot be reached", () => {
+    expect(isBlocked(ground, -1.0, 1.0)).toBe(true); // north block interior
+    expect(isBlocked(ground, -1.0, 5.0)).toBe(true); // south block interior
+  });
+
+  it("the west, north, and south railings block the player at the deck's edges", () => {
+    expect(isBlocked(ground, -1.53, 3.4)).toBe(true); // west rail
+    expect(isBlocked(ground, -0.75, 2.33)).toBe(true); // north rail
+    expect(isBlocked(ground, -0.75, 4.47)).toBe(true); // south rail
+  });
+
+  it("cannot walk through the north or south rail off the deck", () => {
+    // small deltas so the target lands INSIDE the rail band itself (2.3-2.36
+    // / 4.44-4.5), not past it into the north/south wall block — isolates
+    // the rail as the thing doing the blocking, not the deeper wall.
+    const north = resolveMovement(ground, { x: -0.75, z: 2.5 }, { x: 0, z: -0.15 });
+    expect(north.z).toBeCloseTo(2.5); // rail blocks northward exit
+    const south = resolveMovement(ground, { x: -0.75, z: 4.3 }, { x: 0, z: 0.15 });
+    expect(south.z).toBeCloseTo(4.3); // rail blocks southward exit
+  });
+
+  it("the balcony railing rects are present verbatim", () => {
+    const railRects = [
+      { x: -1.56, z: 2.3, w: 0.06, d: 2.2 },
+      { x: -1.5, z: 2.3, w: 1.5, d: 0.06 },
+      { x: -1.5, z: 4.44, w: 1.5, d: 0.06 },
+    ];
+    for (const rect of railRects) {
+      const found = ground.furniture.some(
+        (f) => f.x === rect.x && f.z === rect.z && f.w === rect.w && f.d === rect.d
+      );
+      expect(found, `railing rect ${JSON.stringify(rect)} not found`).toBe(true);
+    }
+  });
+
+  it("the flanking wall rects (blocks + door jambs) are present verbatim", () => {
+    const wallRects = [
+      { x: -1.7, z: 0, w: 1.7, d: 2.3 }, // north block
+      { x: -1.7, z: 4.5, w: 1.7, d: 1.5 }, // south block
+      { x: -0.14, z: 2.3, w: 0.14, d: 0.4 }, // north door jamb
+      { x: -0.14, z: 4.1, w: 0.14, d: 0.4 }, // south door jamb
+    ];
+    for (const rect of wallRects) {
+      const found = ground.walls.some(
+        (f) => f.x === rect.x && f.z === rect.z && f.w === rect.w && f.d === rect.d
+      );
+      expect(found, `wall rect ${JSON.stringify(rect)} not found`).toBe(true);
+    }
   });
 });
 

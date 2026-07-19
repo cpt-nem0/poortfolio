@@ -295,15 +295,26 @@ export function House() {
       ))}
 
       {/* roof: low parapets all around (it's open sky); ground: full walls
-          except the camera-side south stub */}
-      {perimeter.map((rect, i) => (
-        <WallBox
-          key={`p${i}`}
-          rect={rect}
-          height={area === "roof" || i === 1 ? SOUTH_STUB_H : WALL_H}
-          color={i === 1 ? "#57497a" : undefined}
-        />
-      ))}
+          except the camera-side south stub. Ground's west perimeter (i=2)
+          is skipped entirely: bounds.x now reaches -1.7 to cover the
+          bedroom's balcony deck (P4 balcony wave), so the naive `bounds.x
+          - T` box would land behind the balcony, closing off the void the
+          railing is supposed to open onto. The real x=0 boundary (solid
+          wall flanking the balcony, door jambs, gap) is now built
+          explicitly from `area.walls` rects (rendered generically below)
+          and the bedroom's own wall face (Bedroom.tsx) — see layout.ts's
+          BALCONY_* comment for the full reasoning. */}
+      {perimeter.map((rect, i) => {
+        if (area === "ground" && i === 2) return null; // west: bedroom/layout own this edge now
+        return (
+          <WallBox
+            key={`p${i}`}
+            rect={rect}
+            height={area === "roof" || i === 1 ? SOUTH_STUB_H : WALL_H}
+            color={i === 1 ? "#57497a" : undefined}
+          />
+        );
+      })}
       {a.walls.map((rect, i) => (
         <WallBox key={`w${i}`} rect={rect} color="#7d6fa8" />
       ))}

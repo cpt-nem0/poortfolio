@@ -42,10 +42,53 @@ function dividerWithDoor(x: number, d: number): Rect[] {
   ];
 }
 
+// ── west balcony (P4 balcony wave, owner's final design sketch) — the
+// bedroom's west wall (x=0) becomes a glass sliding door onto a small
+// walkable step-out balcony. Pre-wave, that west wall was a purely
+// IMPLICIT collider: `isBlocked` rejects any position past `bounds.x`,
+// and there was never a matching rect in `walls` — House.tsx's generic
+// perimeter loop drew the *visual* box from `bounds`, but collision-wise
+// `bounds.x = 0` did all the work alone (see collision.test.ts's old
+// "outside bounds is blocked" case at x=-1, and furniture.test.ts's new
+// "west balcony" describe block for the full reasoning + probes).
+//
+// Extending `bounds` west (so the balcony footprint is walkable) moves
+// that implicit wall along with it, so the old x=0 boundary has to be
+// rebuilt EXPLICITLY out of `walls`: a north block and a south block
+// (each spanning the full x -1.7..0 depth) reconstruct the solid wall for
+// z 0-2.3 and z 4.5-6, and two thin door-jamb rects (x -0.14..0) close the
+// remaining sliver of that plane for z 2.3-2.7 and z 4.1-4.5 — leaving z
+// 2.7-4.1 as the ONLY gap in the x=0 plane: the sliding door's walk-through.
+// (0..2.3) ∪ (2.3..2.7) ∪ [gap 2.7..4.1] ∪ (4.1..4.5) ∪ (4.5..6) covers
+// the full z 0-6 span exactly once, so there's no double-walled seam and
+// no accidental extra gap.
+//
+// The balcony deck itself (x -1.5..0, z 2.3-4.5) is furniture-free (an
+// open floor), fenced only by three thin railing rects (west/north/south)
+// that block the player at the deck's outer edges — the void beyond the
+// west rail has no wall at all; it reads via the scene background, per
+// the owner's ask (no sky geometry this wave). Visuals (deck floor,
+// railing meshes, door frame + glass panels) render in Bedroom.tsx since
+// it's the bedroom's own balcony.
+const BALCONY_WALL_BLOCK_N: Rect = { x: -1.7, z: 0, w: 1.7, d: 2.3 };
+const BALCONY_WALL_BLOCK_S: Rect = { x: -1.7, z: 4.5, w: 1.7, d: 1.5 };
+const BALCONY_DOOR_JAMB_N: Rect = { x: -0.14, z: 2.3, w: 0.14, d: 0.4 };
+const BALCONY_DOOR_JAMB_S: Rect = { x: -0.14, z: 4.1, w: 0.14, d: 0.4 };
+const BALCONY_RAIL_W: Rect = { x: -1.56, z: 2.3, w: 0.06, d: 2.2 };
+const BALCONY_RAIL_N: Rect = { x: -1.5, z: 2.3, w: 1.5, d: 0.06 };
+const BALCONY_RAIL_S: Rect = { x: -1.5, z: 4.44, w: 1.5, d: 0.06 };
+
 const GROUND: Area = {
   id: "ground",
-  bounds: { x: 0, z: 0, w: 22, d: 6 },
-  walls: [...dividerWithDoor(8, 6), ...dividerWithDoor(16, 6)],
+  bounds: { x: -1.7, z: 0, w: 23.7, d: 6 },
+  walls: [
+    ...dividerWithDoor(8, 6),
+    ...dividerWithDoor(16, 6),
+    BALCONY_WALL_BLOCK_N,
+    BALCONY_WALL_BLOCK_S,
+    BALCONY_DOOR_JAMB_N,
+    BALCONY_DOOR_JAMB_S,
+  ],
   furniture: [
     // bedroom — SUPER-KING pass: bed enlarged again (w 2.0→2.2, d 2.25→2.5),
     // still centered on the north wall (x 2.9-5.1, room-x-center = 4.0 —
@@ -62,7 +105,14 @@ const GROUND: Area = {
     { x: 2.9, z: 0.33, w: 2.2, d: 2.5 }, // bed (headboard north, centered on the wall, SUPER-KING)
     { x: 6.45, z: 0.95, w: 0.55, d: 0.5 }, // nightstand (bed's east flank)
     { x: 0.45, z: 5.1, w: 0.4, d: 0.4 }, // plant (SW corner)
-    { x: 0.35, z: 2.7, w: 0.5, d: 1.1 }, // window table (west wall, under the window)
+    // window table + its west-window neighbor are REMOVED this pass — the
+    // owner's final design replaces them with a west balcony (glass sliding
+    // door + walkable deck); see the BALCONY_* rects above `GROUND` and
+    // Bedroom.tsx. The bonsai that was slated for the window table now has
+    // a reserved pedestal spot on the deck instead (visual only this wave).
+    BALCONY_RAIL_W,
+    BALCONY_RAIL_N,
+    BALCONY_RAIL_S,
     { x: 17.6, z: 0.3, w: 2.8, d: 0.9 }, // record console, centered on the wall (turntable + speakers on top)
     { x: 20.675, z: 0.475, w: 0.35, d: 0.35 }, // floor lamp (right of console)
     { x: 16.5, z: 0.5, w: 0.35, d: 0.35 }, // snake plant (console's left flank)

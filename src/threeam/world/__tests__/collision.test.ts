@@ -18,7 +18,10 @@ describe("isBlocked", () => {
   });
 
   it("outside bounds is blocked", () => {
-    expect(isBlocked(ground, -1, 3)).toBe(true);
+    // x=-1 used to be outside bounds (old bounds.x=0); the P4 balcony wave
+    // extended bounds west to -1.7 to cover the bedroom's balcony deck, so
+    // -1 is now legitimately inside — use -2 (still past the new edge).
+    expect(isBlocked(ground, -2, 3)).toBe(true);
     expect(isBlocked(ground, 4, 7)).toBe(true);
   });
 

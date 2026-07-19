@@ -36,4 +36,13 @@ describe("house layout", () => {
     expect(SPAWN.x).toBeGreaterThan(b.x);
     expect(SPAWN.x).toBeLessThan(b.x + b.w);
   });
+
+  it("ground bounds extend west to cover the bedroom's balcony (P4 balcony wave)", () => {
+    // the east edge (x=22) must stay put — only the west edge grows.
+    const b = HOUSE.areas.ground.bounds;
+    expect(b.x).toBeCloseTo(-1.7);
+    expect(b.w).toBeCloseTo(23.7);
+    expect(b.x + b.w).toBeCloseTo(22);
+    expect(b.d).toBe(6);
+  });
 });
