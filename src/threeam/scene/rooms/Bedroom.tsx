@@ -66,6 +66,21 @@ const STOOL_CENTER = { x: STOOL_RECT.x + STOOL_RECT.w / 2, z: STOOL_RECT.z + STO
 const CATBED_CENTER = { x: CATBED_RECT.x + CATBED_RECT.w / 2, z: CATBED_RECT.z + CATBED_RECT.d / 2 };
 const BENCH_CENTER = { x: BENCH_RECT.x + BENCH_RECT.w / 2, z: BENCH_RECT.z + BENCH_RECT.d / 2 };
 const HANGER_CENTER = { x: HANGER_RECT.x + HANGER_RECT.w / 2, z: HANGER_RECT.z + HANGER_RECT.d / 2 };
+// A-FRAME RACK REDO (owner reference photo, 2026-07-19) — every span below
+// derives from HANGER_RECT (never hand-guessed), see p4-furnish-report.md
+// "A-frame rack redo" for the full arithmetic.
+const HANGER_RAIL_Y = 1.7; // top rail height, per the reference photo
+const HANGER_LEG_D = HANGER_RECT.d / 2 - 0.03; // 0.22 — each leg's floor-contact z-offset (half-depth minus a small margin so the splayed feet stay inside the collider)
+const HANGER_SIDE_X = HANGER_RECT.w / 2 - 0.12; // 0.98 — each A-frame's x-position (peak + legs), inset from the half-width so the rail's finial nubs (below) still land inside the rect
+const HANGER_LEG_ANGLE = Math.atan2(HANGER_LEG_D, HANGER_RAIL_Y); // lean off vertical, derived from the floor splay vs rail height — not a chosen angle
+const HANGER_LEG_LEN = Math.hypot(HANGER_RAIL_Y, HANGER_LEG_D); // leg length, floor contact to rail peak
+const HANGER_SHELF_Y = 0.25; // shelf height, per the reference photo
+// the legs converge linearly from HANGER_LEG_D (floor) to 0 (rail peak) as y
+// rises — this is the leg's own z-offset at shelf height, so the shelf reads
+// as resting snugly between them rather than floating at an arbitrary depth.
+const HANGER_SHELF_LEG_Z = HANGER_LEG_D * (1 - HANGER_SHELF_Y / HANGER_RAIL_Y);
+const HANGER_SHELF_W = HANGER_SIDE_X * 2 - 0.06; // nearly spans the two frames
+const HANGER_SHELF_D = HANGER_SHELF_LEG_Z * 2 - 0.02;
 const PERFUME_CENTER = { x: PERFUME_RECT.x + PERFUME_RECT.w / 2, z: PERFUME_RECT.z + PERFUME_RECT.d / 2 };
 const PLANT2_CENTER = { x: PLANT2_RECT.x + PLANT2_RECT.w / 2, z: PLANT2_RECT.z + PLANT2_RECT.d / 2 };
 
@@ -1108,53 +1123,204 @@ export function Bedroom() {
       </group>
 
       {/* ── clothes hanger stand — collider {3.3,5.35,2.2,0.5},
-          south-center, FURNISHING WAVE. Floor rail rack: two end poles + a
-          horizontal rail, 5 hanging garments (thin colored silhouettes,
-          varied spacing/widths) and 2 pairs of shoes underneath. ── */}
+          south-center. A-FRAME RACK REDO (owner reference photo,
+          2026-07-19), replacing the old two-pole-and-rail build entirely.
+          Two trapezoid side frames (each a pair of legs splayed wide at the
+          floor, converging under the rail — the signature A silhouette),
+          a single round top rail with finial nubs poking past each frame,
+          9 varied hangers/garments in a warm palette, a bottom shelf with
+          storage box/basket/blanket stack, 3 pairs of floor shoes, and a
+          side peg with a sunhat. All spans derive from HANGER_* consts
+          above (rect-derived) — see p4-furnish-report.md "A-frame rack
+          redo" for the leg-angle/footprint arithmetic. ── */}
       <group position={[HANGER_CENTER.x, 0, HANGER_CENTER.z]}>
-        {[-1, 1].map((side, i) => (
-          <mesh key={i} position={[side * (HANGER_RECT.w / 2 - 0.06), 0.65, 0]}>
-            <cylinderGeometry args={[0.02, 0.02, 1.3, 6]} />
-            <meshStandardMaterial color="#4a3a2e" />
-          </mesh>
-        ))}
-        <mesh rotation={[0, 0, Math.PI / 2]} position={[0, 1.28, 0]}>
-          <cylinderGeometry args={[0.014, 0.014, HANGER_RECT.w - 0.1, 6]} />
-          <meshStandardMaterial color="#2e2a4d" />
+        {/* two A-frame sides */}
+        {[-1, 1].map((side) => {
+          const sx = side * HANGER_SIDE_X;
+          return (
+            <group key={side}>
+              {/* back leg: floor at z=+D, leans to meet the rail at z=0 */}
+              <mesh
+                position={[sx, HANGER_RAIL_Y / 2, HANGER_LEG_D / 2]}
+                rotation={[-HANGER_LEG_ANGLE, 0, 0]}
+              >
+                <cylinderGeometry args={[0.028, 0.034, HANGER_LEG_LEN, 6]} />
+                <meshStandardMaterial color="#4a3a2e" />
+              </mesh>
+              {/* front leg: floor at z=-D, leans to meet the rail at z=0 */}
+              <mesh
+                position={[sx, HANGER_RAIL_Y / 2, -HANGER_LEG_D / 2]}
+                rotation={[HANGER_LEG_ANGLE, 0, 0]}
+              >
+                <cylinderGeometry args={[0.028, 0.034, HANGER_LEG_LEN, 6]} />
+                <meshStandardMaterial color="#4a3a2e" />
+              </mesh>
+              {/* rail finial nub — thin continuation past the frame, capped
+                  with a small knob, per the reference photo ── */}
+              <mesh
+                rotation={[0, 0, Math.PI / 2]}
+                position={[sx + side * 0.04, HANGER_RAIL_Y, 0]}
+              >
+                <cylinderGeometry args={[0.02, 0.02, 0.08, 6]} />
+                <meshStandardMaterial color="#4a3a2e" />
+              </mesh>
+              <mesh position={[sx + side * 0.08, HANGER_RAIL_Y, 0]}>
+                <sphereGeometry args={[0.03, 8, 6]} />
+                <meshStandardMaterial color="#3a2c22" />
+              </mesh>
+            </group>
+          );
+        })}
+        {/* top rail spanning between the two peaks */}
+        <mesh rotation={[0, 0, Math.PI / 2]} position={[0, HANGER_RAIL_Y, 0]}>
+          <cylinderGeometry args={[0.026, 0.026, HANGER_SIDE_X * 2, 8]} />
+          <meshStandardMaterial color="#4a3a2e" />
         </mesh>
+
+        {/* 8-10 hangers — pale hanger bar + hook, chunky tapered garment in
+            a warm palette (creams/tans/camel/off-white), one soft-yellow
+            accent piece, one or two longer than the rest, subtle sleeve
+            hints on alternating pieces. ── */}
         {[
-          { dx: -0.75, w: 0.22, h: 0.5, c: "#b3475f" },
-          { dx: -0.42, w: 0.18, h: 0.42, c: "#57b6e8" },
-          { dx: -0.06, w: 0.24, h: 0.55, c: "#3f8f5a" },
-          { dx: 0.32, w: 0.2, h: 0.46, c: "#ffb35c" },
-          { dx: 0.68, w: 0.2, h: 0.5, c: "#5b4b8a" },
-        ].map(({ dx, w, h, c }, i) => (
+          { dx: -0.78, w: 0.2, h: 0.42, c: "#c9a877", sleeves: true },
+          { dx: -0.58, w: 0.24, h: 0.54, c: "#ece3cf", sleeves: false }, // longer piece
+          { dx: -0.36, w: 0.18, h: 0.4, c: "#f2ede0", sleeves: true },
+          { dx: -0.16, w: 0.22, h: 0.46, c: "#b98a52", sleeves: false },
+          { dx: 0.04, w: 0.2, h: 0.56, c: "#e8c96a", sleeves: true }, // soft-yellow accent, longer
+          { dx: 0.24, w: 0.19, h: 0.4, c: "#ece3cf", sleeves: false },
+          { dx: 0.44, w: 0.23, h: 0.48, c: "#c9a877", sleeves: true },
+          { dx: 0.64, w: 0.18, h: 0.38, c: "#f2ede0", sleeves: false },
+          { dx: 0.82, w: 0.2, h: 0.44, c: "#b98a52", sleeves: true },
+        ].map(({ dx, w, h, c, sleeves }, i) => (
           <group key={i}>
-            {/* hanger hook */}
-            <mesh position={[dx, 1.2, 0]}>
-              <torusGeometry args={[0.025, 0.006, 6, 8, Math.PI]} />
-              <meshStandardMaterial color="#22222c" />
+            {/* hook + pale hanger bar */}
+            <mesh position={[dx, HANGER_RAIL_Y - 0.06, 0]}>
+              <torusGeometry args={[0.026, 0.006, 6, 8, Math.PI]} />
+              <meshStandardMaterial color="#e7e0cf" />
             </mesh>
-            {/* garment silhouette */}
-            <mesh position={[dx, 1.18 - h / 2, 0]}>
-              <boxGeometry args={[w, h, 0.02]} />
+            <mesh position={[dx, HANGER_RAIL_Y - 0.12, 0]}>
+              <boxGeometry args={[w * 0.9, 0.014, 0.014]} />
+              <meshStandardMaterial color="#e7e0cf" />
+            </mesh>
+            {/* chunky tapered garment: wider shoulder slab over a narrower
+                body slab, not a flat plane ── */}
+            <mesh position={[dx, HANGER_RAIL_Y - 0.16 - h * 0.125, 0]}>
+              <boxGeometry args={[w, h * 0.25, 0.06]} />
+              <meshStandardMaterial color={c} />
+            </mesh>
+            <mesh position={[dx, HANGER_RAIL_Y - 0.16 - h * 0.25 - (h * 0.75) / 2, 0]}>
+              <boxGeometry args={[w * 0.82, h * 0.75, 0.05]} />
+              <meshStandardMaterial color={c} />
+            </mesh>
+            {sleeves && (
+              <>
+                <mesh position={[dx - w / 2 - 0.02, HANGER_RAIL_Y - 0.16 - h * 0.125, 0]}>
+                  <boxGeometry args={[0.04, h * 0.3, 0.045]} />
+                  <meshStandardMaterial color={c} />
+                </mesh>
+                <mesh position={[dx + w / 2 + 0.02, HANGER_RAIL_Y - 0.16 - h * 0.125, 0]}>
+                  <boxGeometry args={[0.04, h * 0.3, 0.045]} />
+                  <meshStandardMaterial color={c} />
+                </mesh>
+              </>
+            )}
+          </group>
+        ))}
+
+        {/* bottom shelf, spanning between the legs at HANGER_SHELF_Y */}
+        <mesh position={[0, HANGER_SHELF_Y - 0.015, 0]}>
+          <boxGeometry args={[HANGER_SHELF_W, 0.03, HANGER_SHELF_D]} />
+          <meshStandardMaterial color="#4a3a2e" />
+        </mesh>
+
+        {/* lidded storage box (cream), west end of the shelf */}
+        <group position={[-0.55, HANGER_SHELF_Y, 0]}>
+          <mesh position={[0, 0.08, 0]}>
+            <boxGeometry args={[0.24, 0.16, 0.18]} />
+            <meshStandardMaterial color="#ece3cf" />
+          </mesh>
+          <mesh position={[0, 0.167, 0]}>
+            <boxGeometry args={[0.25, 0.014, 0.19]} />
+            <meshStandardMaterial color="#d9cdb0" />
+          </mesh>
+        </group>
+
+        {/* woven basket (tan), center of the shelf — lattice hint via thin
+            darker strips around the body ── */}
+        <group position={[0.02, HANGER_SHELF_Y, 0]}>
+          <mesh position={[0, 0.07, 0]}>
+            <cylinderGeometry args={[0.1, 0.085, 0.14, 10]} />
+            <meshStandardMaterial color="#b98a52" />
+          </mesh>
+          {[0, 1, 2, 3].map((i) => {
+            const a = (i / 4) * Math.PI * 2 + 0.4;
+            return (
+              <mesh
+                key={i}
+                position={[Math.sin(a) * 0.093, 0.07, Math.cos(a) * 0.093]}
+                rotation={[0, -a, 0]}
+              >
+                <boxGeometry args={[0.012, 0.14, 0.01]} />
+                <meshStandardMaterial color="#8a6238" />
+              </mesh>
+            );
+          })}
+        </group>
+
+        {/* folded blanket stack (2-3 warm tones), east end of the shelf */}
+        <group position={[0.58, HANGER_SHELF_Y, 0]}>
+          <mesh position={[0, 0.035, 0]}>
+            <boxGeometry args={[0.26, 0.07, 0.2]} />
+            <meshStandardMaterial color="#b98a52" />
+          </mesh>
+          <mesh position={[0, 0.09, 0]}>
+            <boxGeometry args={[0.24, 0.05, 0.19]} />
+            <meshStandardMaterial color="#c9a877" />
+          </mesh>
+          <mesh position={[0, 0.135, 0]}>
+            <boxGeometry args={[0.22, 0.045, 0.17]} />
+            <meshStandardMaterial color="#ece3cf" />
+          </mesh>
+        </group>
+
+        {/* floor shoes — three simple pairs beneath/beside the rack */}
+        {[
+          { dx: -0.9, c: "#6b4128" },
+          { dx: -0.2, c: "#22222c" },
+          { dx: 0.9, c: "#a04b3a" },
+        ].map(({ dx, c }, i) => (
+          <group key={i}>
+            <mesh position={[dx - 0.05, 0.03, -0.18]}>
+              <boxGeometry args={[0.1, 0.06, 0.2]} />
+              <meshStandardMaterial color={c} />
+            </mesh>
+            <mesh position={[dx + 0.09, 0.03, -0.18]}>
+              <boxGeometry args={[0.1, 0.06, 0.2]} />
               <meshStandardMaterial color={c} />
             </mesh>
           </group>
         ))}
-        {/* shoes — two small pairs on the floor beneath the rack */}
-        {[-0.5, 0.4].map((dx, i) => (
-          <group key={i}>
-            <mesh position={[dx - 0.05, 0.03, 0.08]}>
-              <boxGeometry args={[0.1, 0.06, 0.2]} />
-              <meshStandardMaterial color={i ? "#22222c" : "#a04b3a"} />
-            </mesh>
-            <mesh position={[dx + 0.09, 0.03, 0.08]}>
-              <boxGeometry args={[0.1, 0.06, 0.2]} />
-              <meshStandardMaterial color={i ? "#22222c" : "#a04b3a"} />
-            </mesh>
-          </group>
-        ))}
+
+        {/* side peg on the east frame with a sunhat hanging from it — peg
+            tip + hat brim stay inside HANGER_SIDE_X + 0.11 (well under the
+            rect's half-width + 4cm tolerance, 1.14) ── */}
+        <mesh
+          rotation={[0, 0, Math.PI / 2]}
+          position={[HANGER_SIDE_X + 0.02, 1.32, -HANGER_LEG_D * 0.4]}
+        >
+          <cylinderGeometry args={[0.012, 0.012, 0.04, 6]} />
+          <meshStandardMaterial color="#4a3a2e" />
+        </mesh>
+        <group position={[HANGER_SIDE_X + 0.05, 1.22, -HANGER_LEG_D * 0.4]}>
+          <mesh>
+            <cylinderGeometry args={[0.06, 0.06, 0.015, 10]} />
+            <meshStandardMaterial color="#d9c9a0" />
+          </mesh>
+          <mesh position={[0, 0.03, 0]}>
+            <cylinderGeometry args={[0.032, 0.04, 0.05, 10]} />
+            <meshStandardMaterial color="#d9c9a0" />
+          </mesh>
+        </group>
       </group>
 
       {/* ── perfume stand — collider {6.55,5.3,1.0,0.5}, SE corner,
