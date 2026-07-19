@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { usePixelTexture } from "../usePixelTexture";
+import { Cat } from "./Cat";
 
 const WALL_H = 2.8; // must match House.tsx
 export const BEDROOM = { x: 0, z: 0, w: 8, d: 6 };
@@ -56,6 +57,18 @@ const BED_DUVET_X1 = BED_HALF_W + BED_DUVET_OVERHANG; // overhangs the foot
 const BED_DUVET_LEN = BED_DUVET_X1 - BED_DUVET_X0;
 const BED_DUVET_X = (BED_DUVET_X0 + BED_DUVET_X1) / 2;
 const BED_DUVET_Z = BED_RECT.d + BED_DUVET_OVERHANG * 2;
+
+// cat (Task 9) — curls on the duvet's TOP surface (mattress top + duvet
+// slab height, never a hand-guessed y) at the bed's foot corner: high local
+// x (inset from the foot edge BED_DUVET_X1 by ~half the loaf's footprint
+// plus clearance so it doesn't hang off), mid z (small offset off dead-
+// center so it reads as tucked into a corner rather than glued to the
+// midline; still well clear of BED_DUVET_Z's overhung edges).
+const CAT_TOP_Y = BED_MATT_TOP_Y + BED_DUVET_H;
+// 0.26 inset covers the loaf's own half-footprint (~0.21, head+tail included,
+// see task-9 report) plus clearance so nothing hangs off the foot overhang.
+const CAT_X = BED_DUVET_X1 - 0.26;
+const CAT_Z = BED_DUVET_Z * 0.12;
 
 // nightstand + bedside lamp — all lamp heights stack off the nightstand's
 // actual top surface (NS_TOP_Y), never a hand-guessed y.
@@ -463,6 +476,11 @@ export function Bedroom() {
           <boxGeometry args={[BED_DUVET_LEN, BED_DUVET_H, BED_DUVET_Z]} />
           <meshStandardMaterial map={quilt} />
         </mesh>
+
+        {/* sleeping cat (Task 9) — sits on the duvet top surface, local to
+            this same bed group so CAT_X/CAT_Z line up with the duvet's own
+            local-space consts above with no re-derivation. */}
+        <Cat x={CAT_X} y={CAT_TOP_Y} z={CAT_Z} />
       </group>
 
       {/* ── nightstand + bedside lamp — collider {0.35,1.85,0.55,0.5}, north
