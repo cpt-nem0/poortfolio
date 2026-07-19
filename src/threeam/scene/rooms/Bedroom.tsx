@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { usePixelTexture } from "../usePixelTexture";
@@ -205,21 +205,10 @@ const DS_BLADE_W = 0.28;
 const DS_BLADE_THICK = 0.055;
 const DS_GUARD_W = 0.4;
 
-/* ── style-gate tuning toggles (temp code, stripped once Rohan picks —
-   precedent commits e545fd1/6347c04). Key 1 cycles walls, key 2 cycles
-   floors. Both lists start at the owner's current best guess (sand walls,
-   walnut floor); keys 1/2 are free again since the workspace strip. ── */
-const WALL_VARIANTS = [
-  { label: "sand", path: "/3am/tex/wall-sand.png" },
-  { label: "sage", path: "/3am/tex/wall-sage.png" },
-  { label: "dusk", path: "/3am/tex/wall-dusk.png" },
-  { label: "midnight", path: "/3am/tex/wall-midnight.png" },
-];
-const FLOOR_VARIANTS = [
-  // oak (parallel lining) default per Rohan 2026-07-19; walnut on toggle
-  { label: "oak", path: "/3am/tex/floor-oak.png" },
-  { label: "walnut", path: "/3am/tex/floor-walnut.png" },
-];
+/* ── style LOCKED at the gate (Rohan, 2026-07-19): sage walls + parallel-oak
+   floor. Toggle machinery stripped per precedent (e545fd1/6347c04). ── */
+const WALL_TEX = "/3am/tex/wall-sage.png";
+const FLOOR_TEX = "/3am/tex/floor-oak.png";
 
 /** Bed model: "Bed with lamp" by GreenG
  *  (https://sketchfab.com/AngelNebesniy) via Sketchfab — CC-BY-4.0
@@ -357,27 +346,12 @@ export function Bedroom() {
     if (moonPatchRef.current) moonPatchRef.current.receiveShadow = false;
   }, []);
 
-  const [wallIdx, setWallIdx] = useState(0);
-  const [floorIdx, setFloorIdx] = useState(0);
-  const wallV = WALL_VARIANTS[wallIdx];
-  const floorV = FLOOR_VARIANTS[floorIdx];
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.repeat) return;
-      if (e.code === "Digit1") setWallIdx((i) => (i + 1) % WALL_VARIANTS.length);
-      if (e.code === "Digit2") setFloorIdx((i) => (i + 1) % FLOOR_VARIANTS.length);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
-  const floor = usePixelTexture(floorV.path, R.w, R.d);
-  const wallN = usePixelTexture(wallV.path, R.w, WALL_H);
-  const wallW = usePixelTexture(wallV.path, R.d, WALL_H); // west exterior wall, full span (window mounts ON this face later)
-  const wallSegN = usePixelTexture(wallV.path, 2.2, WALL_H); // east divider, north-of-door segment
-  const wallSegS = usePixelTexture(wallV.path, 2.2, WALL_H); // east divider, south-of-door segment
-  const wallStub = usePixelTexture(wallV.path, R.w, 0.2, 0, 0.5);
+  const floor = usePixelTexture(FLOOR_TEX, R.w, R.d);
+  const wallN = usePixelTexture(WALL_TEX, R.w, WALL_H);
+  const wallW = usePixelTexture(WALL_TEX, R.d, WALL_H); // west exterior wall, full span (window mounts ON this face later)
+  const wallSegN = usePixelTexture(WALL_TEX, 2.2, WALL_H); // east divider, north-of-door segment
+  const wallSegS = usePixelTexture(WALL_TEX, 2.2, WALL_H); // east divider, south-of-door segment
+  const wallStub = usePixelTexture(WALL_TEX, R.w, 0.2, 0, 0.5);
   // NOTE: linen-quilt.png (duvet texture) is now unreferenced — the bed
   // swap replaced the hand-built duvet with the GLB bed. Left the PNG +
   // its scripts/pixelart/gen-variants.mjs JOBS entry in place (HANDOFF §6:
