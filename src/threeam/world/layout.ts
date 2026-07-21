@@ -109,12 +109,15 @@ function dividerWithDoor(
 //    top of the existing collider footprint).
 //
 // 5. RESERVE (comment only, still NOT built): a bonsai-pedestal spot on the
-//    deck's SOUTH side, roughly x -1.6..-1.2, z 4.2-4.5 (clear of the south
-//    rail's 6cm band and the door-gap's walk line). The DRESSING WAVE below
-//    puts a small placeholder plant there (Bedroom.tsx, visual only, no new
-//    collider — same "no collider" convention as the railing plants) while
-//    the real bonsai GLB is pending; the pedestal spot itself stays
-//    reserved at these exact bounds.
+//    deck's SOUTH side, roughly x -1.6..-1.2, z 5.6-5.9 (clear of the south
+//    rail's 6cm band and the door-gap's walk line) — FULL-LENGTH PASS moved
+//    this from z 4.2-4.5 to keep the same relationship to the south rail
+//    (19cm north of the rail's own z-min) now that the rail itself moved
+//    from z=4.54 to z=5.94. The DRESSING WAVE below puts a small
+//    placeholder plant there (Bedroom.tsx, visual only, no new collider —
+//    same "no collider" convention as the railing plants) while the real
+//    bonsai GLB is pending; the pedestal spot itself stays reserved at
+//    these exact bounds.
 //
 // DRESSING WAVE (P4 engawa dressing, this pass — eave overhang, paper
 // lantern, tea nook, railing plants, moonlight shaft; owner's ask: light
@@ -123,39 +126,55 @@ function dividerWithDoor(
 // either overhead (no XZ footprint a player can walk into) or small/
 // against a rail (same "no collider" convention the corner plants already
 // use elsewhere in the house):
-//   - folding chair + glass-top tea table, deck's NORTH half (z 2.1-3.4,
-//     clear of the z 3.4-4.3 walk-through gap): ENGAWA_TEA_TABLE_RECT
-//     (center -1.7,2.7, footprint 0.45x0.45) and ENGAWA_CHAIR_RECT (center
-//     -2.15,2.75, footprint 0.35x0.35, angled toward the table/view in
-//     Bedroom.tsx). Chosen footprints leave a clean 5cm gap between them
-//     (chair's x-max -1.975 to table's x-min -1.925) and comfortable
-//     clearance from every neighboring collider: 37.5cm from the west
-//     rail (chair x-min -2.325 vs rail x-max -2.70), 41.5cm from the north
-//     rail (chair z-min 2.575 vs rail z-max 2.16), and both rects sit
-//     entirely north of the walk gap (table z-max 2.925, 47.5cm clear of
-//     the gap's own z-min 3.4) and of the reserved bonsai spot (z-min
-//     4.2) — furniture.test.ts's pairwise-overlap check + layout.test.ts's
-//     dedicated engawa-nook probes both assert this (TDD'd RED→GREEN
-//     before landing, no adjustment needed from the owner's spec'd
-//     centers).
+//   - folding chair + glass-top tea table, deck's north half (originally z
+//     2.1-3.4; FULL-LENGTH PASS moved the nook to z ~0.4-1.6, see the
+//     ENGAWA_TEA_TABLE_RECT/ENGAWA_CHAIR_RECT comment above for the
+//     up-to-date clearance arithmetic — the numbers below describe the
+//     ORIGINAL DRESSING WAVE placement, kept for history): center -1.7,2.7,
+//     footprint 0.45x0.45) and ENGAWA_CHAIR_RECT (center -2.15,2.75,
+//     footprint 0.35x0.35, angled toward the table/view in Bedroom.tsx).
+//     Chosen footprints leave a clean 5cm gap between them (chair's x-max
+//     -1.975 to table's x-min -1.925) and comfortable clearance from every
+//     neighboring collider: 37.5cm from the west rail (chair x-min -2.325
+//     vs rail x-max -2.70), 41.5cm from the north rail (chair z-min 2.575
+//     vs rail z-max 2.16), and both rects sit entirely north of the walk
+//     gap (table z-max 2.925, 47.5cm clear of the gap's own z-min 3.4) and
+//     of the reserved bonsai spot (z-min 4.2) — furniture.test.ts's
+//     pairwise-overlap check + layout.test.ts's dedicated engawa-nook
+//     probes both assert this (TDD'd RED→GREEN before landing, no
+//     adjustment needed from the owner's spec'd centers).
 //
 // ENGAWA FREED (kept from the prior pass, renamed from "BALCONY FREED"):
 // `isBlocked`/`resolveMovement` OR together `walls` and `furniture`
 // (collision.ts) — collision-identical, they only differ in who renders
-// them. ENGAWA_WALL_BLOCK_N/S exist purely to backstop collision for the
-// void beyond the deck's own footprint (not real, seen walls), so they
-// stay in `furniture` (invisible) — only ENGAWA_WALL_N/S (the real, thick,
-// visible wall — fix #2 above) live in `walls`.
+// them. Only ENGAWA_WALL_N/S (the real, thick, visible wall — fix #2
+// above) live in `walls`; everything else engawa-related lives in
+// `furniture`.
+//
+// FULL-LENGTH PASS (this pass, owner's ask: the engawa should run the
+// FULL length of the bedroom's west side, not just the seating-nook stub):
+// deck z-band grows from 2.1-4.6 (2.5m, a stub) to 0-6 (6.0m, the entire
+// west wall's own z-extent — `bounds` already covered this, see the bounds
+// test in layout.test.ts, so no bounds change is needed here). Because the
+// deck now spans the SAME z-range as `bounds` itself, ENGAWA_WALL_BLOCK_N/S
+// (the invisible backstop for the void beyond the old stub deck's z-band)
+// are DELETED outright, not just repositioned — there is no more void west
+// of the wall to backstop; that whole strip is real, walkable deck floor
+// now. The west rail extends to match (z 0-6); the old "north"/"south"
+// rails (which used to sit at the STUB deck's own inner edges, z 2.1 and
+// 4.6 — nowhere near the house's actual north/south walls) become true
+// NORTH-END and SOUTH-END rails at the house's own z=0/z=6 edges. Heights
+// unchanged: west + north-end stay normal (RAIL_NORMAL_H, Bedroom.tsx),
+// south-end stays deliberately low (RAIL_LOW_H) since it's still the edge
+// facing the dollhouse camera. The door gap (z 2.5-4.3) and the thick wall
+// flanking it are UNTOUCHED — the door is still the only way between the
+// bedroom and the deck; the rest of the west wall (z 0-2.5, z 4.3-6) stays
+// solid.
 const ENGAWA_DOOR_LO = 2.5; // sliding-door opening start (z) — was 2.7
 const ENGAWA_DOOR_HI = 4.3; // sliding-door opening end (z) — was 4.1
-const ENGAWA_DECK_Z0 = 2.1; // deck's north edge (z) — was 2.3
-const ENGAWA_DECK_Z1 = 4.6; // deck's south edge (z) — was 4.5
+const ENGAWA_DECK_Z0 = 0; // deck's north edge (z) — was 2.1, now the house's own north edge (FULL-LENGTH PASS)
+const ENGAWA_DECK_Z1 = 6; // deck's south edge (z) — was 4.6, now the house's own south edge (FULL-LENGTH PASS)
 const ENGAWA_DECK_X0 = -2.7; // deck's west edge (x) — was -1.5
-
-// wall blocks: invisible collision backstop for the void beyond the
-// deck's z-band, spanning the full new bounds width (x -2.9..0).
-const ENGAWA_WALL_BLOCK_N: Rect = { x: -2.9, z: 0, w: 2.9, d: ENGAWA_DECK_Z0 }; // z 0-2.1
-const ENGAWA_WALL_BLOCK_S: Rect = { x: -2.9, z: ENGAWA_DECK_Z1, w: 2.9, d: 1.4 }; // z 4.6-6
 
 // real, thick, visible west wall — same idiom as every interior divider
 // (dividerWithDoor, WALL_T=0.2, box x -0.1..0.1), just with the engawa's
@@ -172,27 +191,40 @@ const [ENGAWA_WALL_N, ENGAWA_WALL_S] = dividerWithDoor(
 // above). Thin, centered on the wall plane, same 0.06 thickness as a rail.
 const ENGAWA_DOOR_GLASS_RECT: Rect = { x: -0.06, z: ENGAWA_DOOR_LO, w: 0.06, d: 0.9 };
 
-// railing colliders — moved to the enlarged deck's new outer edges. West
-// rail sits flush OUTSIDE the deck's west edge (same convention as
-// before); north/south rails occupy the deck's own outermost 6cm band
-// (flush with its z-min/z-max respectively).
+// railing colliders — FULL-LENGTH PASS: west rail now spans the deck's
+// entire new z-range (0-6, was just the stub's 2.1-4.6); north/south rails
+// move from the old stub's own inner edges to the deck's TRUE outer edges
+// (z=0/z=6) — still occupying the deck's own outermost 6cm band (flush
+// with its z-min/z-max respectively), just at the new locations.
 // x computed (not a hardcoded -2.76 literal) so x+w round-trips to exactly
 // ENGAWA_DECK_X0 in floating point — a hardcoded literal here parses to a
 // different double than this subtraction and makes the rail spuriously
 // "overlap" the north rail's corner by a ~3e-16 epsilon (caught by
 // furniture.test.ts's exact-overlap check).
-const ENGAWA_RAIL_W: Rect = { x: ENGAWA_DECK_X0 - 0.06, z: ENGAWA_DECK_Z0, w: 0.06, d: 2.5 }; // x -2.76..-2.70
-const ENGAWA_RAIL_N: Rect = { x: ENGAWA_DECK_X0, z: ENGAWA_DECK_Z0, w: 2.7, d: 0.06 }; // z 2.1-2.16
-const ENGAWA_RAIL_S: Rect = { x: ENGAWA_DECK_X0, z: 4.54, w: 2.7, d: 0.06 }; // z 4.54-4.60
+const ENGAWA_RAIL_W: Rect = {
+  x: ENGAWA_DECK_X0 - 0.06,
+  z: ENGAWA_DECK_Z0,
+  w: 0.06,
+  d: ENGAWA_DECK_Z1 - ENGAWA_DECK_Z0,
+}; // x -2.76..-2.70, z 0-6
+const ENGAWA_RAIL_N: Rect = { x: ENGAWA_DECK_X0, z: ENGAWA_DECK_Z0, w: 2.7, d: 0.06 }; // z 0-0.06, true north end
+const ENGAWA_RAIL_S: Rect = { x: ENGAWA_DECK_X0, z: ENGAWA_DECK_Z1 - 0.06, w: 2.7, d: 0.06 }; // z 5.94-6.00, true south end
 
-// tea nook (DRESSING WAVE) — folding chair + glass-top tea table, deck's
-// north half. Footprints centered on the owner's spec'd points (table
-// -1.7,2.7; chair -2.15,2.75), sized down to "just the seat/tabletop"
-// (per the brief's "if colliders make the deck too cramped, make them
-// minimal") so the nook doesn't eat the whole north half. See the
-// DRESSING WAVE comment above for the full clearance arithmetic.
-const ENGAWA_TEA_TABLE_RECT: Rect = { x: -1.925, z: 2.475, w: 0.45, d: 0.45 }; // center -1.7,2.7
-const ENGAWA_CHAIR_RECT: Rect = { x: -2.325, z: 2.575, w: 0.35, d: 0.35 }; // center -2.15,2.75
+// tea nook (DRESSING WAVE, repositioned FULL-LENGTH PASS) — folding chair +
+// glass-top tea table, moved from the old stub deck's north half (z
+// 2.1-3.4, snug against both the west and north rails with no walk-through
+// gap behind the chair — flagged in p4-engawa-dress-report.md) into the
+// now-much-longer deck's north third (z ~0.4-1.6), where there's finally
+// room to pull it off both rails: chair-to-west-rail clearance grows from
+// 37.5cm to 77.5cm (chair x-min -1.925 vs rail x-max -2.70), now comfortably
+// past the 2×0.35 player-radius squeeze threshold (0.775 > 0.70), so a
+// player CAN walk around the west side of the chair — no longer a
+// rail-hugging "cozy corner" by necessity. Same footprints (table
+// 0.45×0.45, chair 0.35×0.35) and the same 5cm chair-table gap as before,
+// just translated as a unit (chair = table center + (-0.45, +0.05), same
+// relative offset the original spec used).
+const ENGAWA_TEA_TABLE_RECT: Rect = { x: -1.525, z: 0.775, w: 0.45, d: 0.45 }; // center -1.3,1.0
+const ENGAWA_CHAIR_RECT: Rect = { x: -1.925, z: 0.875, w: 0.35, d: 0.35 }; // center -1.75,1.05
 
 const GROUND: Area = {
   id: "ground",
@@ -200,9 +232,12 @@ const GROUND: Area = {
   walls: [
     ...dividerWithDoor(8, 6),
     ...dividerWithDoor(16, 6),
-    // ENGAWA_WALL_BLOCK_N/S deliberately NOT here — see the ENGAWA FREED
-    // comment above: they live in `furniture` (invisible, same collision).
-    // ENGAWA_WALL_N/S are the real, thick, visible west wall.
+    // ENGAWA_WALL_N/S are the real, thick, visible west wall — the only
+    // engawa rects that live in `walls` (everything else, including the
+    // rails and the fixed-glass pane, is invisible/`furniture`). The old
+    // ENGAWA_WALL_BLOCK_N/S void-backstop rects are GONE as of the
+    // FULL-LENGTH PASS (see the FULL-LENGTH PASS comment above) — there's
+    // no more void west of this wall to backstop.
     ENGAWA_WALL_N,
     ENGAWA_WALL_S,
   ],
@@ -256,13 +291,10 @@ const GROUND: Area = {
     // ENGAWA_CHAIR_RECT comment above for the clearance arithmetic.
     ENGAWA_TEA_TABLE_RECT,
     ENGAWA_CHAIR_RECT,
-    // ENGAWA FREED — the flanking wall blocks (the void backstop beyond the
-    // deck's own z-band) live in `furniture`, not `walls`, so House.tsx's
-    // generic WallBox loop never draws them as giant flanking slabs.
-    // Collision is untouched (collision.ts ORs both arrays); nothing
-    // renders a mesh for these two rects.
-    ENGAWA_WALL_BLOCK_N,
-    ENGAWA_WALL_BLOCK_S,
+    // ENGAWA_WALL_BLOCK_N/S (the old void backstop beyond the stub deck's
+    // z-band) are GONE — FULL-LENGTH PASS: the deck now spans the whole
+    // z 0-6 west side, so there's no more void to backstop. See the
+    // FULL-LENGTH PASS comment above the ENGAWA_* consts.
     ENGAWA_DOOR_GLASS_RECT,
     { x: 17.6, z: 0.3, w: 2.8, d: 0.9 }, // record console, centered on the wall (turntable + speakers on top)
     { x: 20.675, z: 0.475, w: 0.35, d: 0.35 }, // floor lamp (right of console)

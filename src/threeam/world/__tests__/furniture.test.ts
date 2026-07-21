@@ -125,8 +125,8 @@ describe("bedroom furniture colliders", () => {
       { x: 3.3, z: 5.35, w: 2.2, d: 0.5 }, // clothes hanger stand
       { x: 5.62, z: 5.35, w: 0.8, d: 0.45 }, // shoe storage cubby (wardrobe corner upgrade)
       { x: 6.55, z: 5.3, w: 1.0, d: 0.5 }, // perfume stand
-      { x: -1.925, z: 2.475, w: 0.45, d: 0.45 }, // engawa tea table (DRESSING WAVE)
-      { x: -2.325, z: 2.575, w: 0.35, d: 0.35 }, // engawa chair (DRESSING WAVE)
+      { x: -1.525, z: 0.775, w: 0.45, d: 0.45 }, // engawa tea table (DRESSING WAVE, repositioned FULL-LENGTH PASS)
+      { x: -1.925, z: 0.875, w: 0.35, d: 0.35 }, // engawa chair (DRESSING WAVE, repositioned FULL-LENGTH PASS)
     ];
 
     for (const rect of bedroomRects) {
@@ -178,14 +178,17 @@ describe("bedroom furniture colliders", () => {
       { name: "clothes hanger stand", r: { x: 3.3, z: 5.35, w: 2.2, d: 0.5 } },
       { name: "shoe storage cubby", r: { x: 5.62, z: 5.35, w: 0.8, d: 0.45 } },
       { name: "perfume stand", r: { x: 6.55, z: 5.3, w: 1.0, d: 0.5 } },
-      // x computed (-2.7 - 0.06), not a -2.76 literal — see layout.ts's ENGAWA_RAIL_W comment
-      { name: "engawa west rail", r: { x: -2.7 - 0.06, z: 2.1, w: 0.06, d: 2.5 } },
-      { name: "engawa north rail", r: { x: -2.7, z: 2.1, w: 2.7, d: 0.06 } },
-      { name: "engawa south rail", r: { x: -2.7, z: 4.54, w: 2.7, d: 0.06 } },
+      // x computed (-2.7 - 0.06), not a -2.76 literal — see layout.ts's ENGAWA_RAIL_W comment.
+      // FULL-LENGTH PASS: west rail now spans z 0-6; north/south rails moved
+      // to the deck's true outer edges (z=0/z=5.94-6).
+      { name: "engawa west rail", r: { x: -2.7 - 0.06, z: 0, w: 0.06, d: 6 } },
+      { name: "engawa north rail", r: { x: -2.7, z: 0, w: 2.7, d: 0.06 } },
+      { name: "engawa south rail", r: { x: -2.7, z: 5.94, w: 2.7, d: 0.06 } },
       { name: "engawa fixed-glass pane", r: { x: -0.06, z: 2.5, w: 0.06, d: 0.9 } },
-      // DRESSING WAVE — tea nook, deck's north half
-      { name: "engawa tea table", r: { x: -1.925, z: 2.475, w: 0.45, d: 0.45 } },
-      { name: "engawa chair", r: { x: -2.325, z: 2.575, w: 0.35, d: 0.35 } },
+      // DRESSING WAVE — tea nook, repositioned FULL-LENGTH PASS to the
+      // longer deck's north third (was the old stub deck's north half)
+      { name: "engawa tea table", r: { x: -1.525, z: 0.775, w: 0.45, d: 0.45 } },
+      { name: "engawa chair", r: { x: -1.925, z: 0.875, w: 0.35, d: 0.35 } },
     ];
     for (let i = 0; i < bedroomRects.length; i++) {
       for (let j = i + 1; j < bedroomRects.length; j++) {
@@ -281,12 +284,12 @@ describe("bedroom furniture colliders", () => {
     expect(isBlocked(ground, 5.62, 5.35)).toBe(true); // rect corner
   });
 
-  it("engawa tea table blocks players standing on it (DRESSING WAVE)", () => {
-    expect(isBlocked(ground, -1.7, 2.7)).toBe(true); // rect center
+  it("engawa tea table blocks players standing on it (DRESSING WAVE, repositioned FULL-LENGTH PASS)", () => {
+    expect(isBlocked(ground, -1.3, 1.0)).toBe(true); // rect center
   });
 
-  it("engawa chair blocks players standing on it (DRESSING WAVE)", () => {
-    expect(isBlocked(ground, -2.15, 2.75)).toBe(true); // rect center
+  it("engawa chair blocks players standing on it (DRESSING WAVE, repositioned FULL-LENGTH PASS)", () => {
+    expect(isBlocked(ground, -1.75, 1.05)).toBe(true); // rect center
   });
 
   it("the old bed/nightstand spots along the west wall are open floor now", () => {
@@ -339,20 +342,32 @@ describe("engawa (P4 engawa rework, renamed from 'balcony')", () => {
   //   4. railing repositioned to the deck's new outer edges (still solid
   //      colliders on all three sides — the visible wood-post rendering
   //      lives in Bedroom.tsx, out of collision's scope).
+  //
+  // FULL-LENGTH PASS (this pass, owner's ask: the engawa should run the FULL
+  // length of the bedroom's west side): deck z-band grows from the 2.1-4.6
+  // stub to the full 0-6 (matching `bounds`, which already covered this —
+  // no bounds change). ENGAWA_WALL_BLOCK_N/S (the old void backstop for the
+  // z-bands beyond the stub) are deleted outright — see the dedicated test
+  // below. The west rail extends to z 0-6; the north/south rails move from
+  // the stub's own inner edges (z 2.1/4.6) to the house's true north/south
+  // edges (z 0/z 6). The tea nook relocates into the now-much-longer deck's
+  // north third (its own describe block below has the up-to-date numbers).
 
   it("bounds now include the engawa deck footprint west of x=0", () => {
     expect(isBlocked(ground, -1.35, 3.35)).toBe(false); // deck center, was out-of-bounds pre-P4
   });
 
-  it("standing on the enlarged deck is walkable, including its new far-west reach", () => {
-    expect(isBlocked(ground, -1.35, 3.35)).toBe(false); // deck center
+  it("standing on the enlarged deck is walkable along its full new length (FULL-LENGTH PASS)", () => {
+    expect(isBlocked(ground, -1.35, 3.35)).toBe(false); // deck, mid-length
     expect(isBlocked(ground, -2.3, 3.35)).toBe(false); // deep west, clear of the west rail's radius
-    // north-half probe moved from (-1.35,2.6): the DRESSING WAVE's tea
-    // table (center -1.7,2.7) now sits there on purpose (see the "tea
-    // nook" describe below) — (-0.5,2.6) is still north-half/clear of the
-    // north rail's radius, but east of the nook entirely.
+    // east side, mid-deck, clear of the tea nook (now north-third — see the
+    // "tea nook" describe below)
     expect(isBlocked(ground, -0.5, 2.6)).toBe(false);
-    expect(isBlocked(ground, -1.35, 4.1)).toBe(false); // south half, clear of the south rail's radius (rail starts z=4.54, gap 0.44)
+    expect(isBlocked(ground, -1.35, 4.1)).toBe(false); // south of the door, open floor
+    // NEW (FULL-LENGTH PASS): the true north and south ends — formerly void
+    // backstopped by ENGAWA_WALL_BLOCK_N/S, now real walkable deck.
+    expect(isBlocked(ground, -2.3, 0.5)).toBe(false); // near the true north end, clear of the north-end rail's radius
+    expect(isBlocked(ground, -2.3, 5.5)).toBe(false); // near the true south end, clear of the south-end rail's radius
   });
 
   it("walking through the widened sliding-door gap (z 2.5-4.3) crosses x=0 freely — open half only", () => {
@@ -397,30 +412,53 @@ describe("engawa (P4 engawa rework, renamed from 'balcony')", () => {
     }
   });
 
-  it("the blocked interior west of the deck (outside its z-band) cannot be reached", () => {
-    expect(isBlocked(ground, -1.5, 1.0)).toBe(true); // north block interior
-    expect(isBlocked(ground, -1.5, 5.0)).toBe(true); // south block interior
+  it("FULL-LENGTH PASS: the old void-backstop wall blocks are gone — that whole strip is real, walkable deck now", () => {
+    // ENGAWA_WALL_BLOCK_N/S used to occupy this exact footprint (invisible,
+    // `furniture`-only) to stop players walking into the void beyond the
+    // stub deck's own z-band. The deck itself now covers the identical
+    // z-range (0-6), so the blocks are deleted outright, not repositioned.
+    const staleBlockRects = [
+      { x: -2.9, z: 0, w: 2.9, d: 2.1 }, // old north block
+      { x: -2.9, z: 4.6, w: 2.9, d: 1.4 }, // old south block
+    ];
+    for (const rect of staleBlockRects) {
+      const found = ground.furniture.some(
+        (f) => f.x === rect.x && f.z === rect.z && f.w === rect.w && f.d === rect.d
+      );
+      expect(found, `stale wall-block rect ${JSON.stringify(rect)} should be gone`).toBe(false);
+    }
+    // the strips those blocks used to backstop (old z 0-2.1 and 4.6-6, west
+    // of the wall) are now genuinely walkable deck floor. x=-0.5 (east side
+    // of the deck, clear of the wall at x -0.1..0.1 and of the relocated
+    // tea nook, which now sits further west and north).
+    expect(isBlocked(ground, -0.5, 1.0)).toBe(false); // former north-block interior
+    expect(isBlocked(ground, -0.5, 5.0)).toBe(false); // former south-block interior
   });
 
-  it("the west, north, and south railings block the player at the deck's new edges", () => {
-    expect(isBlocked(ground, -2.73, 3.35)).toBe(true); // west rail (deck center z)
-    expect(isBlocked(ground, -1.35, 2.13)).toBe(true); // north rail
-    expect(isBlocked(ground, -1.35, 4.57)).toBe(true); // south rail
+  it("the west, north-end, and south-end railings block the player at the deck's true outer edges (FULL-LENGTH PASS)", () => {
+    expect(isBlocked(ground, -2.73, 3.35)).toBe(true); // west rail (still spans the full length, any mid z works)
+    expect(isBlocked(ground, -0.5, 0.03)).toBe(true); // north-end rail (moved from z=2.1 to the true z=0 edge)
+    expect(isBlocked(ground, -0.5, 5.97)).toBe(true); // south-end rail (moved from z=4.54 to the true z=6 edge)
   });
 
-  it("cannot walk through the north or south rail off the enlarged deck", () => {
-    const north = resolveMovement(ground, { x: -1.35, z: 2.5 }, { x: 0, z: -0.5 });
-    expect(north.z).toBeCloseTo(2.5); // rail blocks northward exit
-    const south = resolveMovement(ground, { x: -1.35, z: 4.2 }, { x: 0, z: 0.5 });
-    expect(south.z).toBeCloseTo(4.2); // rail blocks southward exit
+  it("cannot walk through the north-end or south-end rail off the full-length deck", () => {
+    // resolveMovement applies each axis's delta all-or-nothing (checks only
+    // the target point, no sliding-to-boundary) — same idiom every other
+    // resolveMovement test in this file uses. x=-0.5 stays clear of the tea
+    // nook (now north-third, x -1.925..-1.075) and of the wall/glass
+    // (x -0.1..0.1).
+    const north = resolveMovement(ground, { x: -0.5, z: 1.0 }, { x: 0, z: -0.8 });
+    expect(north.z).toBeCloseTo(1.0); // z-delta dropped — target (0.2) is within the north-end rail's radius
+    const south = resolveMovement(ground, { x: -0.5, z: 5.0 }, { x: 0, z: 0.8 });
+    expect(south.z).toBeCloseTo(5.0); // z-delta dropped — target (5.8) is within the south-end rail's radius
   });
 
-  it("the engawa railing rects are present verbatim at the new outer edges", () => {
+  it("the engawa railing rects are present verbatim at the deck's true outer edges (FULL-LENGTH PASS)", () => {
     const railRects = [
       // x computed (-2.7 - 0.06), not a -2.76 literal — see layout.ts's ENGAWA_RAIL_W comment
-      { x: -2.7 - 0.06, z: 2.1, w: 0.06, d: 2.5 },
-      { x: -2.7, z: 2.1, w: 2.7, d: 0.06 },
-      { x: -2.7, z: 4.54, w: 2.7, d: 0.06 },
+      { x: -2.7 - 0.06, z: 0, w: 0.06, d: 6 },
+      { x: -2.7, z: 0, w: 2.7, d: 0.06 },
+      { x: -2.7, z: 5.94, w: 2.7, d: 0.06 },
     ];
     for (const rect of railRects) {
       const found = ground.furniture.some(
@@ -437,32 +475,18 @@ describe("engawa (P4 engawa rework, renamed from 'balcony')", () => {
     expect(found).toBe(true);
   });
 
-  it("ENGAWA FREED: the flanking wall blocks live in furniture (invisible), not walls", () => {
-    // House.tsx only draws visible WallBox meshes for `walls` rects — these
-    // two blocks are the void backstop beyond the deck's own z-band, never
-    // meant to be seen (they'd render as giant flanking slabs otherwise).
-    const blockRects = [
-      { x: -2.9, z: 0, w: 2.9, d: 2.1 }, // north block
-      { x: -2.9, z: 4.6, w: 2.9, d: 1.4 }, // south block
-    ];
-    for (const rect of blockRects) {
-      const inFurniture = ground.furniture.some(
-        (f) => f.x === rect.x && f.z === rect.z && f.w === rect.w && f.d === rect.d
-      );
-      expect(inFurniture, `block rect ${JSON.stringify(rect)} not found in furniture`).toBe(true);
-      const inWalls = ground.walls.some(
-        (f) => f.x === rect.x && f.z === rect.z && f.w === rect.w && f.d === rect.d
-      );
-      expect(inWalls, `block rect ${JSON.stringify(rect)} should NOT be in walls`).toBe(false);
-    }
-  });
-
   it("the old (pre-extension) deck footprint is superseded, not double-defined", () => {
-    // the old deck's rail rects must be gone now that they've moved.
+    // the old (stub-deck-era) rail rects must be gone now that they've
+    // moved — includes both the original P4-engawa-rework positions AND the
+    // even-older pre-rework positions from before that.
     const oldRailRects = [
       { x: -1.56, z: 2.3, w: 0.06, d: 2.2 },
       { x: -1.5, z: 2.3, w: 1.5, d: 0.06 },
       { x: -1.5, z: 4.44, w: 1.5, d: 0.06 },
+      // stub-deck-era (P4 engawa rework, pre-FULL-LENGTH-PASS) rail rects
+      { x: -2.7 - 0.06, z: 2.1, w: 0.06, d: 2.5 },
+      { x: -2.7, z: 2.1, w: 2.7, d: 0.06 },
+      { x: -2.7, z: 4.54, w: 2.7, d: 0.06 },
     ];
     for (const rect of oldRailRects) {
       const found = ground.furniture.some(
@@ -472,33 +496,28 @@ describe("engawa (P4 engawa rework, renamed from 'balcony')", () => {
     }
   });
 
-  // DRESSING WAVE (tea nook, deck's north half) — TDD'd before landing:
-  // these probes assert both new colliders block, AND that the two things
-  // the brief called out explicitly stay clear of them (the z 3.4-4.3
-  // walk-through gap, and the path south to the reserved bonsai pedestal
-  // spot).
-  describe("tea nook (DRESSING WAVE)", () => {
-    it("the tea table and chair block the player at their centers", () => {
-      expect(isBlocked(ground, -1.7, 2.7)).toBe(true); // tea table
-      expect(isBlocked(ground, -2.15, 2.75)).toBe(true); // chair
+  // DRESSING WAVE (tea nook), repositioned FULL-LENGTH PASS from the stub
+  // deck's north half (z 2.1-3.4) into the longer deck's north third (z
+  // ~0.4-1.6) — TDD'd before landing: these probes assert both colliders
+  // still block at their new centers, that the nook now has genuine
+  // breathing room off both rails (the ask this pass — it used to hug the
+  // corner with no walk-through gap behind the chair), and that the two
+  // things the brief called out explicitly stay clear of it (the z 3.4-4.3
+  // walk-through gap, and the path south to the reserved — and also
+  // relocated — bonsai pedestal spot).
+  describe("tea nook (DRESSING WAVE, repositioned FULL-LENGTH PASS)", () => {
+    it("the tea table and chair block the player at their new centers", () => {
+      expect(isBlocked(ground, -1.3, 1.0)).toBe(true); // tea table
+      expect(isBlocked(ground, -1.75, 1.05)).toBe(true); // chair
     });
 
     it("the nook's rects don't overlap the west/north rails or the fixed glass pane (rect-level, matches the brief's ask)", () => {
-      // Rect-level non-overlap is the actual requirement (furniture.test.ts's
-      // exhaustive pairwise check asserts this for every pair). The nook
-      // hugs the corner tightly enough that the rail's and the chair's
-      // OWN 0.35 player-radius zones do overlap each other (37.5cm of rect
-      // gap minus 2×0.35 radius has no room left) — a player can't squeeze
-      // directly between the rail and the chair, which reads as "furniture
-      // snug against the railing," same as any real veranda nook, not a
-      // bug. The room-side approach (below) is what actually needs to stay
-      // open, and does.
       const intersects = (a: Rect, b: Rect) =>
         a.x < b.x + b.w && b.x < a.x + a.w && a.z < b.z + b.d && b.z < a.z + a.d;
-      const chair = { x: -2.325, z: 2.575, w: 0.35, d: 0.35 };
-      const table = { x: -1.925, z: 2.475, w: 0.45, d: 0.45 };
-      const railW = { x: -2.7 - 0.06, z: 2.1, w: 0.06, d: 2.5 };
-      const railN = { x: -2.7, z: 2.1, w: 2.7, d: 0.06 };
+      const chair = { x: -1.925, z: 0.875, w: 0.35, d: 0.35 };
+      const table = { x: -1.525, z: 0.775, w: 0.45, d: 0.45 };
+      const railW = { x: -2.7 - 0.06, z: 0, w: 0.06, d: 6 };
+      const railN = { x: -2.7, z: 0, w: 2.7, d: 0.06 };
       const glass = { x: -0.06, z: 2.5, w: 0.06, d: 0.9 };
       for (const other of [railW, railN, glass]) {
         expect(intersects(chair, other)).toBe(false);
@@ -506,33 +525,42 @@ describe("engawa (P4 engawa rework, renamed from 'balcony')", () => {
       }
     });
 
+    it("FULL-LENGTH PASS: the nook now has real breathing room off the west rail (fixes the old rail-hugging squeeze)", () => {
+      // chair x-min (-1.925) to west-rail x-max (-2.70) is now 77.5cm —
+      // was 37.5cm pre-extension, when 2×0.35 player-radius (0.70m) left no
+      // room to pass. The midpoint between them is now walkable, proving a
+      // player can actually walk around the chair's west side.
+      expect(isBlocked(ground, -2.3125, 1.05)).toBe(false);
+    });
+
     it("the room-side approach to the nook (east of the table) stays walkable", () => {
-      expect(isBlocked(ground, -1.0, 2.7)).toBe(false);
+      expect(isBlocked(ground, -0.6, 1.0)).toBe(false);
     });
 
     it("the walk-through gap (z 3.4-4.3) stays fully clear of the nook", () => {
-      // table's south edge (z 2.925) sits 47.5cm north of the gap's own
+      // table's south edge (z 1.225) sits well north of the gap's own
       // z-min (3.4) — nowhere near the nook.
-      expect(isBlocked(ground, -1.7, 3.6)).toBe(false); // deck side of the open gap, in line with the table's x
+      expect(isBlocked(ground, -1.3, 3.6)).toBe(false); // deck side of the open gap, in line with the table's x
       expect(isBlocked(ground, -0.2, 3.8)).toBe(false); // inside the gap itself (pre-existing probe, still true post-nook)
     });
 
-    it("a path from the walk gap south to the reserved bonsai pedestal spot stays clear", () => {
-      // bonsai spot: x -1.6..-1.2, z 4.2-4.5 (layout.ts's RESERVE comment).
-      // The whole south portion of the deck (z 3.4-4.6) is untouched by
-      // the nook (which sits entirely north of z 2.925), so a straight
-      // walk along that band is unobstructed the whole way up to the
-      // spot's own northern approach (4.15) — NOTE: the spot's own z-range
-      // (4.2-4.5) sits close enough to the south rail (z-min 4.54) that
-      // most of it already falls inside the rail's own 0.35 player-radius
-      // zone (pre-existing, unrelated to this pass — the rail starts at
-      // z=4.54, so anything past z≈4.19 is within 0.35 of it), which is
-      // exactly why the placeholder plant landing there gets no new
-      // collider of its own: a player was never going to stand dead-center
-      // on it anyway, same as standing flush against any railing.
-      expect(isBlocked(ground, -1.4, 3.6)).toBe(false);
-      expect(isBlocked(ground, -1.4, 4.0)).toBe(false);
-      expect(isBlocked(ground, -1.4, 4.15)).toBe(false); // the reserved spot's own northern approach
+    it("a path from the walk gap south to the reserved (and relocated) bonsai pedestal spot stays clear", () => {
+      // bonsai spot: x -1.6..-1.2, z 5.6-5.9 (layout.ts's RESERVE comment,
+      // moved south this pass to keep pace with the south-end rail's own
+      // move from z=4.54 to z=5.94 — same 19cm gap between spot and rail as
+      // before). The nook sits entirely north of z 1.225, nowhere near this
+      // path, so a straight walk south is unobstructed the whole way up to
+      // the spot's own northern approach (5.55) — NOTE: the spot's own
+      // z-range (5.6-5.9) sits close enough to the south-end rail (z-min
+      // 5.94) that most of it already falls inside the rail's own 0.35
+      // player-radius zone (same pre-existing relationship as before this
+      // pass, just at the new rail position), which is exactly why the
+      // placeholder plant landing there gets no new collider of its own: a
+      // player was never going to stand dead-center on it anyway, same as
+      // standing flush against any railing.
+      expect(isBlocked(ground, -1.4, 4.5)).toBe(false);
+      expect(isBlocked(ground, -1.4, 5.0)).toBe(false);
+      expect(isBlocked(ground, -1.4, 5.55)).toBe(false); // the reserved spot's own northern approach
     });
   });
 });

@@ -205,22 +205,43 @@ const CAT_Y = CATBED_PAD_H;
 //      (west/north ~0.9m, south deliberately low ~0.5m so the dollhouse
 //      camera still sees over it) — replaces the fully-invisible rails
 //      from the prior pass, without going back to the "boxed in" slabs.
+//
+// FULL-LENGTH PASS (this pass, owner's ask: run the engawa the FULL length
+// of the bedroom's west side, not just the seating-nook stub from item 3
+// above): deck z-band grows from 2.1-4.6 (2.5m stub) to 0-6 (the full west
+// wall's own z-extent). West rail extends to match; the old "north"/"south"
+// rails (which sat at the stub's own inner edges) become true north-end/
+// south-end rails at the house's own z=0/z=6 edges — heights unchanged
+// (west + north-end normal, south-end still deliberately low). The tea
+// nook, railing plants, and bonsai pedestal all redistribute along the
+// longer run (see their own consts below); the eave overhang extends
+// automatically (it derives from DECK_RECT). See layout.ts's own
+// FULL-LENGTH PASS comment for the collider-side rect arithmetic.
 const ENGAWA_WALL_T_HALF = 0.1; // half the interior-divider wall thickness (layout.ts's WALL_T/2)
 const ENGAWA_DOOR_Z0 = 2.5; // walk-through gap — matches layout.ts's ENGAWA_DOOR_LO exactly
 const ENGAWA_DOOR_Z1 = 4.3; // matches layout.ts's ENGAWA_DOOR_HI
 const ENGAWA_DOOR_ZC = (ENGAWA_DOOR_Z0 + ENGAWA_DOOR_Z1) / 2; // 3.4
 const ENGAWA_DOOR_W = ENGAWA_DOOR_Z1 - ENGAWA_DOOR_Z0; // 1.8
 
-const DECK_RECT = { x: -2.7, z: 2.1, w: 2.7, d: 2.5 }; // deck floor footprint, inside the rails
+// deck floor footprint, inside the rails — FULL-LENGTH PASS (this pass,
+// owner's ask: run the engawa the FULL length of the bedroom's west side):
+// grows from the seating-nook stub {x:-2.7,z:2.1,w:2.7,d:2.5} to the full
+// house-west-side span {x:-2.7,z:0,w:2.7,d:6} — z0/d now match
+// layout.ts's ENGAWA_DECK_Z0/Z1 (0/6) exactly, the house's own north/south
+// edges (bounds already covered this, see layout.ts's bounds comment).
+const DECK_RECT = { x: -2.7, z: 0, w: 2.7, d: 6 };
 // railing rects — layout.ts's ENGAWA_RAIL_W/N/S are the sole source of
 // truth for collision; copied verbatim here so the railing meshes below
 // (RailFence) sit exactly on their colliders, same convention as every
 // other collider in this file (e.g. BED_RECT/NIGHTSTAND_W_RECT).
-const RAIL_W_RECT = { x: -2.7 - 0.06, z: 2.1, w: 0.06, d: 2.5 }; // computed x, not -2.76 literal — see layout.ts's ENGAWA_RAIL_W comment
-const RAIL_N_RECT = { x: -2.7, z: 2.1, w: 2.7, d: 0.06 };
-const RAIL_S_RECT = { x: -2.7, z: 4.54, w: 2.7, d: 0.06 };
-const RAIL_NORMAL_H = 0.9; // west + north — no camera-occlusion concern
-const RAIL_LOW_H = 0.5; // south — faces the dollhouse camera, kept low so the player reads over it
+// FULL-LENGTH PASS: west rail now spans the full z 0-6; the old "north"/
+// "south" rails (which sat at the STUB deck's own inner edges, z 2.1/4.6)
+// become true NORTH-END/SOUTH-END rails at the house's own z=0/z=6 edges.
+const RAIL_W_RECT = { x: -2.7 - 0.06, z: 0, w: 0.06, d: 6 }; // computed x, not -2.76 literal — see layout.ts's ENGAWA_RAIL_W comment
+const RAIL_N_RECT = { x: -2.7, z: 0, w: 2.7, d: 0.06 }; // true north end
+const RAIL_S_RECT = { x: -2.7, z: 5.94, w: 2.7, d: 0.06 }; // true south end
+const RAIL_NORMAL_H = 0.9; // west + north-end — no camera-occlusion concern
+const RAIL_LOW_H = 0.5; // south-end — faces the dollhouse camera, kept low so the player reads over it
 
 // sliding-door frame — dark wood, +x outward stack off the wall's
 // bedroom-side face (now x = R.x + ENGAWA_WALL_T_HALF, not the old
@@ -254,41 +275,54 @@ const DOOR_GLASS_OPEN_X = DOOR_GLASS_FIXED_X + 0.03; // slid 3cm outward
 // as the rework left them):
 //   1. eave overhang — a wooden beam/roofline off the wall's engawa face,
 //      reads "covered veranda."
-//   2. paper lantern — hangs from the eave near the door, warm pointLight
+//   2. paper lantern(s) — hangs from the eave near the door, warm pointLight
 //      NESTED inside it (this room's only new light source this pass; the
 //      scene's 2-shadow-caster budget, both in MusicNook, is untouched —
-//      no castShadow here).
-//   3. folding chair + glass tea table — deck's north half (z 2.1-3.4,
-//      clear of the walk gap). NEW colliders: layout.ts's
-//      ENGAWA_TEA_TABLE_RECT/ENGAWA_CHAIR_RECT (TDD_RECT/CHAIR_RECT below
-//      copy them verbatim, same convention as every other collider in this
-//      file — see layout.ts's DRESSING WAVE comment for the clearance
-//      arithmetic, and furniture.test.ts/layout.test.ts's "tea nook"
-//      tests for the RED→GREEN proof).
-//   4. railing plants (2-3) + a bonsai-pedestal PLACEHOLDER plant — all
-//      visual-only, NO new colliders. Unlike this room's two corner floor
-//      plants (which are freestanding and do collide), these tuck flush
-//      against a rail or the reserved pedestal spot — the reserved spot
-//      (x -1.6..-1.2, z 4.2-4.5) already sits close enough to the south
-//      rail (z-min 4.54) that most of it falls inside the rail's own 0.35
-//      player-radius zone anyway (see furniture.test.ts's "path to the
-//      bonsai pedestal" test), so a player was never going to stand
-//      dead-center on it — a dedicated collider would be redundant. The
-//      real bonsai GLB is CC-BY-pending; this placeholder swaps out then.
+//      no castShadow here). FULL-LENGTH PASS adds a SECOND lantern toward
+//      the deck's new far south end (same nested-light treatment, still no
+//      castShadow) so the much-longer deck doesn't go dark out there.
+//   3. folding chair + glass tea table — originally the stub deck's north
+//      half (z 2.1-3.4, clear of the walk gap); FULL-LENGTH PASS
+//      repositioned it into the longer deck's north third (z ~0.4-1.6),
+//      giving it real breathing room off the west rail (was a snug
+//      rail-hugging corner before — see the FULL-LENGTH PASS comment on
+//      TEA_TABLE_RECT/CHAIR_RECT below). Colliders: layout.ts's
+//      ENGAWA_TEA_TABLE_RECT/ENGAWA_CHAIR_RECT (TEA_TABLE_RECT/CHAIR_RECT
+//      below copy them verbatim, same convention as every other collider in
+//      this file — see layout.ts's DRESSING WAVE comment for the clearance
+//      arithmetic, and furniture.test.ts's "tea nook" tests for the
+//      RED→GREEN proof).
+//   4. railing plants (FULL-LENGTH PASS: grew from 3 to 5, spread along the
+//      longer west/north-end rails) + a bonsai-pedestal PLACEHOLDER plant
+//      (FULL-LENGTH PASS moved south, z 4.35→5.75, to stay tucked against
+//      the relocated south-end rail) — all visual-only, NO new colliders.
+//      Unlike this room's two corner floor plants (which are freestanding
+//      and do collide), these tuck flush against a rail or the reserved
+//      pedestal spot — the reserved spot (x -1.6..-1.2, z 5.6-5.9) already
+//      sits close enough to the south-end rail (z-min 5.94) that most of it
+//      falls inside the rail's own 0.35 player-radius zone anyway (see
+//      furniture.test.ts's "path to the bonsai pedestal" test), so a player
+//      was never going to stand dead-center on it — a dedicated collider
+//      would be redundant. The real bonsai GLB is CC-BY-pending; this
+//      placeholder swaps out then.
 //   5. moonlight shaft — static god-rays through the doorway, night-only
 //      atmosphere, SURFACES not lights (no new light source, no-invisible-
 //      light rule holds — the "source" is the open night sky beyond the
 //      deck). DYNAMIC moon→sun-with-time-of-day belongs to Plan 5's
-//      day/night system; this is a placeholder for that.
+//      day/night system; this is a placeholder for that. Unchanged this
+//      pass — it still lands through the door, whose position didn't move.
 const ENGAWA_EAVE_WALL_X = -ENGAWA_WALL_T_HALF; // -0.1, flush with the wall's engawa-side (west) face — same plane the exterior wall paint sits proud of
 const ENGAWA_EAVE_FAR_X = -2.4; // west extent, owner's spec
 const ENGAWA_EAVE_Y0 = 2.5; // underside
 const ENGAWA_EAVE_Y1 = 2.7; // topside (both < WALL_H=2.8, so the eave reads as a beam partway up the wall, not a roofline at the very top)
 const ENGAWA_EAVE_H = ENGAWA_EAVE_Y1 - ENGAWA_EAVE_Y0; // 0.2
 const ENGAWA_EAVE_W = ENGAWA_EAVE_WALL_X - ENGAWA_EAVE_FAR_X; // 2.3
-const ENGAWA_EAVE_Z0 = DECK_RECT.z; // 2.1 — spans the deck's own z-range exactly
-const ENGAWA_EAVE_Z1 = DECK_RECT.z + DECK_RECT.d; // 4.6
-const ENGAWA_EAVE_D = ENGAWA_EAVE_Z1 - ENGAWA_EAVE_Z0; // 2.5
+// FULL-LENGTH PASS: eave Z0/Z1 derive from DECK_RECT (now z 0-6), so the
+// overhang automatically extends the full length with DECK_RECT's own edit
+// above — no separate change needed here.
+const ENGAWA_EAVE_Z0 = DECK_RECT.z; // 0 — spans the deck's own z-range exactly
+const ENGAWA_EAVE_Z1 = DECK_RECT.z + DECK_RECT.d; // 6
+const ENGAWA_EAVE_D = ENGAWA_EAVE_Z1 - ENGAWA_EAVE_Z0; // 6
 // support brackets — knee braces from the wall down-and-out to the
 // overhang's underside, angle/length derived (never hand-guessed), same
 // atan2/hypot idiom the A-frame clothes rack's legs use above.
@@ -298,26 +332,50 @@ const ENGAWA_BRACKET_DX = ENGAWA_BRACKET_OUT_X - ENGAWA_EAVE_WALL_X; // -1.4
 const ENGAWA_BRACKET_DY = ENGAWA_BRACKET_OUT_Y - ENGAWA_EAVE_Y0; // -0.35
 const ENGAWA_BRACKET_LEN = Math.hypot(ENGAWA_BRACKET_DX, ENGAWA_BRACKET_DY);
 const ENGAWA_BRACKET_ANGLE = Math.atan2(ENGAWA_BRACKET_DY, ENGAWA_BRACKET_DX); // rotation.z for a box whose local +X is its long axis
-const ENGAWA_BRACKET_ZS = [ENGAWA_EAVE_Z0 + 0.5, ENGAWA_EAVE_Z1 - 0.5]; // 2.6, 4.1 — roughly north/south thirds of the deck
+// FULL-LENGTH PASS: the eave tripled in length (2.5m→6m), so a fixed
+// 2-bracket count (originally "0.5m in from each end") would leave a bare
+// 5m unsupported middle — generalized to evenly space brackets across the
+// same 0.5m end-inset, count derived from the inner span at roughly the
+// original pass's own ~1.5m spacing (never hand-picked per bracket).
+const ENGAWA_BRACKET_INSET = 0.5; // fixed inset from each end, unchanged from the original 2-bracket pass
+const ENGAWA_BRACKET_SPAN = ENGAWA_EAVE_D - ENGAWA_BRACKET_INSET * 2; // usable span between the two end brackets
+const ENGAWA_BRACKET_SPACING = 1.5; // target spacing, same order as the original pass's single 1.5m gap
+const ENGAWA_BRACKET_COUNT = Math.max(2, Math.round(ENGAWA_BRACKET_SPAN / ENGAWA_BRACKET_SPACING) + 1);
+const ENGAWA_BRACKET_ZS = Array.from({ length: ENGAWA_BRACKET_COUNT }, (_, i) =>
+  ENGAWA_EAVE_Z0 + ENGAWA_BRACKET_INSET + (i / (ENGAWA_BRACKET_COUNT - 1)) * ENGAWA_BRACKET_SPAN
+); // 0.5, 2.167, 3.833, 5.5 — evenly spaced, 0.5m in from each end
 
-// paper lantern — hangs from the eave near the door (x -1.0, well clear of
-// the walk gap's x=0 threshold and inside the eave's own x -2.4..-0.1
-// coverage), spills warm light both across the deck and back through the
-// open doorway onto the room floor.
-const ENGAWA_LANTERN_X = -1.0;
-const ENGAWA_LANTERN_Y = 2.0;
-const ENGAWA_LANTERN_Z = 3.8;
+// paper lanterns (×2, FULL-LENGTH PASS adds a second) — hang from the eave.
+// The first stays at its original spot near the door (x -1.0, well clear
+// of the walk gap's x=0 threshold and inside the eave's own x -2.4..-0.1
+// coverage), spilling warm light both across the deck and back through the
+// open doorway onto the room floor. The second lands toward the deck's new
+// far south end (z 5.4, near the relocated bonsai pedestal) so the
+// much-longer deck doesn't go dark at that end — same nested-warm-light
+// treatment, no castShadow (the scene's 2-shadow-caster budget, both in
+// MusicNook, stays untouched).
+const ENGAWA_LANTERNS: { x: number; y: number; z: number }[] = [
+  { x: -1.0, y: 2.0, z: 3.8 }, // original — near the door
+  { x: -1.0, y: 2.0, z: 5.4 }, // NEW — far south end, lights the extended deck + bonsai corner
+];
 const ENGAWA_LANTERN_R = 0.15;
 const ENGAWA_LANTERN_H = 0.32;
 // cord: from the eave's underside down to the lantern's own top cap —
-// derived, not hand-guessed.
-const ENGAWA_LANTERN_CORD_LEN = ENGAWA_EAVE_Y0 - (ENGAWA_LANTERN_Y + ENGAWA_LANTERN_H / 2);
+// derived, not hand-guessed. Same y for every lantern, so one shared length.
+const ENGAWA_LANTERN_CORD_LEN = ENGAWA_EAVE_Y0 - (ENGAWA_LANTERNS[0].y + ENGAWA_LANTERN_H / 2);
 
 // tea nook — collider rects copied VERBATIM from layout.ts's
 // ENGAWA_TEA_TABLE_RECT/ENGAWA_CHAIR_RECT (source of truth stays there,
-// same convention as every other collider in this file).
-const TEA_TABLE_RECT = { x: -1.925, z: 2.475, w: 0.45, d: 0.45 }; // center -1.7,2.7
-const CHAIR_RECT = { x: -2.325, z: 2.575, w: 0.35, d: 0.35 }; // center -2.15,2.75
+// same convention as every other collider in this file). FULL-LENGTH PASS
+// repositioned the nook from the old stub deck's north half (z 2.1-3.4,
+// hugging both the west and north rails with no walk-through gap behind
+// the chair) into the longer deck's north third — see layout.ts's own
+// ENGAWA_TEA_TABLE_RECT/ENGAWA_CHAIR_RECT comment for the clearance
+// arithmetic (chair-to-west-rail gap grows from 37.5cm to 77.5cm, past the
+// 2×0.35 player-radius squeeze threshold, so the nook now has real
+// breathing room off the rail).
+const TEA_TABLE_RECT = { x: -1.525, z: 0.775, w: 0.45, d: 0.45 }; // center -1.3,1.0
+const CHAIR_RECT = { x: -1.925, z: 0.875, w: 0.35, d: 0.35 }; // center -1.75,1.05
 const TEA_TABLE_CENTER = { x: TEA_TABLE_RECT.x + TEA_TABLE_RECT.w / 2, z: TEA_TABLE_RECT.z + TEA_TABLE_RECT.d / 2 };
 const CHAIR_CENTER = { x: CHAIR_RECT.x + CHAIR_RECT.w / 2, z: CHAIR_RECT.z + CHAIR_RECT.d / 2 };
 // chair angled toward the table/view — direction derived from the two
@@ -327,9 +385,20 @@ const CHAIR_FACE_ANGLE = Math.atan2(
   TEA_TABLE_CENTER.z - CHAIR_CENTER.z
 );
 
-// railing plants (2-3, visual only, no collider) — against the west/north
+// railing plants (visual only, no collider) — against the west/north
 // rails, distinct pots + species from this room's own corner plants
 // (slate-blue "#55677a" and terracotta "#a04b3a") and from each other.
+// FULL-LENGTH PASS: grew from 3 to 5 and SPREAD along the now much-longer
+// west/north-end rails so the far ends don't read bare — the old "north
+// rail" plant (which sat at the stub deck's own inner edge, z≈2.25, near
+// the door) had no rail left there once the north rail moved to the true
+// z=0 edge, so it's relocated onto the WEST rail near the door instead
+// (still "near the door/lantern," just a different rail); a NEW plant
+// takes its old corner-adjacent role at the true NW corner, a second NEW
+// plant sits on the west rail near the far south end (by the relocated
+// bonsai pedestal), and the pre-existing "south of the nook" plant keeps
+// its position (now reads as "west rail, mid-deck" since the nook itself
+// moved north).
 const RAILING_PLANTS: {
   x: number;
   z: number;
@@ -337,17 +406,22 @@ const RAILING_PLANTS: {
   leafColor: string;
   kind: "blade" | "bush" | "spike";
 }[] = [
-  { x: -2.55, z: 4.0, potColor: "#8a7355", leafColor: "#3f8f5a", kind: "blade" }, // west rail, south of the nook
-  { x: -0.6, z: 2.25, potColor: "#3f4a52", leafColor: "#5a9c6e", kind: "bush" }, // north rail, near the door/lantern
-  { x: -2.55, z: 2.25, potColor: "#6b7f6b", leafColor: "#2e6e54", kind: "spike" }, // northwest corner
+  { x: -2.55, z: 0.25, potColor: "#6b7f6b", leafColor: "#2e6e54", kind: "spike" }, // NW corner (west + true north-end rail junction)
+  { x: -1.1, z: 0.2, potColor: "#4a5a3f", leafColor: "#6bb37a", kind: "blade" }, // NEW — north-end rail, near the tea nook
+  { x: -2.55, z: 3.0, potColor: "#3f4a52", leafColor: "#5a9c6e", kind: "bush" }, // west rail, level with the door/lantern (moved off the old stub-era north rail)
+  { x: -2.55, z: 4.6, potColor: "#8a7355", leafColor: "#3f8f5a", kind: "blade" }, // west rail, mid-deck
+  { x: -2.55, z: 5.5, potColor: "#6b5a4a", leafColor: "#3a6b4f", kind: "spike" }, // NEW — west rail, near the south end/bonsai corner
 ];
 
-// bonsai pedestal — the reserved spot (x -1.6..-1.2, z 4.2-4.5, layout.ts's
+// bonsai pedestal — the reserved spot (x -1.6..-1.2, z 5.6-5.9, layout.ts's
 // RESERVE comment) gets a wooden stand + a SIMPLE placeholder potted plant
 // (mini trunk + foliage clusters, standing in for a proper bonsai). No new
-// collider — see the DRESSING WAVE comment above for why.
+// collider — see the DRESSING WAVE comment above for why. FULL-LENGTH PASS
+// moved this south from z=4.35 to z=5.75 (same 19cm gap to the south-end
+// rail's own z-min, which itself moved from 4.54 to 5.94) so the spot
+// stays tucked against the deck's true south end.
 const BONSAI_PEDESTAL_X = -1.4;
-const BONSAI_PEDESTAL_Z = 4.35;
+const BONSAI_PEDESTAL_Z = 5.75;
 const BONSAI_PEDESTAL_H = 0.35;
 
 // moonlight shaft — 3 static translucent quads, night-only atmosphere,
@@ -980,10 +1054,12 @@ export function Bedroom() {
       })}
 
       {/* ── eave overhang — wooden beam off the wall's engawa face, spanning
-          the deck's own z-range, reading as "covered veranda." Two knee-
-          brace support brackets, angle/length derived (ENGAWA_BRACKET_*),
-          not hand-guessed. No collider — well above head height, same
-          "overhead, no XZ footprint" convention as the sconce/posters. ── */}
+          the deck's own full-length z-range (FULL-LENGTH PASS: z 0-6, was
+          the 2.5m stub), reading as "covered veranda." Evenly-spaced knee-
+          brace support brackets, angle/length/count all derived
+          (ENGAWA_BRACKET_*), not hand-guessed — count grew from 2 to 4 to
+          match the tripled span. No collider — well above head height,
+          same "overhead, no XZ footprint" convention as the sconce/posters. ── */}
       <mesh
         position={[
           R.x + (ENGAWA_EAVE_WALL_X + ENGAWA_EAVE_FAR_X) / 2,
@@ -1009,40 +1085,43 @@ export function Bedroom() {
         </mesh>
       ))}
 
-      {/* ── paper lantern — hangs from the eave near the door (x -1.0, well
-          clear of the door's own x=0 threshold, inside the eave's
-          -2.4..-0.1 coverage). Warm off-white paper, slight emissive glow
-          + a warm pointLight NESTED inside this same group (rotation-safe
-          by construction), NO castShadow — the scene's 2-shadow-caster
-          budget (both in MusicNook) stays untouched. This is the deck's
-          own fixture light AND spills back through the open door
-          threshold into the room (threshold sits ~2.8m away in x+z,
-          comfortably inside distance=5's falloff). ── */}
-      <group position={[R.x + ENGAWA_LANTERN_X, ENGAWA_LANTERN_Y, R.z + ENGAWA_LANTERN_Z]}>
-        {/* cord, eave underside to lantern top cap */}
-        <mesh position={[0, ENGAWA_LANTERN_H / 2 + ENGAWA_LANTERN_CORD_LEN / 2, 0]}>
-          <cylinderGeometry args={[0.006, 0.006, ENGAWA_LANTERN_CORD_LEN, 5]} />
-          <meshStandardMaterial color="#2e2116" />
-        </mesh>
-        {/* top + bottom caps */}
-        <mesh position={[0, ENGAWA_LANTERN_H / 2, 0]}>
-          <cylinderGeometry args={[0.05, ENGAWA_LANTERN_R * 0.85, 0.03, 10]} />
-          <meshStandardMaterial color="#3a2a1e" />
-        </mesh>
-        <mesh position={[0, -ENGAWA_LANTERN_H / 2, 0]}>
-          <cylinderGeometry args={[ENGAWA_LANTERN_R * 0.85, 0.05, 0.03, 10]} />
-          <meshStandardMaterial color="#3a2a1e" />
-        </mesh>
-        {/* paper body — warm off-white, slight emissive so it glows even
-            before the nested light's own falloff is factored in */}
-        <mesh>
-          <cylinderGeometry args={[ENGAWA_LANTERN_R, ENGAWA_LANTERN_R, ENGAWA_LANTERN_H, 12, 1, true]} />
-          <meshStandardMaterial color="#f5ecd8" emissive="#f5ecd8" emissiveIntensity={0.45} side={2} />
-        </mesh>
-        {/* the fixture's own light — NESTED (rotation-safe by
-            construction, matches every other fixture-light in this file) */}
-        <pointLight color="#ffd9a0" intensity={5} distance={5} decay={2} />
-      </group>
+      {/* ── paper lanterns (×2, FULL-LENGTH PASS adds the second) — hang
+          from the eave. Each is warm off-white paper, slight emissive glow
+          + a warm pointLight NESTED inside its own group (rotation-safe by
+          construction), NO castShadow — the scene's 2-shadow-caster budget
+          (both in MusicNook) stays untouched. The first (near the door,
+          x -1.0/z 3.8) is the deck's original fixture light and spills back
+          through the open door threshold into the room. The second
+          (x -1.0/z 5.4) lights the newly-extended south end of the deck,
+          near the relocated bonsai pedestal, so the much-longer run doesn't
+          go dark out there. ── */}
+      {ENGAWA_LANTERNS.map((l, i) => (
+        <group key={`engawa-lantern-${i}`} position={[R.x + l.x, l.y, R.z + l.z]}>
+          {/* cord, eave underside to lantern top cap */}
+          <mesh position={[0, ENGAWA_LANTERN_H / 2 + ENGAWA_LANTERN_CORD_LEN / 2, 0]}>
+            <cylinderGeometry args={[0.006, 0.006, ENGAWA_LANTERN_CORD_LEN, 5]} />
+            <meshStandardMaterial color="#2e2116" />
+          </mesh>
+          {/* top + bottom caps */}
+          <mesh position={[0, ENGAWA_LANTERN_H / 2, 0]}>
+            <cylinderGeometry args={[0.05, ENGAWA_LANTERN_R * 0.85, 0.03, 10]} />
+            <meshStandardMaterial color="#3a2a1e" />
+          </mesh>
+          <mesh position={[0, -ENGAWA_LANTERN_H / 2, 0]}>
+            <cylinderGeometry args={[ENGAWA_LANTERN_R * 0.85, 0.05, 0.03, 10]} />
+            <meshStandardMaterial color="#3a2a1e" />
+          </mesh>
+          {/* paper body — warm off-white, slight emissive so it glows even
+              before the nested light's own falloff is factored in */}
+          <mesh>
+            <cylinderGeometry args={[ENGAWA_LANTERN_R, ENGAWA_LANTERN_R, ENGAWA_LANTERN_H, 12, 1, true]} />
+            <meshStandardMaterial color="#f5ecd8" emissive="#f5ecd8" emissiveIntensity={0.45} side={2} />
+          </mesh>
+          {/* the fixture's own light — NESTED (rotation-safe by
+              construction, matches every other fixture-light in this file) */}
+          <pointLight color="#ffd9a0" intensity={5} distance={5} decay={2} />
+        </group>
+      ))}
 
       {/* ── tea nook — collider TEA_TABLE_RECT/CHAIR_RECT, copied verbatim
           from layout.ts's ENGAWA_TEA_TABLE_RECT/ENGAWA_CHAIR_RECT (see the
