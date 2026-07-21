@@ -23,12 +23,12 @@ export const BEDROOM = { x: 0, z: 0, w: 8, d: 6 };
 // step.
 const BED_RECT = { x: 2.9, z: 0.33, w: 2.2, d: 2.5 };
 const PLANT_RECT = { x: 0.45, z: 5.1, w: 0.4, d: 0.4 };
-// window table + west window — REMOVED (P4 balcony wave, owner's final
+// window table + west window — REMOVED (P4 engawa wave, owner's final
 // design sketch): the whole west-wall night-window unit (frame, glass,
 // moon, stars, curtain, rod), the faux moon floor patch, and the window
-// table are superseded by a walkable step-out balcony (glass sliding
-// door). See the ── west balcony ── section below for what replaces them,
-// and layout.ts's BALCONY_* rects for the collision side.
+// table are superseded by a walkable ground-level engawa (glass sliding
+// door). See the ── engawa ── section below for what replaces them, and
+// layout.ts's ENGAWA_* rects for the collision side.
 // sconce X — the dragonslayer lean-zone rect that used to anchor the sconce
 // is gone (sword parked for the den); the sconce now hangs centered above
 // the bed's headboard, so it derives from BED_RECT's own centerline instead
@@ -181,63 +181,81 @@ const CATBED_PAD_R = 0.16;
 const CATBED_PAD_H = 0.05; // inner pad height — this IS the cat's on-surface Y
 const CAT_Y = CATBED_PAD_H;
 
-// ── west balcony (P4 balcony wave, owner's final design sketch) — the
-// bedroom's west wall becomes a glass sliding door onto a small step-out
-// balcony. Collision lives in layout.ts (GROUND bounds extended west to
-// -1.7; the BALCONY_* wall/rail rects there are the verbatim source of
-// truth for the numbers below — see that file's comment for the full
-// derivation of the door gap). This file renders the visuals, since it's
-// the bedroom's own balcony: deck floor, chunky railing, sliding-door
-// frame + two glass panels, and a reserved bonsai-pedestal spot.
-const BAL_DOOR_Z0 = 2.7; // walk-through gap — matches layout.ts's door jambs exactly
-const BAL_DOOR_Z1 = 4.1;
-const BAL_DOOR_ZC = (BAL_DOOR_Z0 + BAL_DOOR_Z1) / 2; // 3.4
-const BAL_DOOR_W = BAL_DOOR_Z1 - BAL_DOOR_Z0; // 1.4
+// ── engawa (P4 engawa rework, renamed from "balcony" — this is a
+// ground-level Japanese veranda overlooking the future outside area, not
+// an elevated balcony). Collision lives in layout.ts (GROUND bounds now
+// -2.9; the ENGAWA_* wall/rail/door-glass rects there are the verbatim
+// source of truth for every number below — see that file's engawa comment
+// block for the full derivation). This file renders the visuals: the
+// thick west wall's two painted faces, deck floor, wooden railing,
+// sliding-door frame + two glass panels, and a reserved (comment-only)
+// bonsai-pedestal note.
+//
+// REWORK (owner feedback: prior pass read "dark, boxed, paper-thin-walled"):
+//   1. door widened z 2.7-4.1 → z 2.5-4.3 (1.8m), and the fixed glass pane
+//      now has a real collider (layout.ts's ENGAWA_DOOR_GLASS_RECT) — it
+//      used to be walk-through despite looking solid.
+//   2. the west wall rebuilt as a real WALL_T=0.2 thick wall (box
+//      x -0.1..0.1, layout.ts's ENGAWA_WALL_N/S) instead of a paper-thin
+//      11mm-offset plane — this file now paints BOTH faces of that box
+//      (bedroom-side sage, engawa-side a darker sage/plaster tint).
+//   3. the deck extended west + deeper in z for a future seating nook:
+//      {x:-1.5,z:2.3,w:1.5,d:2.2} → {x:-2.7,z:2.1,w:2.7,d:2.5}.
+//   4. all three rails get a real but slender wood post-and-top-rail mesh
+//      (west/north ~0.9m, south deliberately low ~0.5m so the dollhouse
+//      camera still sees over it) — replaces the fully-invisible rails
+//      from the prior pass, without going back to the "boxed in" slabs.
+const ENGAWA_WALL_T_HALF = 0.1; // half the interior-divider wall thickness (layout.ts's WALL_T/2)
+const ENGAWA_DOOR_Z0 = 2.5; // walk-through gap — matches layout.ts's ENGAWA_DOOR_LO exactly
+const ENGAWA_DOOR_Z1 = 4.3; // matches layout.ts's ENGAWA_DOOR_HI
+const ENGAWA_DOOR_ZC = (ENGAWA_DOOR_Z0 + ENGAWA_DOOR_Z1) / 2; // 3.4
+const ENGAWA_DOOR_W = ENGAWA_DOOR_Z1 - ENGAWA_DOOR_Z0; // 1.8
 
-const DECK_RECT = { x: -1.5, z: 2.3, w: 1.5, d: 2.2 }; // deck floor footprint, inside the rails
-// railing rects — layout.ts's BALCONY_RAIL_W/N/S are the sole source of
-// truth for collision (all three colliders are untouched). BALCONY FREED
-// (owner's ask, 2026-07-19: "no restriction from the sides, the whole 270°
-// view") makes ALL THREE rails invisible now — west and north join south
-// (already invisible pre-wave) — so none of them get a rect copy or a mesh
-// in this file anymore; unlike every other collider in this file (e.g.
-// BED_RECT/NIGHTSTAND_W_RECT), a rail rect with nothing to render has no
-// reason to be duplicated here at all.
+const DECK_RECT = { x: -2.7, z: 2.1, w: 2.7, d: 2.5 }; // deck floor footprint, inside the rails
+// railing rects — layout.ts's ENGAWA_RAIL_W/N/S are the sole source of
+// truth for collision; copied verbatim here so the railing meshes below
+// (RailFence) sit exactly on their colliders, same convention as every
+// other collider in this file (e.g. BED_RECT/NIGHTSTAND_W_RECT).
+const RAIL_W_RECT = { x: -2.7 - 0.06, z: 2.1, w: 0.06, d: 2.5 }; // computed x, not -2.76 literal — see layout.ts's ENGAWA_RAIL_W comment
+const RAIL_N_RECT = { x: -2.7, z: 2.1, w: 2.7, d: 0.06 };
+const RAIL_S_RECT = { x: -2.7, z: 4.54, w: 2.7, d: 0.06 };
+const RAIL_NORMAL_H = 0.9; // west + north — no camera-occlusion concern
+const RAIL_LOW_H = 0.5; // south — faces the dollhouse camera, kept low so the player reads over it
 
-// sliding-door frame — dark wood, +x outward stack off the wall plane
-// (x = R.x + 0.011), same layering convention the old window used: wall
-// → frame → glass, each ≥6mm clear of the previous.
+// sliding-door frame — dark wood, +x outward stack off the wall's
+// bedroom-side face (now x = R.x + ENGAWA_WALL_T_HALF, not the old
+// x = R.x + 0.011 thin-plane convention), same layering idiom as the old
+// window used: wall → frame → glass, each ≥6mm clear of the previous.
 const DOOR_FRAME_DEPTH = 0.05;
-const DOOR_FRAME_NEAR_X = 0.02; // 9mm off the wall (0.02 - 0.011)
-const DOOR_FRAME_CX = DOOR_FRAME_NEAR_X + DOOR_FRAME_DEPTH / 2; // 0.045
-const DOOR_FRAME_FAR_X = DOOR_FRAME_NEAR_X + DOOR_FRAME_DEPTH; // 0.07
+const DOOR_FRAME_NEAR_X = ENGAWA_WALL_T_HALF + 0.02; // 9mm off the wall's bedroom face
+const DOOR_FRAME_CX = DOOR_FRAME_NEAR_X + DOOR_FRAME_DEPTH / 2;
+const DOOR_FRAME_FAR_X = DOOR_FRAME_NEAR_X + DOOR_FRAME_DEPTH;
 const DOOR_JAMB_T = 0.08; // jamb thickness along z
 const DOOR_PANEL_Y0 = 0.04; // panel bottom, just clear of the floor
 const DOOR_PANEL_Y1 = 2.4; // panel top — a header band fills the rest up to WALL_H
 const DOOR_PANEL_H = DOOR_PANEL_Y1 - DOOR_PANEL_Y0;
-const DOOR_PANEL_W = BAL_DOOR_W / 2; // 0.7 — each panel covers half the opening
+const DOOR_PANEL_W = ENGAWA_DOOR_W / 2; // 0.9 — each panel covers half the (now-wider) opening
 
 // glass panels — TWO, same width, stacked over the SAME z-band (the fixed
-// pane's: z 2.7-3.4), reading as "one panel slid open in front of the
-// other," leaving z 3.4-4.1 clear as the walk gap. Static this wave (an
-// actual slide animation is a future nicety — see the JSX below). Fixed
-// pane sits 10mm off the frame's far face (same offset the old window
-// used for its glass); the open pane is slid 3cm further outward —
-// comfortably past the ≥6mm-offset rule.
-const DOOR_GLASS_FIXED_X = DOOR_FRAME_FAR_X + 0.01; // 0.08
-const DOOR_GLASS_OPEN_X = DOOR_GLASS_FIXED_X + 0.03; // 0.11 — slid 3cm outward
+// pane's: z 2.5-3.4, matching layout.ts's ENGAWA_DOOR_GLASS_RECT exactly),
+// reading as "one panel slid open in front of the other," leaving z
+// 3.4-4.3 (0.9m) clear as the walk gap. Static this wave (an actual slide
+// animation is a future nicety — see the JSX below). Fixed pane sits 10mm
+// off the frame's far face (same offset the old window used for its
+// glass); the open pane is slid 3cm further outward — comfortably past
+// the ≥6mm-offset rule.
+const DOOR_GLASS_FIXED_X = DOOR_FRAME_FAR_X + 0.01;
+const DOOR_GLASS_OPEN_X = DOOR_GLASS_FIXED_X + 0.03; // slid 3cm outward
 
-// bonsai pedestal — reserved deck spot awaiting the bonsai GLB (owner to
-// supply it later). North end of the deck: clear of the walk path (the
-// door gap's south half, z 3.4-4.1 — the pedestal's z-span, 2.575-2.925,
-// never enters it) and clear of both nearby rails (north rail's z max is
-// 2.36, 21.5cm short of the pedestal's z min 2.575; west rail's x max is
-// -1.5, 17.5cm short of the pedestal's x min -1.325). No collider yet —
-// it's a placeholder marker, not real furniture; the bonsai GLB gets its
-// own rect when it lands.
-const PEDESTAL_CENTER = { x: -1.15, z: 2.75 };
-const PEDESTAL_SIZE = 0.35;
-const PEDESTAL_H = 0.12;
+// bonsai pedestal — RESERVED, comment-only, NOT built this wave (owner's
+// ask: structure only — wall/door/deck/rail — dressing is a separate later
+// wave). Rough spot for when it lands: deck's SOUTH side, around
+// x -1.6..-1.2, z 4.2-4.5 — clear of the south rail's 6cm band (z
+// 4.54-4.60) and the door gap's walk line (z 3.4-4.3 is the open half; a
+// pedestal in z 4.2-4.3 would still graze it, so keep the actual footprint
+// z ≥ 4.3 when it's built). Dressing-wave note (not this pass): folding
+// chair + glass tea table, railing plants, paper lantern, eave overhang,
+// moonlight shaft.
 
 // manga dresser (Task 8) — REMOVED FOR NOW (P4 recenter): its rect (x
 // 2.8-4.4) overlapped the centered/enlarged bed's x-span (3.0-5.0), and
@@ -284,7 +302,7 @@ const POSTERS: { key: PosterKey; cx: number; cy: number; w: number; h: number; r
 // ── mirror (FURNISHING WAVE) — east divider's bedroom face (wallSegS,
 // x=BEDROOM.x+BEDROOM.w-0.11=7.89, the same plane that mesh renders on),
 // south of the door gap. Layered offset stack, same "wall → frame → glass"
-// convention as the balcony's sliding door (DOOR_FRAME_NEAR_X etc. above),
+// convention as the engawa's sliding door (DOOR_FRAME_NEAR_X etc. above),
 // mirrored toward -x since this wall's visible face normal points -x
 // (rotY=-π/2 maps local +z to world -x): frame sits 2cm proud of the wall
 // (≥6mm), glass sits 1cm further proud of the frame's near face (≥6mm,
@@ -457,6 +475,66 @@ function BedModel() {
 }
 useGLTF.preload("/3am/models/bed-with-lamp.glb");
 
+/** Chunky wood post-and-top-rail fence (item 4, P4 engawa rework),
+ *  rendered flush on top of a railing collider (layout.ts's
+ *  ENGAWA_RAIL_W/N/S — the RAIL_*_RECT consts above copy those verbatim).
+ *  `axis` is the direction the rail's LONG side runs ("x" for the
+ *  north/south rails, "z" for the west rail); `from`/`to` are the world
+ *  extent along that axis; `fixed` is the world coordinate along the
+ *  perpendicular (short) axis the whole fence sits at — i.e. the
+ *  collider's own centerline. Posts every ~0.5m (evenly redistributed
+ *  across the run, so the spacing is never a partial leftover step);
+ *  `height` sets both post height and top-rail height (the south rail's
+ *  deliberately-low camera exception passes RAIL_LOW_H here, everything
+ *  else RAIL_NORMAL_H). No castShadow prop needed — Bedroom's root
+ *  traverse (rootRef's useEffect) sets it on every mesh under the room. */
+function RailFence({
+  axis,
+  from,
+  to,
+  fixed,
+  height,
+}: {
+  axis: "x" | "z";
+  from: number;
+  to: number;
+  fixed: number;
+  height: number;
+}) {
+  const length = to - from;
+  const spacing = 0.5;
+  const count = Math.max(2, Math.round(length / spacing) + 1);
+  const normal = height >= RAIL_NORMAL_H;
+  const postSize = normal ? 0.045 : 0.035;
+  const railT = normal ? 0.05 : 0.035;
+  const posts = Array.from({ length: count }, (_, i) => from + (i / (count - 1)) * length);
+  return (
+    <group>
+      {posts.map((t, i) => (
+        <mesh key={i} position={axis === "x" ? [t, height / 2, fixed] : [fixed, height / 2, t]}>
+          <boxGeometry args={[postSize, height, postSize]} />
+          <meshStandardMaterial color="#6b4128" />
+        </mesh>
+      ))}
+      {/* top rail beam — spans the full run, sits on the posts */}
+      <mesh
+        position={
+          axis === "x" ? [(from + to) / 2, height, fixed] : [fixed, height, (from + to) / 2]
+        }
+      >
+        <boxGeometry
+          args={
+            axis === "x"
+              ? [length + postSize, railT, railT]
+              : [railT, railT, length + postSize]
+          }
+        />
+        <meshStandardMaterial color="#8a5a3b" />
+      </mesh>
+    </group>
+  );
+}
+
 /**
  * The bedroom — painted surfaces + temp style toggles (task 5 of the
  * bedroom plan). Renders INSIDE the gray-box shell: textured surfaces sit a
@@ -466,10 +544,14 @@ useGLTF.preload("/3am/models/bed-with-lamp.glb");
  * two differences: the divider this room shares is on its EAST side (x=8,
  * facing west into the room) instead of straddling both sides like
  * Workspace, and this room also owns a full exterior wall (west, x=0) —
- * P4 balcony wave: that wall now has a REAL cutout (z 2.7-4.1), the walk-
- * through gap for the west balcony's sliding glass door. The wall face is
- * split into two segments (wallWN/wallWS) flanking the gap, same pattern
- * the east divider already uses for its own doorway.
+ * P4 engawa rework: that wall is a real WALL_T=0.2 thick wall (not a thin
+ * plane) with a cutout (z 2.5-4.3), the walk-through gap for the engawa's
+ * sliding glass door. Each of the wall's two z-segments (north-of-gap,
+ * south-of-gap) gets FOUR meshes, not two: interior (bedroom-side, sage)
+ * + exterior (engawa-side, darker sage) faces, each proud of the box's
+ * own face by the usual ≥6mm offset — same doorway-segment pattern the
+ * east divider already uses, just doubled up for both faces of a real box
+ * instead of one face of a thin plane.
  */
 export function Bedroom() {
   const R = BEDROOM;
@@ -490,10 +572,13 @@ export function Bedroom() {
 
   const floor = usePixelTexture(FLOOR_TEX, R.w, R.d);
   const wallN = usePixelTexture(WALL_TEX, R.w, WALL_H);
-  // west exterior wall — split around the balcony door gap (z 2.7-4.1),
-  // same two-segment pattern as the east divider's wallSegN/wallSegS.
-  const wallWN = usePixelTexture(WALL_TEX, BAL_DOOR_Z0, WALL_H); // north of the gap, z 0-2.7
-  const wallWS = usePixelTexture(WALL_TEX, R.d - BAL_DOOR_Z1, WALL_H); // south of the gap, z 4.1-6
+  // west wall — split around the widened engawa door gap (z 2.5-4.3), same
+  // two-segment pattern as the east divider's wallSegN/wallSegS. Each
+  // segment's texture map is reused on BOTH faces of the thick wall box
+  // (bedroom-side untinted, engawa-side darker-tinted via material color)
+  // rather than loading four separate textures.
+  const wallWN = usePixelTexture(WALL_TEX, ENGAWA_DOOR_Z0, WALL_H); // north of the gap, z 0-2.5
+  const wallWS = usePixelTexture(WALL_TEX, R.d - ENGAWA_DOOR_Z1, WALL_H); // south of the gap, z 4.3-6
   const wallSegN = usePixelTexture(WALL_TEX, 2.2, WALL_H); // east divider, north-of-door segment
   const wallSegS = usePixelTexture(WALL_TEX, 2.2, WALL_H); // east divider, south-of-door segment
   const wallStub = usePixelTexture(WALL_TEX, R.w, 0.2, 0, 0.5);
@@ -552,23 +637,53 @@ export function Bedroom() {
         );
       })}
 
-      {/* west wall (inner face of the perimeter wall at x=0) — P4 balcony
-          wave: split into two segments flanking the sliding-door gap (z
-          2.7-4.1), same pattern as the east divider's own doorway. +x
-          normal (rotY=π/2) faces into the room. */}
+      {/* west wall — real WALL_T=0.2 thick wall (layout.ts's ENGAWA_WALL_N/S,
+          box x -0.1..0.1), split into two segments flanking the sliding-door
+          gap (z 2.5-4.3). Each segment gets a face on BOTH sides of the box:
+          bedroom-side (interior, sage, +x normal, proud of the box's east
+          face at x=+0.1) and engawa-side (exterior, darker sage, -x normal,
+          proud of the box's west face at x=-0.1) — item 2's "reads solid
+          from both sides" ask. Same texture map reused on both faces of a
+          segment, engawa side just tinted darker via material color. */}
+      {/* — bedroom-side (interior) faces — */}
       <mesh
         rotation={[0, Math.PI / 2, 0]}
-        position={[R.x + 0.011, WALL_H / 2, R.z + BAL_DOOR_Z0 / 2]}
+        position={[R.x + ENGAWA_WALL_T_HALF + 0.011, WALL_H / 2, R.z + ENGAWA_DOOR_Z0 / 2]}
       >
-        <planeGeometry args={[BAL_DOOR_Z0, WALL_H]} />
+        <planeGeometry args={[ENGAWA_DOOR_Z0, WALL_H]} />
         <meshStandardMaterial map={wallWN} />
       </mesh>
       <mesh
         rotation={[0, Math.PI / 2, 0]}
-        position={[R.x + 0.011, WALL_H / 2, R.z + BAL_DOOR_Z1 + (R.d - BAL_DOOR_Z1) / 2]}
+        position={[
+          R.x + ENGAWA_WALL_T_HALF + 0.011,
+          WALL_H / 2,
+          R.z + ENGAWA_DOOR_Z1 + (R.d - ENGAWA_DOOR_Z1) / 2,
+        ]}
       >
-        <planeGeometry args={[R.d - BAL_DOOR_Z1, WALL_H]} />
+        <planeGeometry args={[R.d - ENGAWA_DOOR_Z1, WALL_H]} />
         <meshStandardMaterial map={wallWS} />
+      </mesh>
+      {/* — engawa-side (exterior) faces — darker sage/plaster tint, same
+          maps, mirrored -x normal (rotY=-π/2, same convention the east
+          divider's own bedroom-facing side uses on ITS wall). */}
+      <mesh
+        rotation={[0, -Math.PI / 2, 0]}
+        position={[R.x - ENGAWA_WALL_T_HALF - 0.011, WALL_H / 2, R.z + ENGAWA_DOOR_Z0 / 2]}
+      >
+        <planeGeometry args={[ENGAWA_DOOR_Z0, WALL_H]} />
+        <meshStandardMaterial map={wallWN} color="#7c8a72" />
+      </mesh>
+      <mesh
+        rotation={[0, -Math.PI / 2, 0]}
+        position={[
+          R.x - ENGAWA_WALL_T_HALF - 0.011,
+          WALL_H / 2,
+          R.z + ENGAWA_DOOR_Z1 + (R.d - ENGAWA_DOOR_Z1) / 2,
+        ]}
+      >
+        <planeGeometry args={[R.d - ENGAWA_DOOR_Z1, WALL_H]} />
+        <meshStandardMaterial map={wallWS} color="#7c8a72" />
       </mesh>
 
       {/* east divider face (shared wall with Workspace at x=8), two
@@ -591,18 +706,26 @@ export function Bedroom() {
         <meshStandardMaterial map={wallStub} />
       </mesh>
 
-      {/* baseboards (north, west — split around the balcony door gap, both
-          divider segments) */}
+      {/* baseboards (north, west — split around the engawa door gap, both
+          divider segments). West baseboard sits proud of the thick wall's
+          bedroom-side face (x = R.x + ENGAWA_WALL_T_HALF + 0.045, was
+          R.x + 0.045 back when the wall was a thin plane at x=0). */}
       <mesh position={[R.x + R.w / 2, 0.09, R.z + 0.045]}>
         <boxGeometry args={[R.w, 0.18, 0.07]} />
         <meshStandardMaterial color="#4a3a2e" />
       </mesh>
-      <mesh position={[R.x + 0.045, 0.09, R.z + BAL_DOOR_Z0 / 2]}>
-        <boxGeometry args={[0.07, 0.18, BAL_DOOR_Z0]} />
+      <mesh position={[R.x + ENGAWA_WALL_T_HALF + 0.045, 0.09, R.z + ENGAWA_DOOR_Z0 / 2]}>
+        <boxGeometry args={[0.07, 0.18, ENGAWA_DOOR_Z0]} />
         <meshStandardMaterial color="#4a3a2e" />
       </mesh>
-      <mesh position={[R.x + 0.045, 0.09, R.z + BAL_DOOR_Z1 + (R.d - BAL_DOOR_Z1) / 2]}>
-        <boxGeometry args={[0.07, 0.18, R.d - BAL_DOOR_Z1]} />
+      <mesh
+        position={[
+          R.x + ENGAWA_WALL_T_HALF + 0.045,
+          0.09,
+          R.z + ENGAWA_DOOR_Z1 + (R.d - ENGAWA_DOOR_Z1) / 2,
+        ]}
+      >
+        <boxGeometry args={[0.07, 0.18, R.d - ENGAWA_DOOR_Z1]} />
         <meshStandardMaterial color="#4a3a2e" />
       </mesh>
       <mesh position={[R.x + R.w - 0.145, 0.09, 1.1]}>
@@ -614,14 +737,13 @@ export function Bedroom() {
         <meshStandardMaterial color="#4a3a2e" />
       </mesh>
 
-      {/* ── west balcony (P4 balcony wave, owner's final design) — deck
-          floor, chunky railing, and the sliding-door assembly around the
-          walk-through gap (z 2.7-4.1). Collision lives in layout.ts (the
-          BALCONY_* rects — this file's DECK_RECT/RAIL_*_RECT consts above
-          are verbatim copies for rendering, source of truth stays there).
-          The void beyond the west rail has no geometry — it reads via the
-          scene background, per the owner's ask (no sky geometry this
-          wave). ── */}
+      {/* ── engawa (P4 engawa rework) — deck floor, wooden railing, and the
+          sliding-door assembly around the widened walk-through gap (z
+          2.5-4.3). Collision lives in layout.ts (the ENGAWA_* rects — this
+          file's DECK_RECT/RAIL_*_RECT consts above are verbatim copies for
+          rendering, source of truth stays there). The void beyond the west
+          rail has no geometry — it reads via the scene background, per the
+          owner's ask (no sky geometry this wave). ── */}
 
       {/* deck floor — floor-oak, flush with the room floor (y=0.02) */}
       <mesh
@@ -632,29 +754,49 @@ export function Bedroom() {
         <meshStandardMaterial map={deckFloor} />
       </mesh>
 
-      {/* railing — ALL THREE sides (west/north/south) are now INVISIBLE
-          (BALCONY FREED, owner's ask, 2026-07-19: "no restriction from the
-          sides, the whole 270° view" — screenshot showed the deck boxed in
-          by the visible rail bars + posts). South was already invisible
-          (dollhouse-cutaway convention — House.tsx's SOUTH_STUB_H comment:
-          "collision still uses the full wall," the visual just doesn't draw
-          it); west/north now match it, same convention. The COLLIDER rects
-          (layout.ts's BALCONY_RAIL_W/N/S) are completely untouched —
-          players still can't walk off any edge of the deck, this is a
-          render-only change. No mesh, no posts: nothing here hints at a
-          boundary line that isn't drawn. */}
+      {/* wooden railing — west + north + south, chunky posts (~0.5m
+          spacing) + a top rail, flush on their layout.ts colliders
+          (RAIL_*_RECT above). REWORK (item 4): the prior pass made all
+          three rails fully invisible so the deck wouldn't read as boxed in
+          by "giant dark slabs" — this pass gives them a real but SLENDER
+          post-and-rail silhouette instead (not a solid panel), which keeps
+          the open sightline without going back to zero railing. West and
+          north stand normal height (RAIL_NORMAL_H, ~0.9m); south — the
+          edge facing the dollhouse camera — is deliberately kept LOW
+          (RAIL_LOW_H, ~0.5m, thin) so the player is still visible over it. */}
+      <RailFence
+        axis="z"
+        from={R.z + RAIL_W_RECT.z}
+        to={R.z + RAIL_W_RECT.z + RAIL_W_RECT.d}
+        fixed={R.x + RAIL_W_RECT.x + RAIL_W_RECT.w / 2}
+        height={RAIL_NORMAL_H}
+      />
+      <RailFence
+        axis="x"
+        from={R.x + RAIL_N_RECT.x}
+        to={R.x + RAIL_N_RECT.x + RAIL_N_RECT.w}
+        fixed={R.z + RAIL_N_RECT.z + RAIL_N_RECT.d / 2}
+        height={RAIL_NORMAL_H}
+      />
+      <RailFence
+        axis="x"
+        from={R.x + RAIL_S_RECT.x}
+        to={R.x + RAIL_S_RECT.x + RAIL_S_RECT.w}
+        fixed={R.z + RAIL_S_RECT.z + RAIL_S_RECT.d / 2}
+        height={RAIL_LOW_H}
+      />
 
-      {/* sliding-door frame — dark wood jambs + header around the z
-          2.7-4.1 opening. Jambs sit just inside the SOLID wall bands
-          (z<2.7 / z>4.1) so they never intrude on the walk gap itself. */}
+      {/* sliding-door frame — dark wood jambs + header around the widened
+          z 2.5-4.3 opening. Jambs sit just inside the SOLID wall bands
+          (z<2.5 / z>4.3) so they never intrude on the walk gap itself. */}
       <mesh
-        position={[R.x + DOOR_FRAME_CX, DOOR_PANEL_Y1 / 2, R.z + BAL_DOOR_Z0 - DOOR_JAMB_T / 2]}
+        position={[R.x + DOOR_FRAME_CX, DOOR_PANEL_Y1 / 2, R.z + ENGAWA_DOOR_Z0 - DOOR_JAMB_T / 2]}
       >
         <boxGeometry args={[DOOR_FRAME_DEPTH, DOOR_PANEL_Y1, DOOR_JAMB_T]} />
         <meshStandardMaterial color="#3a2a1e" />
       </mesh>
       <mesh
-        position={[R.x + DOOR_FRAME_CX, DOOR_PANEL_Y1 / 2, R.z + BAL_DOOR_Z1 + DOOR_JAMB_T / 2]}
+        position={[R.x + DOOR_FRAME_CX, DOOR_PANEL_Y1 / 2, R.z + ENGAWA_DOOR_Z1 + DOOR_JAMB_T / 2]}
       >
         <boxGeometry args={[DOOR_FRAME_DEPTH, DOOR_PANEL_Y1, DOOR_JAMB_T]} />
         <meshStandardMaterial color="#3a2a1e" />
@@ -664,31 +806,33 @@ export function Bedroom() {
         position={[
           R.x + DOOR_FRAME_CX,
           DOOR_PANEL_Y1 + (WALL_H - DOOR_PANEL_Y1) / 2,
-          R.z + BAL_DOOR_ZC,
+          R.z + ENGAWA_DOOR_ZC,
         ]}
       >
         <boxGeometry
-          args={[DOOR_FRAME_DEPTH, WALL_H - DOOR_PANEL_Y1, BAL_DOOR_W + DOOR_JAMB_T * 2]}
+          args={[DOOR_FRAME_DEPTH, WALL_H - DOOR_PANEL_Y1, ENGAWA_DOOR_W + DOOR_JAMB_T * 2]}
         />
         <meshStandardMaterial color="#3a2a1e" />
       </mesh>
       {/* low threshold trim — visual only, flush with the floor */}
-      <mesh position={[R.x + 0.06, 0.015, R.z + BAL_DOOR_ZC]}>
-        <boxGeometry args={[0.1, 0.03, BAL_DOOR_W]} />
+      <mesh position={[R.x + 0.06, 0.015, R.z + ENGAWA_DOOR_ZC]}>
+        <boxGeometry args={[0.1, 0.03, ENGAWA_DOOR_W]} />
         <meshStandardMaterial color="#2e2116" />
       </mesh>
 
       {/* two glass panels — turntable-lid convention (thin transparent
           pane + dark frame strips). Both cover the SAME z-band (the fixed
-          pane's, z 2.7-3.4); the "open" pane is just slid 3cm further
+          pane's, z 2.5-3.4 — matching layout.ts's ENGAWA_DOOR_GLASS_RECT
+          collider exactly, so this fixed pane is now genuinely solid, not
+          just painted-on); the "open" pane is just slid 3cm further
           outward, so together they read as a door slid open, leaving z
-          3.4-4.1 clear as the walk gap. Static this wave — an actual
-          slide animation is a future nicety. */}
+          3.4-4.3 (0.9m) clear as the walk gap. Static this wave — an
+          actual slide animation is a future nicety. */}
       {[
         { x: DOOR_GLASS_FIXED_X, handle: false },
         { x: DOOR_GLASS_OPEN_X, handle: true },
       ].map(({ x, handle }, i) => {
-        const z0 = BAL_DOOR_Z0;
+        const z0 = ENGAWA_DOOR_Z0;
         const zc = z0 + DOOR_PANEL_W / 2;
         return (
           <group key={`glass-panel-${i}`} position={[R.x + x, 0, R.z]}>
@@ -724,13 +868,8 @@ export function Bedroom() {
         );
       })}
 
-      {/* bonsai pedestal — reserved spot, awaiting the bonsai GLB (see
-          PEDESTAL_CENTER's comment above for the clearance derivation).
-          Flat wooden slab, no collider yet (placeholder marker). */}
-      <mesh position={[R.x + PEDESTAL_CENTER.x, PEDESTAL_H / 2, R.z + PEDESTAL_CENTER.z]}>
-        <boxGeometry args={[PEDESTAL_SIZE, PEDESTAL_H, PEDESTAL_SIZE]} />
-        <meshStandardMaterial color="#6b4128" />
-      </mesh>
+      {/* bonsai pedestal — RESERVED, not built (see the reserve comment in
+          the consts block above for the rough spot + dressing-wave note). */}
 
       {/* ── bed — collider {2.9,0.33,2.2,2.5} (SUPER-KING pass: centered on
           the north wall, x 2.9-5.1 around the room's x-center 4.0 —
@@ -873,22 +1012,23 @@ export function Bedroom() {
           room's ONLY warm light left on the north wall, so intensity stays
           bumped at 5 (still under the ≤6 ceiling this fixture class caps
           at). Distance (3.6) and decay (2) untouched — only the falloff
-          strength changed, not its reach. The balcony's bonsai pedestal
-          (PEDESTAL_CENTER, P4 balcony wave) may get its own small lamp in
-          a later pass — flagged here rather than solved now, since a
-          second fixture wasn't this task's ask either (the balcony wave's
-          own lighting note: NO new lights this wave, it reads by scene
-          ambient + door glow). One fixture-attached source,
-          House/StairsApproach's brass-half-dome sconce as the pattern
-          (same mount box + emissive cone, pointLight nested INSIDE this
-          group so it's rotation-safe by construction even though this
-          group happens to carry no rotation — matches the fixture-nesting
-          rule regardless), warm, no castShadow. The room's SE corner
-          (~6.6,4.9, where the sword used to stand) stays unlit here on
-          purpose — a bonsai stand was slated to land there in a follow-up
-          plan; the balcony pedestal is now a SECOND bonsai spot, so there
-          may be two bonsai mentions in this file going forward — flagged
-          for Rohan's call on which stands. ── */}
+          strength changed, not its reach. The engawa's reserved (comment-
+          only, not-yet-built) bonsai-pedestal spot on the deck's south
+          side may get its own small lamp in a later dressing pass —
+          flagged here rather than solved now, since a second fixture
+          wasn't this task's ask either (the engawa rework's own lighting
+          note: NO new lights this wave, it reads by scene ambient + door
+          glow). One fixture-attached source, House/StairsApproach's
+          brass-half-dome sconce as the pattern (same mount box + emissive
+          cone, pointLight nested INSIDE this group so it's rotation-safe
+          by construction even though this group happens to carry no
+          rotation — matches the fixture-nesting rule regardless), warm,
+          no castShadow. The room's SE corner (~6.6,4.9, where the sword
+          used to stand) stays unlit here on purpose — a bonsai stand was
+          slated to land there in a follow-up plan; the engawa's reserved
+          spot is a SECOND bonsai spot, so there may be two bonsai mentions
+          in this file going forward — flagged for Rohan's call on which
+          stands. ── */}
       <group position={[SCONCE_X, 2.4, R.z + 0.02]}>
         <mesh position={[0, -0.09, -0.02]}>
           <boxGeometry args={[0.1, 0.05, 0.06]} />
@@ -914,7 +1054,7 @@ export function Bedroom() {
           for the owner to eyeball and, if needed, nudge the rug south in a
           follow-up pass. Previously checked against the bed and nightstand
           in the P4-recenter report (the window table and its moon patch,
-          also checked there, are gone as of the P4 balcony wave) — those
+          also checked there, are gone as of the P4 engawa wave) — those
           clearances are unaffected by this pass. ── */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[3.3, 0.035, 3.6]}>
         <planeGeometry args={[2.4, 1.7]} />
@@ -1481,7 +1621,7 @@ export function Bedroom() {
           reflection (real reflections rejected for cost, per the brief) —
           a brighter diagonal streak plane fakes a highlight across it.
           Same "wall → frame → glass" layered-offset convention as the
-          balcony's sliding door (each layer ≥6mm proud of the last, here
+          engawa's sliding door (each layer ≥6mm proud of the last, here
           stacking toward -x/west since this wall's face normal points
           -x). No collider — flush wall dressing. ── */}
       <mesh position={[MIRROR_FRAME_X, 1.5, 4.9]}>

@@ -34,88 +34,145 @@ const WALL_T = 0.2; // interior wall thickness
 const DOOR_LO = 2.2; // doorway gap on z: [DOOR_LO, DOOR_HI]
 const DOOR_HI = 3.8;
 
-/** Interior dividing wall at `x` with a doorway gap, spanning depth `d`. */
-function dividerWithDoor(x: number, d: number): Rect[] {
+/** Interior dividing wall at `x` with a doorway gap, spanning depth `d`.
+ *  `doorLo`/`doorHi` default to the shared interior-divider gap (used by
+ *  the workspace/music dividers below) but can be overridden — the engawa
+ *  wall (below) reuses this same thick-wall idiom with its own, wider
+ *  gap. */
+function dividerWithDoor(
+  x: number,
+  d: number,
+  doorLo: number = DOOR_LO,
+  doorHi: number = DOOR_HI
+): Rect[] {
   return [
-    { x: x - WALL_T / 2, z: 0, w: WALL_T, d: DOOR_LO },
-    { x: x - WALL_T / 2, z: DOOR_HI, w: WALL_T, d: d - DOOR_HI },
+    { x: x - WALL_T / 2, z: 0, w: WALL_T, d: doorLo },
+    { x: x - WALL_T / 2, z: doorHi, w: WALL_T, d: d - doorHi },
   ];
 }
 
-// ── west balcony (P4 balcony wave, owner's final design sketch) — the
-// bedroom's west wall (x=0) becomes a glass sliding door onto a small
-// walkable step-out balcony. Pre-wave, that west wall was a purely
-// IMPLICIT collider: `isBlocked` rejects any position past `bounds.x`,
-// and there was never a matching rect in `walls` — House.tsx's generic
-// perimeter loop drew the *visual* box from `bounds`, but collision-wise
-// `bounds.x = 0` did all the work alone (see collision.test.ts's old
-// "outside bounds is blocked" case at x=-1, and furniture.test.ts's new
-// "west balcony" describe block for the full reasoning + probes).
+// ── engawa (P4 engawa rework, renamed from "balcony" — this is a
+// ground-level Japanese veranda overlooking the future outside area, not
+// an elevated balcony) — the bedroom's west wall (x=0) opens onto a
+// walkable step-out deck through a wide sliding glass door. There's no
+// RoomId/AreaId for it (it's part of the bedroom/ground area), so
+// "engawa" only exists as these consts + comments; layout.ts stays the
+// source of truth for every collider, Bedroom.tsx renders the visuals.
 //
-// Extending `bounds` west (so the balcony footprint is walkable) moves
-// that implicit wall along with it, so the old x=0 boundary has to be
-// rebuilt EXPLICITLY: a north block and a south block (each spanning the
-// full x -1.7..0 depth) reconstruct the solid wall for z 0-2.3 and
-// z 4.5-6, and two thin door-jamb rects (x -0.14..0) close the remaining
-// sliver of that plane for z 2.3-2.7 and z 4.1-4.5 — leaving z 2.7-4.1 as
-// the ONLY gap in the x=0 plane: the sliding door's walk-through.
-// (0..2.3) ∪ (2.3..2.7) ∪ [gap 2.7..4.1] ∪ (4.1..4.5) ∪ (4.5..6) covers
-// the full z 0-6 span exactly once, so there's no double-walled seam and
-// no accidental extra gap.
+// REWORK (this pass, owner feedback: prior version read "dark, boxed,
+// paper-thin-walled"): five structural fixes, all pure rect arithmetic —
 //
-// BALCONY FREED (owner ask, 2026-07-19 — screenshot showed the deck boxed
-// in by "giant dark slabs"): `isBlocked`/`resolveMovement` OR together
-// `walls` and `furniture` (collision.ts) — the two arrays are
-// collision-IDENTICAL, they only differ in who renders them. House.tsx's
-// generic perimeter loop (`a.walls.map(...)`) draws every `walls` rect as
-// a full-height, full-opacity WallBox — that's fine for real house walls,
-// but the north/south balcony blocks were never meant to be SEEN, only to
-// stand in for the pre-wave implicit x=0 boundary. Living in `walls` made
-// them render as two literal 1.7m-wide, 2.3-2.8m-deep dark slabs flanking
-// the deck, which is exactly what boxed the balcony in. Fix: BALCONY_WALL_
-// BLOCK_N/S move to `furniture` — same precedent as the already-invisible
-// south rail (BALCONY_RAIL_S, kept below) — so collision is byte-for-byte
-// unchanged (still full walls, still block movement) but nothing draws
-// them; the void west of the deck now reads open, no boxed-in feel. The
-// two door-JAMB rects stay in `walls` on purpose: they're the house's real
-// west wall (the thin slivers of solid wall still standing flush with x=0
-// north/south of the sliding-door gap), so they SHOULD render — removing
-// them would open a visual gap where the wall plane is still structurally
-// there. Only the two flanking blocks — which existed purely to backstop
-// collision, not to be seen — go invisible.
+// 1. DOOR WIDENED: the walk-through gap grows from z 2.7-4.1 (1.4m) to
+//    z 2.5-4.3 (1.8m) — see ENGAWA_DOOR_LO/HI below. The old code drew two
+//    glass panels but only ever gave the wall a collider at the two thin
+//    door-jamb slivers — the "fixed" pane (the door's other half) had NO
+//    collider, so a player could walk straight through painted glass.
+//    Fixed: ENGAWA_DOOR_GLASS_RECT below is a real furniture collider
+//    matching the fixed pane's z-band exactly (z 2.5-3.4, half the new
+//    opening), leaving z 3.4-4.3 (0.9m) as the genuinely walkable gap.
 //
-// The balcony deck itself (x -1.5..0, z 2.3-4.5) is furniture-free (an
-// open floor), fenced only by three thin railing rects (west/north/south)
-// that block the player at the deck's outer edges — the void beyond the
-// west rail has no wall at all; it reads via the scene background, per
-// the owner's ask (no sky geometry this wave). BALCONY FREED also strips
-// the west + north railing MESHES from Bedroom.tsx (owner: "no restriction
-// from the sides, the whole 270° view") — south was already invisible,
-// west/north now match it. All three railing COLLIDER rects (below) are
-// untouched: players still can't walk off any edge of the deck, only the
-// visuals changed. Deck floor, doorframe + glass panels, and the bonsai
-// pedestal still render in Bedroom.tsx since it's the bedroom's own
-// balcony.
-const BALCONY_WALL_BLOCK_N: Rect = { x: -1.7, z: 0, w: 1.7, d: 2.3 };
-const BALCONY_WALL_BLOCK_S: Rect = { x: -1.7, z: 4.5, w: 1.7, d: 1.5 };
-const BALCONY_DOOR_JAMB_N: Rect = { x: -0.14, z: 2.3, w: 0.14, d: 0.4 };
-const BALCONY_DOOR_JAMB_S: Rect = { x: -0.14, z: 4.1, w: 0.14, d: 0.4 };
-const BALCONY_RAIL_W: Rect = { x: -1.56, z: 2.3, w: 0.06, d: 2.2 };
-const BALCONY_RAIL_N: Rect = { x: -1.5, z: 2.3, w: 1.5, d: 0.06 };
-const BALCONY_RAIL_S: Rect = { x: -1.5, z: 4.44, w: 1.5, d: 0.06 };
+// 2. THICK WALL: pre-rework, the "west wall" was two 0.14m-wide door-jamb
+//    slivers plus a paper-thin 11mm-offset texture plane — it read flat.
+//    ENGAWA_WALL_N/S (below) rebuild it with the SAME thick-wall idiom
+//    every interior divider uses (`dividerWithDoor`, WALL_T=0.2, box
+//    x -0.1..0.1) called with the engawa's own (wider) door bounds:
+//    `dividerWithDoor(0, 6, ENGAWA_DOOR_LO, ENGAWA_DOOR_HI)`. These live in
+//    `walls` (not `furniture`) so House.tsx's generic perimeter loop
+//    renders them as real full-height boxes, solid from both faces, same
+//    as the x=8/x=16 dividers. Bedroom.tsx paints both faces (bedroom-side
+//    sage, engawa-side a darker sage/plaster tint) flush against this
+//    box's two faces (x=0.1 and x=-0.1) instead of a single thin plane at
+//    x=0.
+//
+// 3. DECK EXTENDED (seating-nook room, west + a bit deeper in z): deck
+//    grows from {x:-1.5,z:2.3,w:1.5,d:2.2} to {x:-2.7,z:2.1,w:2.7,d:2.5}
+//    (west edge -1.5→-2.7, z-band 2.3-4.5→2.1-4.6). `bounds` grows to
+//    match (x -1.7→-2.9, w 23.7→24.9 — east edge x+w stays 22, only the
+//    west edge moves). ENGAWA_WALL_BLOCK_N/S (the invisible collision
+//    backstop for the void beyond the deck's own z-band — see "BALCONY
+//    FREED" below, renamed ENGAWA FREED) shrink their z-bands to match
+//    (0-2.1 / 4.6-6, was 0-2.3 / 4.5-6) and extend west to the new
+//    bounds.x (-2.9, was -1.7).
+//
+// 4. WOODEN RAILING: ENGAWA_RAIL_W/N/S move to the deck's new outer edges
+//    (same flush-against-the-edge convention as before, re-derived for the
+//    bigger deck). UNLIKE the prior "ENGAWA/BALCONY FREED" pass (which
+//    made all three rails invisible so the deck didn't read as boxed-in by
+//    "giant dark slabs"), this rework gives all three a real but SLENDER
+//    post-and-top-rail mesh in Bedroom.tsx — chunky wood, posts every
+//    ~0.5m, not a solid wall panel, so it reads as a railing rather than a
+//    box. West/north stand normal height (~0.9m); south — the edge facing
+//    the dollhouse camera — stays deliberately LOW (~0.5m) so the player
+//    is still visible over it, preserving the open feel from the prior
+//    pass without going back to zero visual railing. Collider rects are
+//    unaffected by any of this (posts/rail are visual-only additions on
+//    top of the existing collider footprint).
+//
+// 5. RESERVE (comment only, NOT built this wave): a bonsai-pedestal spot
+//    on the deck's SOUTH side, roughly x -1.6..-1.2, z 4.2-4.5 (clear of
+//    the south rail's 6cm band and the door-gap's walk line). The rest of
+//    the deck's dressing — folding chair + glass tea table, railing
+//    plants, paper lantern, eave overhang, moonlight shaft — is a
+//    separate, later wave; nothing beyond structure (wall/door/deck/rail)
+//    lands here.
+//
+// ENGAWA FREED (kept from the prior pass, renamed from "BALCONY FREED"):
+// `isBlocked`/`resolveMovement` OR together `walls` and `furniture`
+// (collision.ts) — collision-identical, they only differ in who renders
+// them. ENGAWA_WALL_BLOCK_N/S exist purely to backstop collision for the
+// void beyond the deck's own footprint (not real, seen walls), so they
+// stay in `furniture` (invisible) — only ENGAWA_WALL_N/S (the real, thick,
+// visible wall — fix #2 above) live in `walls`.
+const ENGAWA_DOOR_LO = 2.5; // sliding-door opening start (z) — was 2.7
+const ENGAWA_DOOR_HI = 4.3; // sliding-door opening end (z) — was 4.1
+const ENGAWA_DECK_Z0 = 2.1; // deck's north edge (z) — was 2.3
+const ENGAWA_DECK_Z1 = 4.6; // deck's south edge (z) — was 4.5
+const ENGAWA_DECK_X0 = -2.7; // deck's west edge (x) — was -1.5
+
+// wall blocks: invisible collision backstop for the void beyond the
+// deck's z-band, spanning the full new bounds width (x -2.9..0).
+const ENGAWA_WALL_BLOCK_N: Rect = { x: -2.9, z: 0, w: 2.9, d: ENGAWA_DECK_Z0 }; // z 0-2.1
+const ENGAWA_WALL_BLOCK_S: Rect = { x: -2.9, z: ENGAWA_DECK_Z1, w: 2.9, d: 1.4 }; // z 4.6-6
+
+// real, thick, visible west wall — same idiom as every interior divider
+// (dividerWithDoor, WALL_T=0.2, box x -0.1..0.1), just with the engawa's
+// own (wider) door bounds instead of the shared DOOR_LO/DOOR_HI.
+const [ENGAWA_WALL_N, ENGAWA_WALL_S] = dividerWithDoor(
+  0,
+  6,
+  ENGAWA_DOOR_LO,
+  ENGAWA_DOOR_HI
+); // {x:-0.1,z:0,w:0.2,d:2.5} and {x:-0.1,z:4.3,w:0.2,d:1.7}
+
+// fixed glass pane's collider — the walk-through gap's OTHER half (z
+// 2.5-3.4) is genuinely solid glass, not just uncollided air (see fix #1
+// above). Thin, centered on the wall plane, same 0.06 thickness as a rail.
+const ENGAWA_DOOR_GLASS_RECT: Rect = { x: -0.06, z: ENGAWA_DOOR_LO, w: 0.06, d: 0.9 };
+
+// railing colliders — moved to the enlarged deck's new outer edges. West
+// rail sits flush OUTSIDE the deck's west edge (same convention as
+// before); north/south rails occupy the deck's own outermost 6cm band
+// (flush with its z-min/z-max respectively).
+// x computed (not a hardcoded -2.76 literal) so x+w round-trips to exactly
+// ENGAWA_DECK_X0 in floating point — a hardcoded literal here parses to a
+// different double than this subtraction and makes the rail spuriously
+// "overlap" the north rail's corner by a ~3e-16 epsilon (caught by
+// furniture.test.ts's exact-overlap check).
+const ENGAWA_RAIL_W: Rect = { x: ENGAWA_DECK_X0 - 0.06, z: ENGAWA_DECK_Z0, w: 0.06, d: 2.5 }; // x -2.76..-2.70
+const ENGAWA_RAIL_N: Rect = { x: ENGAWA_DECK_X0, z: ENGAWA_DECK_Z0, w: 2.7, d: 0.06 }; // z 2.1-2.16
+const ENGAWA_RAIL_S: Rect = { x: ENGAWA_DECK_X0, z: 4.54, w: 2.7, d: 0.06 }; // z 4.54-4.60
 
 const GROUND: Area = {
   id: "ground",
-  bounds: { x: -1.7, z: 0, w: 23.7, d: 6 },
+  bounds: { x: -2.9, z: 0, w: 24.9, d: 6 },
   walls: [
     ...dividerWithDoor(8, 6),
     ...dividerWithDoor(16, 6),
-    // BALCONY_WALL_BLOCK_N/S deliberately NOT here — see the BALCONY FREED
-    // comment above: they live in `furniture` now (invisible, same
-    // collision). Only the real, visible west-wall slivers stay in
-    // `walls`.
-    BALCONY_DOOR_JAMB_N,
-    BALCONY_DOOR_JAMB_S,
+    // ENGAWA_WALL_BLOCK_N/S deliberately NOT here — see the ENGAWA FREED
+    // comment above: they live in `furniture` (invisible, same collision).
+    // ENGAWA_WALL_N/S are the real, thick, visible west wall.
+    ENGAWA_WALL_N,
+    ENGAWA_WALL_S,
   ],
   furniture: [
     // bedroom — FURNISHING WAVE (owner's final bedroom design sketch,
@@ -148,28 +205,29 @@ const GROUND: Area = {
     // needed from the owner's spec'd numbers.
     { x: 5.62, z: 5.35, w: 0.8, d: 0.45 }, // shoe storage cubby (2-shelf, east of the rack)
     { x: 6.55, z: 5.3, w: 1.0, d: 0.5 }, // perfume stand / slim dresser (SE)
-    // window table + its west-window neighbor are REMOVED this pass — the
-    // owner's final design replaces them with a west balcony (glass sliding
-    // door + walkable deck); see the BALCONY_* rects above `GROUND` and
-    // Bedroom.tsx. The bonsai that was slated for the window table now has
-    // a reserved pedestal spot on the deck instead (visual only this wave).
-    BALCONY_RAIL_W,
-    BALCONY_RAIL_N,
-    // BALCONY_RAIL_S's collider stays (players still can't walk off the
-    // deck's south edge) — its VISUAL meshes are stripped in Bedroom.tsx
-    // per the owner's ask: same dollhouse-cutaway convention as the house's
-    // camera-side south wall (House.tsx's SOUTH_STUB_H comment) — collision
-    // keeps the full rect, the render just doesn't draw it.
-    BALCONY_RAIL_S,
-    // BALCONY FREED — moved here from `walls` (see that array's comment):
-    // House.tsx only renders `walls` rects as visible WallBox meshes, and
-    // furniture is collision-identical (collision.ts ORs both arrays), so
-    // this move makes the two flanking blocks invisible without touching
-    // collision at all. Nothing in Bedroom.tsx (or anywhere else) renders a
-    // mesh for these two rects — same "invisible boundary" precedent as the
-    // south rail just above.
-    BALCONY_WALL_BLOCK_N,
-    BALCONY_WALL_BLOCK_S,
+    // window table + its west-window neighbor are REMOVED (superseded by
+    // the engawa: glass sliding door + walkable deck); see the ENGAWA_*
+    // rects above `GROUND` and Bedroom.tsx. The bonsai that was slated for
+    // the window table now has a reserved (comment-only) pedestal spot on
+    // the deck's south side instead — see the engawa comment block above.
+    ENGAWA_RAIL_W,
+    ENGAWA_RAIL_N,
+    // ENGAWA_RAIL_S's collider stays (players still can't walk off the
+    // deck's south edge). ENGAWA REWORK: all three rails are visible again
+    // this pass (chunky wood posts + top rail in Bedroom.tsx) — the south
+    // one is kept deliberately LOW (~0.5m) so it doesn't occlude the player
+    // from the dollhouse camera, same intent as House.tsx's south-stub
+    // convention, just applied to a real (short) railing instead of no
+    // railing at all.
+    ENGAWA_RAIL_S,
+    // ENGAWA FREED — the flanking wall blocks (the void backstop beyond the
+    // deck's own z-band) live in `furniture`, not `walls`, so House.tsx's
+    // generic WallBox loop never draws them as giant flanking slabs.
+    // Collision is untouched (collision.ts ORs both arrays); nothing
+    // renders a mesh for these two rects.
+    ENGAWA_WALL_BLOCK_N,
+    ENGAWA_WALL_BLOCK_S,
+    ENGAWA_DOOR_GLASS_RECT,
     { x: 17.6, z: 0.3, w: 2.8, d: 0.9 }, // record console, centered on the wall (turntable + speakers on top)
     { x: 20.675, z: 0.475, w: 0.35, d: 0.35 }, // floor lamp (right of console)
     { x: 16.5, z: 0.5, w: 0.35, d: 0.35 }, // snake plant (console's left flank)

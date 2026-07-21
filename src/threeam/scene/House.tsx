@@ -296,14 +296,16 @@ export function House() {
 
       {/* roof: low parapets all around (it's open sky); ground: full walls
           except the camera-side south stub. Ground's west perimeter (i=2)
-          is skipped entirely: bounds.x now reaches -1.7 to cover the
-          bedroom's balcony deck (P4 balcony wave), so the naive `bounds.x
-          - T` box would land behind the balcony, closing off the void the
-          railing is supposed to open onto. The real x=0 boundary (solid
-          wall flanking the balcony, door jambs, gap) is now built
-          explicitly from `area.walls` rects (rendered generically below)
-          and the bedroom's own wall face (Bedroom.tsx) — see layout.ts's
-          BALCONY_* comment for the full reasoning. */}
+          is skipped entirely: bounds.x now reaches -2.9 to cover the
+          bedroom's engawa deck (P4 engawa rework, renamed from "balcony"),
+          so the naive `bounds.x - T` box would land behind the deck,
+          closing off the void the railing is supposed to open onto. The
+          real x=0 boundary (the proper thick wall flanking the engawa's
+          door gap) is now built explicitly from `area.walls` rects
+          (rendered generically below, as real full-height boxes — same
+          idiom as every interior divider) and painted on both faces by
+          the bedroom's own wall meshes (Bedroom.tsx) — see layout.ts's
+          ENGAWA_* comment for the full reasoning. */}
       {perimeter.map((rect, i) => {
         if (area === "ground" && i === 2) return null; // west: bedroom/layout own this edge now
         return (

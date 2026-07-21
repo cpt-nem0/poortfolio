@@ -176,9 +176,11 @@ describe("bedroom furniture colliders", () => {
       { name: "clothes hanger stand", r: { x: 3.3, z: 5.35, w: 2.2, d: 0.5 } },
       { name: "shoe storage cubby", r: { x: 5.62, z: 5.35, w: 0.8, d: 0.45 } },
       { name: "perfume stand", r: { x: 6.55, z: 5.3, w: 1.0, d: 0.5 } },
-      { name: "balcony west rail", r: { x: -1.56, z: 2.3, w: 0.06, d: 2.2 } },
-      { name: "balcony north rail", r: { x: -1.5, z: 2.3, w: 1.5, d: 0.06 } },
-      { name: "balcony south rail", r: { x: -1.5, z: 4.44, w: 1.5, d: 0.06 } },
+      // x computed (-2.7 - 0.06), not a -2.76 literal — see layout.ts's ENGAWA_RAIL_W comment
+      { name: "engawa west rail", r: { x: -2.7 - 0.06, z: 2.1, w: 0.06, d: 2.5 } },
+      { name: "engawa north rail", r: { x: -2.7, z: 2.1, w: 2.7, d: 0.06 } },
+      { name: "engawa south rail", r: { x: -2.7, z: 4.54, w: 2.7, d: 0.06 } },
+      { name: "engawa fixed-glass pane", r: { x: -0.06, z: 2.5, w: 0.06, d: 0.9 } },
     ];
     for (let i = 0; i < bedroomRects.length; i++) {
       for (let j = i + 1; j < bedroomRects.length; j++) {
@@ -281,8 +283,14 @@ describe("bedroom furniture colliders", () => {
     expect(isBlocked(ground, 0.6, 2.1)).toBe(false);
   });
 
-  it("the old window table spot (removed — balcony wave) is open floor now", () => {
-    expect(isBlocked(ground, 0.35, 2.7)).toBe(false);
+  it("the old window table spot (removed — engawa wave) is open floor now", () => {
+    // moved from (0.35, 2.7): the P4 engawa rework's thicker west wall (its
+    // north segment now runs x -0.1..0.1, z 0-2.5, wider/longer than the
+    // old thin door-jamb it replaces) reaches within player-radius of that
+    // exact corner, which is an expected side effect of item 2 (the wall
+    // must read thick/solid), not a furniture regression — (0.5, 3.8) sits
+    // in the same general west-wall area, clear of the new wall's corner.
+    expect(isBlocked(ground, 0.5, 3.8)).toBe(false);
   });
 
   it("the old dragonslayer spot is now covered by the cat bed and its approach", () => {
@@ -303,65 +311,99 @@ describe("bedroom furniture colliders", () => {
   });
 });
 
-describe("west balcony (P4 balcony wave)", () => {
-  // The bedroom's west wall (x=0) was, pre-wave, a purely IMPLICIT collider
-  // — `isBlocked` blocks anything past the area's `bounds.x`, and there was
-  // never a matching entry in `walls`; House.tsx's generic perimeter loop
-  // drew the *visual* box, but collision-wise `bounds.x = 0` alone did all
-  // the work. Extending `bounds` west (to -1.7, for the balcony/deck) means
-  // that implicit wall moves with it — so the old "west wall" behavior at
-  // x=0 has to be rebuilt explicitly out of `walls` rects: a north block
-  // and a south block (each spanning the full x -1.7..0 depth) reconstruct
-  // the solid wall for z 0-2.3 and z 4.5-6, and two thin jamb rects (x
-  // -0.14..0) close the wall for z 2.3-2.7 and z 4.1-4.5 — leaving z
-  // 2.7-4.1 as the only gap in the x=0 plane: the sliding-door walk-through.
+describe("engawa (P4 engawa rework, renamed from 'balcony')", () => {
+  // REWORK (owner feedback: prior pass read "dark, boxed, paper-thin-walled").
+  // Five structural fixes, all pure rect arithmetic — see layout.ts's engawa
+  // comment block for the full derivation:
+  //   1. door widened z 2.7-4.1 (1.4m) → z 2.5-4.3 (1.8m), AND the "fixed"
+  //      glass half now has a real collider (it never did before — a player
+  //      could walk straight through painted glass).
+  //   2. the west wall rebuilt as a proper thick wall (same dividerWithDoor
+  //      idiom every interior divider uses, WALL_T=0.2, box x -0.1..0.1) —
+  //      replaces the old 0.14m-wide door-jamb slivers.
+  //   3. the deck extended west + deeper in z: {x:-1.5,z:2.3,w:1.5,d:2.2} →
+  //      {x:-2.7,z:2.1,w:2.7,d:2.5}; bounds grows to match (x -1.7→-2.9).
+  //   4. railing repositioned to the deck's new outer edges (still solid
+  //      colliders on all three sides — the visible wood-post rendering
+  //      lives in Bedroom.tsx, out of collision's scope).
 
-  it("bounds now include the balcony footprint west of x=0", () => {
-    expect(isBlocked(ground, -0.75, 3.4)).toBe(false); // was out-of-bounds pre-wave
+  it("bounds now include the engawa deck footprint west of x=0", () => {
+    expect(isBlocked(ground, -1.35, 3.35)).toBe(false); // deck center, was out-of-bounds pre-P4
   });
 
-  it("standing on the deck is walkable", () => {
-    expect(isBlocked(ground, -0.75, 3.4)).toBe(false);
+  it("standing on the enlarged deck is walkable, including its new far-west reach", () => {
+    expect(isBlocked(ground, -1.35, 3.35)).toBe(false); // deck center
+    expect(isBlocked(ground, -2.3, 3.35)).toBe(false); // deep west, clear of the west rail's radius
+    expect(isBlocked(ground, -1.35, 2.6)).toBe(false); // north half, clear of the north rail's radius (rail ends z=2.16, gap 0.44)
+    expect(isBlocked(ground, -1.35, 4.1)).toBe(false); // south half, clear of the south rail's radius (rail starts z=4.54, gap 0.44)
   });
 
-  it("walking through the sliding-door gap (z 2.7-4.1) crosses x=0 freely", () => {
-    expect(isBlocked(ground, 0.05, 3.4)).toBe(false);
-    expect(isBlocked(ground, -0.2, 3.4)).toBe(false);
-    const p = resolveMovement(ground, { x: 0.05, z: 3.4 }, { x: -0.25, z: 0 });
-    expect(p.x).toBeCloseTo(-0.2);
+  it("walking through the widened sliding-door gap (z 2.5-4.3) crosses x=0 freely — open half only", () => {
+    // the open half is z 3.4-4.3 (see the fixed-glass-pane test below for
+    // the OTHER half, which is now solid).
+    expect(isBlocked(ground, 0.05, 3.8)).toBe(false);
+    expect(isBlocked(ground, -0.2, 3.8)).toBe(false);
+    const p = resolveMovement(ground, { x: 0.05, z: 3.8 }, { x: -0.4, z: 0 });
+    expect(p.x).toBeCloseTo(-0.35);
   });
 
-  it("the wall is solid at x=0 outside the door gap (north and south of it)", () => {
-    expect(isBlocked(ground, -0.05, 2.5)).toBe(true); // north of the gap (jamb band)
-    expect(isBlocked(ground, -0.05, 4.3)).toBe(true); // south of the gap (jamb band)
+  it("the fixed glass pane (z 2.5-3.4, the OTHER half of the door) is now solid, not walk-through", () => {
+    // pre-rework this half had no collider at all — the glass was purely
+    // decorative and a player could walk straight through it.
+    expect(isBlocked(ground, 0.05, 2.9)).toBe(true);
+    expect(isBlocked(ground, -0.05, 2.9)).toBe(true);
+    const p = resolveMovement(ground, { x: 0.4, z: 2.9 }, { x: -0.4, z: 0 });
+    expect(p.x).toBeGreaterThan(0); // blocked before reaching x=0
   });
 
-  it("the blocked interior west of x=0 (outside the deck) cannot be reached", () => {
-    expect(isBlocked(ground, -1.0, 1.0)).toBe(true); // north block interior
-    expect(isBlocked(ground, -1.0, 5.0)).toBe(true); // south block interior
+  it("the thick west wall is solid at x=0 outside the door gap (north and south of it)", () => {
+    expect(isBlocked(ground, -0.05, 1.0)).toBe(true); // north segment interior
+    expect(isBlocked(ground, -0.05, 5.0)).toBe(true); // south segment interior
+    expect(isBlocked(ground, 0.05, 1.0)).toBe(true); // solid from the bedroom side too
+    expect(isBlocked(ground, 0.05, 5.0)).toBe(true);
   });
 
-  it("the west, north, and south railings block the player at the deck's edges", () => {
-    expect(isBlocked(ground, -1.53, 3.4)).toBe(true); // west rail
-    expect(isBlocked(ground, -0.75, 2.33)).toBe(true); // north rail
-    expect(isBlocked(ground, -0.75, 4.47)).toBe(true); // south rail
+  it("the west wall rects are the proper WALL_T=0.2 thick-wall boxes (same idiom as every interior divider)", () => {
+    const wallRects = [
+      { x: -0.1, z: 0, w: 0.2, d: 2.5 }, // north segment
+      { x: -0.1, z: 4.3, w: 0.2, d: 1.7 }, // south segment
+    ];
+    for (const rect of wallRects) {
+      const found = ground.walls.some(
+        (f) =>
+          f.x === rect.x &&
+          f.z === rect.z &&
+          f.w === rect.w &&
+          Math.abs(f.d - rect.d) < 1e-9
+      );
+      expect(found, `wall rect ${JSON.stringify(rect)} not found in walls`).toBe(true);
+    }
   });
 
-  it("cannot walk through the north or south rail off the deck", () => {
-    // small deltas so the target lands INSIDE the rail band itself (2.3-2.36
-    // / 4.44-4.5), not past it into the north/south wall block — isolates
-    // the rail as the thing doing the blocking, not the deeper wall.
-    const north = resolveMovement(ground, { x: -0.75, z: 2.5 }, { x: 0, z: -0.15 });
+  it("the blocked interior west of the deck (outside its z-band) cannot be reached", () => {
+    expect(isBlocked(ground, -1.5, 1.0)).toBe(true); // north block interior
+    expect(isBlocked(ground, -1.5, 5.0)).toBe(true); // south block interior
+  });
+
+  it("the west, north, and south railings block the player at the deck's new edges", () => {
+    expect(isBlocked(ground, -2.73, 3.35)).toBe(true); // west rail (deck center z)
+    expect(isBlocked(ground, -1.35, 2.13)).toBe(true); // north rail
+    expect(isBlocked(ground, -1.35, 4.57)).toBe(true); // south rail
+  });
+
+  it("cannot walk through the north or south rail off the enlarged deck", () => {
+    const north = resolveMovement(ground, { x: -1.35, z: 2.5 }, { x: 0, z: -0.5 });
     expect(north.z).toBeCloseTo(2.5); // rail blocks northward exit
-    const south = resolveMovement(ground, { x: -0.75, z: 4.3 }, { x: 0, z: 0.15 });
-    expect(south.z).toBeCloseTo(4.3); // rail blocks southward exit
+    const south = resolveMovement(ground, { x: -1.35, z: 4.2 }, { x: 0, z: 0.5 });
+    expect(south.z).toBeCloseTo(4.2); // rail blocks southward exit
   });
 
-  it("the balcony railing rects are present verbatim", () => {
+  it("the engawa railing rects are present verbatim at the new outer edges", () => {
     const railRects = [
-      { x: -1.56, z: 2.3, w: 0.06, d: 2.2 },
-      { x: -1.5, z: 2.3, w: 1.5, d: 0.06 },
-      { x: -1.5, z: 4.44, w: 1.5, d: 0.06 },
+      // x computed (-2.7 - 0.06), not a -2.76 literal — see layout.ts's ENGAWA_RAIL_W comment
+      { x: -2.7 - 0.06, z: 2.1, w: 0.06, d: 2.5 },
+      { x: -2.7, z: 2.1, w: 2.7, d: 0.06 },
+      { x: -2.7, z: 4.54, w: 2.7, d: 0.06 },
     ];
     for (const rect of railRects) {
       const found = ground.furniture.some(
@@ -371,27 +413,20 @@ describe("west balcony (P4 balcony wave)", () => {
     }
   });
 
-  it("the door-jamb rects are present verbatim IN walls (real, visible west wall)", () => {
-    const jambRects = [
-      { x: -0.14, z: 2.3, w: 0.14, d: 0.4 }, // north door jamb
-      { x: -0.14, z: 4.1, w: 0.14, d: 0.4 }, // south door jamb
-    ];
-    for (const rect of jambRects) {
-      const found = ground.walls.some(
-        (f) => f.x === rect.x && f.z === rect.z && f.w === rect.w && f.d === rect.d
-      );
-      expect(found, `wall rect ${JSON.stringify(rect)} not found in walls`).toBe(true);
-    }
+  it("the fixed-glass-pane collider rect is present verbatim in furniture", () => {
+    const found = ground.furniture.some(
+      (f) => f.x === -0.06 && f.z === 2.5 && f.w === 0.06 && f.d === 0.9
+    );
+    expect(found).toBe(true);
   });
 
-  it("BALCONY FREED: the flanking wall blocks moved to furniture (invisible), not walls", () => {
+  it("ENGAWA FREED: the flanking wall blocks live in furniture (invisible), not walls", () => {
     // House.tsx only draws visible WallBox meshes for `walls` rects — these
-    // two blocks previously rendered as giant dark slabs boxing the deck in
-    // (owner's complaint). They still collide identically (collision.ts ORs
-    // walls + furniture), just from the array House.tsx doesn't render.
+    // two blocks are the void backstop beyond the deck's own z-band, never
+    // meant to be seen (they'd render as giant flanking slabs otherwise).
     const blockRects = [
-      { x: -1.7, z: 0, w: 1.7, d: 2.3 }, // north block
-      { x: -1.7, z: 4.5, w: 1.7, d: 1.5 }, // south block
+      { x: -2.9, z: 0, w: 2.9, d: 2.1 }, // north block
+      { x: -2.9, z: 4.6, w: 2.9, d: 1.4 }, // south block
     ];
     for (const rect of blockRects) {
       const inFurniture = ground.furniture.some(
@@ -401,7 +436,22 @@ describe("west balcony (P4 balcony wave)", () => {
       const inWalls = ground.walls.some(
         (f) => f.x === rect.x && f.z === rect.z && f.w === rect.w && f.d === rect.d
       );
-      expect(inWalls, `block rect ${JSON.stringify(rect)} should NOT be in walls anymore`).toBe(false);
+      expect(inWalls, `block rect ${JSON.stringify(rect)} should NOT be in walls`).toBe(false);
+    }
+  });
+
+  it("the old (pre-extension) deck footprint is superseded, not double-defined", () => {
+    // the old deck's rail rects must be gone now that they've moved.
+    const oldRailRects = [
+      { x: -1.56, z: 2.3, w: 0.06, d: 2.2 },
+      { x: -1.5, z: 2.3, w: 1.5, d: 0.06 },
+      { x: -1.5, z: 4.44, w: 1.5, d: 0.06 },
+    ];
+    for (const rect of oldRailRects) {
+      const found = ground.furniture.some(
+        (f) => f.x === rect.x && f.z === rect.z && f.w === rect.w && f.d === rect.d
+      );
+      expect(found, `stale old rail rect ${JSON.stringify(rect)} should be gone`).toBe(false);
     }
   });
 });

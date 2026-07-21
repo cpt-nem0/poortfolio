@@ -21,10 +21,12 @@ describe("isBlocked", () => {
   });
 
   it("outside bounds is blocked", () => {
-    // x=-1 used to be outside bounds (old bounds.x=0); the P4 balcony wave
-    // extended bounds west to -1.7 to cover the bedroom's balcony deck, so
-    // -1 is now legitimately inside — use -2 (still past the new edge).
-    expect(isBlocked(ground, -2, 3)).toBe(true);
+    // x=-1 and x=-2 used to be outside bounds (old bounds.x=0, then -1.7);
+    // the P4 engawa rework extended bounds west again, to -2.9, to fit the
+    // deck's seating-nook extension — both are now legitimately inside
+    // (the deck's own footprint reaches x=-2.7). Use -3.5, still past the
+    // new edge with room for the player radius.
+    expect(isBlocked(ground, -3.5, 3)).toBe(true);
     expect(isBlocked(ground, 4, 7)).toBe(true);
   });
 
