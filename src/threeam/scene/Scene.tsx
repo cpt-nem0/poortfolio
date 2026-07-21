@@ -15,24 +15,25 @@ import { useThreeAm } from "@/threeam/state/store";
 import { playerPosition } from "@/threeam/world/runtime";
 
 /**
- * Renders its room only when the player is within `margin` metres of the
- * room's x-band. An off-screen room's meshes AND its fixture lights are
- * skipped by the renderer (an invisible group is pruned whole in
- * projectObject, lights included) — that's the whole point: forward-render
- * cost is lights×meshes, and the ground floor had grown to 24 lights / ~950
- * meshes all lit at once. The room stays MOUNTED (visibility toggle, not
- * unmount), so GLBs/textures never reload and there's no remount hitch.
- * Margin 3.5m tuned empirically (browser-measured): a neighbour renders
- * while its band is within 3.5m of the player — i.e. it stays lit through
- * the shared doorway and only culls once the player is deep enough that the
- * dividing wall occludes it (verified pop-free at every room + doorway).
- * Net effect: at most TWO rooms render at once, so active lights dropped
- * from 24→≤18 and the engawa went 27→60fps, 60fps across the whole floor.
+ * Renders its room only while the player is within `margin` of the room's
+ * x-band; an off-screen room's meshes AND its fixture lights are then culled
+ * whole by the renderer (an invisible group is pruned in projectObject,
+ * lights included). This matters because forward-render cost is lights×meshes
+ * and the ground floor grew to 24 lights / ~950 meshes lit at once (engawa
+ * ran 27fps). Why player-distance and not a camera frustum/floor test: those
+ * are occlusion-blind — the wide dollhouse view geometrically includes the
+ * neighbour's floor *behind the dividing wall*, so they render everything
+ * (40fps). Player-band is the cheap stand-in for "which rooms can I actually
+ * see," since walls mean you only see your room plus a neighbour once you're
+ * near its doorway. `margin` (4.5m) ≈ the on-screen half-width, so a
+ * neighbour renders as soon as its doorway *could* edge into frame — that's
+ * what kills the void the owner caught (too-tight margin dropped a room while
+ * its doorway was still visible). Rooms stay MOUNTED (no GLB/texture reload).
  */
 function RoomCull({
   minX,
   maxX,
-  margin = 3.5,
+  margin = 4.5,
   children,
 }: {
   minX: number;
@@ -96,8 +97,10 @@ export default function Scene() {
       <House />
       {area === "ground" && (
         <Suspense fallback={null}>
-          {/* per-room culling — see RoomCull. Bands: bedroom (+engawa) x -2.9..8,
-              workspace 8..16, music 16..22. */}
+          {/* per-room culling by visible-floor overlap — see RoomCull. Bands:
+              bedroom (+engawa) x -2.9..8, workspace 8..16, music 16..22. A
+              room renders only when the floor it stands on is on screen, so
+              no void ever shows and 60fps holds. */}
           <RoomCull minX={-2.9} maxX={8}>
             <Bedroom />
           </RoomCull>
