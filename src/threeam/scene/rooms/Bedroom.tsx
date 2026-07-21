@@ -247,15 +247,126 @@ const DOOR_PANEL_W = ENGAWA_DOOR_W / 2; // 0.9 — each panel covers half the (n
 const DOOR_GLASS_FIXED_X = DOOR_FRAME_FAR_X + 0.01;
 const DOOR_GLASS_OPEN_X = DOOR_GLASS_FIXED_X + 0.03; // slid 3cm outward
 
-// bonsai pedestal — RESERVED, comment-only, NOT built this wave (owner's
-// ask: structure only — wall/door/deck/rail — dressing is a separate later
-// wave). Rough spot for when it lands: deck's SOUTH side, around
-// x -1.6..-1.2, z 4.2-4.5 — clear of the south rail's 6cm band (z
-// 4.54-4.60) and the door gap's walk line (z 3.4-4.3 is the open half; a
-// pedestal in z 4.2-4.3 would still graze it, so keep the actual footprint
-// z ≥ 4.3 when it's built). Dressing-wave note (not this pass): folding
-// chair + glass tea table, railing plants, paper lantern, eave overhang,
-// moonlight shaft.
+// ── DRESSING WAVE (P4 engawa dressing, this pass — owner's ask: the deck
+// read "structurally sound but still pitch black and empty" after the P4
+// engawa rework above; light it, give it life). Five pieces, none of them
+// touch the structural rects above (wall/door/deck/rail all stay exactly
+// as the rework left them):
+//   1. eave overhang — a wooden beam/roofline off the wall's engawa face,
+//      reads "covered veranda."
+//   2. paper lantern — hangs from the eave near the door, warm pointLight
+//      NESTED inside it (this room's only new light source this pass; the
+//      scene's 2-shadow-caster budget, both in MusicNook, is untouched —
+//      no castShadow here).
+//   3. folding chair + glass tea table — deck's north half (z 2.1-3.4,
+//      clear of the walk gap). NEW colliders: layout.ts's
+//      ENGAWA_TEA_TABLE_RECT/ENGAWA_CHAIR_RECT (TDD_RECT/CHAIR_RECT below
+//      copy them verbatim, same convention as every other collider in this
+//      file — see layout.ts's DRESSING WAVE comment for the clearance
+//      arithmetic, and furniture.test.ts/layout.test.ts's "tea nook"
+//      tests for the RED→GREEN proof).
+//   4. railing plants (2-3) + a bonsai-pedestal PLACEHOLDER plant — all
+//      visual-only, NO new colliders. Unlike this room's two corner floor
+//      plants (which are freestanding and do collide), these tuck flush
+//      against a rail or the reserved pedestal spot — the reserved spot
+//      (x -1.6..-1.2, z 4.2-4.5) already sits close enough to the south
+//      rail (z-min 4.54) that most of it falls inside the rail's own 0.35
+//      player-radius zone anyway (see furniture.test.ts's "path to the
+//      bonsai pedestal" test), so a player was never going to stand
+//      dead-center on it — a dedicated collider would be redundant. The
+//      real bonsai GLB is CC-BY-pending; this placeholder swaps out then.
+//   5. moonlight shaft — static god-rays through the doorway, night-only
+//      atmosphere, SURFACES not lights (no new light source, no-invisible-
+//      light rule holds — the "source" is the open night sky beyond the
+//      deck). DYNAMIC moon→sun-with-time-of-day belongs to Plan 5's
+//      day/night system; this is a placeholder for that.
+const ENGAWA_EAVE_WALL_X = -ENGAWA_WALL_T_HALF; // -0.1, flush with the wall's engawa-side (west) face — same plane the exterior wall paint sits proud of
+const ENGAWA_EAVE_FAR_X = -2.4; // west extent, owner's spec
+const ENGAWA_EAVE_Y0 = 2.5; // underside
+const ENGAWA_EAVE_Y1 = 2.7; // topside (both < WALL_H=2.8, so the eave reads as a beam partway up the wall, not a roofline at the very top)
+const ENGAWA_EAVE_H = ENGAWA_EAVE_Y1 - ENGAWA_EAVE_Y0; // 0.2
+const ENGAWA_EAVE_W = ENGAWA_EAVE_WALL_X - ENGAWA_EAVE_FAR_X; // 2.3
+const ENGAWA_EAVE_Z0 = DECK_RECT.z; // 2.1 — spans the deck's own z-range exactly
+const ENGAWA_EAVE_Z1 = DECK_RECT.z + DECK_RECT.d; // 4.6
+const ENGAWA_EAVE_D = ENGAWA_EAVE_Z1 - ENGAWA_EAVE_Z0; // 2.5
+// support brackets — knee braces from the wall down-and-out to the
+// overhang's underside, angle/length derived (never hand-guessed), same
+// atan2/hypot idiom the A-frame clothes rack's legs use above.
+const ENGAWA_BRACKET_OUT_X = -1.5; // outer attach point
+const ENGAWA_BRACKET_OUT_Y = 2.15; // outer attach point, below the eave's underside — angled down-and-out like a knee brace
+const ENGAWA_BRACKET_DX = ENGAWA_BRACKET_OUT_X - ENGAWA_EAVE_WALL_X; // -1.4
+const ENGAWA_BRACKET_DY = ENGAWA_BRACKET_OUT_Y - ENGAWA_EAVE_Y0; // -0.35
+const ENGAWA_BRACKET_LEN = Math.hypot(ENGAWA_BRACKET_DX, ENGAWA_BRACKET_DY);
+const ENGAWA_BRACKET_ANGLE = Math.atan2(ENGAWA_BRACKET_DY, ENGAWA_BRACKET_DX); // rotation.z for a box whose local +X is its long axis
+const ENGAWA_BRACKET_ZS = [ENGAWA_EAVE_Z0 + 0.5, ENGAWA_EAVE_Z1 - 0.5]; // 2.6, 4.1 — roughly north/south thirds of the deck
+
+// paper lantern — hangs from the eave near the door (x -1.0, well clear of
+// the walk gap's x=0 threshold and inside the eave's own x -2.4..-0.1
+// coverage), spills warm light both across the deck and back through the
+// open doorway onto the room floor.
+const ENGAWA_LANTERN_X = -1.0;
+const ENGAWA_LANTERN_Y = 2.0;
+const ENGAWA_LANTERN_Z = 3.8;
+const ENGAWA_LANTERN_R = 0.15;
+const ENGAWA_LANTERN_H = 0.32;
+// cord: from the eave's underside down to the lantern's own top cap —
+// derived, not hand-guessed.
+const ENGAWA_LANTERN_CORD_LEN = ENGAWA_EAVE_Y0 - (ENGAWA_LANTERN_Y + ENGAWA_LANTERN_H / 2);
+
+// tea nook — collider rects copied VERBATIM from layout.ts's
+// ENGAWA_TEA_TABLE_RECT/ENGAWA_CHAIR_RECT (source of truth stays there,
+// same convention as every other collider in this file).
+const TEA_TABLE_RECT = { x: -1.925, z: 2.475, w: 0.45, d: 0.45 }; // center -1.7,2.7
+const CHAIR_RECT = { x: -2.325, z: 2.575, w: 0.35, d: 0.35 }; // center -2.15,2.75
+const TEA_TABLE_CENTER = { x: TEA_TABLE_RECT.x + TEA_TABLE_RECT.w / 2, z: TEA_TABLE_RECT.z + TEA_TABLE_RECT.d / 2 };
+const CHAIR_CENTER = { x: CHAIR_RECT.x + CHAIR_RECT.w / 2, z: CHAIR_RECT.z + CHAIR_RECT.d / 2 };
+// chair angled toward the table/view — direction derived from the two
+// centers, not a chosen angle.
+const CHAIR_FACE_ANGLE = Math.atan2(
+  TEA_TABLE_CENTER.x - CHAIR_CENTER.x,
+  TEA_TABLE_CENTER.z - CHAIR_CENTER.z
+);
+
+// railing plants (2-3, visual only, no collider) — against the west/north
+// rails, distinct pots + species from this room's own corner plants
+// (slate-blue "#55677a" and terracotta "#a04b3a") and from each other.
+const RAILING_PLANTS: {
+  x: number;
+  z: number;
+  potColor: string;
+  leafColor: string;
+  kind: "blade" | "bush" | "spike";
+}[] = [
+  { x: -2.55, z: 4.0, potColor: "#8a7355", leafColor: "#3f8f5a", kind: "blade" }, // west rail, south of the nook
+  { x: -0.6, z: 2.25, potColor: "#3f4a52", leafColor: "#5a9c6e", kind: "bush" }, // north rail, near the door/lantern
+  { x: -2.55, z: 2.25, potColor: "#6b7f6b", leafColor: "#2e6e54", kind: "spike" }, // northwest corner
+];
+
+// bonsai pedestal — the reserved spot (x -1.6..-1.2, z 4.2-4.5, layout.ts's
+// RESERVE comment) gets a wooden stand + a SIMPLE placeholder potted plant
+// (mini trunk + foliage clusters, standing in for a proper bonsai). No new
+// collider — see the DRESSING WAVE comment above for why.
+const BONSAI_PEDESTAL_X = -1.4;
+const BONSAI_PEDESTAL_Z = 4.35;
+const BONSAI_PEDESTAL_H = 0.35;
+
+// moonlight shaft — 3 static translucent quads, night-only atmosphere,
+// slanting from the upper door opening (outside, y≈2.2) down onto the
+// bedroom floor just inside (landing x 0.4-2.0, z 2.8-4.2, per the brief).
+// Each shaft is a thin box whose LONG axis (local Y) is rotated about Z to
+// point from its outside/high start to its inside/low end — same
+// diagonal-streak idiom this file's mirror highlight already uses
+// (MIRROR_GLASS_X's rotation={[0,0,0.55]} streak below), just derived via
+// atan2/hypot instead of a hand-picked angle. z stays fixed per shaft (its
+// own "width" dimension spans across z), so 3 shafts at different z fan
+// across the doorway/landing zone. STATIC this wave — DYNAMIC moon→sun-
+// with-time-of-day belongs to Plan 5's day/night system; swap this for a
+// driven version there.
+const MOON_SHAFTS: { xs: number; ys: number; xe: number; ye: number; z: number; zWidth: number; opacity: number }[] = [
+  { xs: -0.3, ys: 2.2, xe: 0.6, ye: 0, z: 3.0, zWidth: 0.5, opacity: 0.16 },
+  { xs: -0.2, ys: 2.2, xe: 1.2, ye: 0, z: 3.5, zWidth: 0.55, opacity: 0.14 },
+  { xs: -0.1, ys: 2.2, xe: 1.8, ye: 0, z: 4.0, zWidth: 0.6, opacity: 0.12 },
+];
 
 // manga dresser (Task 8) — REMOVED FOR NOW (P4 recenter): its rect (x
 // 2.8-4.4) overlapped the centered/enlarged bed's x-span (3.0-5.0), and
@@ -868,8 +979,260 @@ export function Bedroom() {
         );
       })}
 
-      {/* bonsai pedestal — RESERVED, not built (see the reserve comment in
-          the consts block above for the rough spot + dressing-wave note). */}
+      {/* ── eave overhang — wooden beam off the wall's engawa face, spanning
+          the deck's own z-range, reading as "covered veranda." Two knee-
+          brace support brackets, angle/length derived (ENGAWA_BRACKET_*),
+          not hand-guessed. No collider — well above head height, same
+          "overhead, no XZ footprint" convention as the sconce/posters. ── */}
+      <mesh
+        position={[
+          R.x + (ENGAWA_EAVE_WALL_X + ENGAWA_EAVE_FAR_X) / 2,
+          (ENGAWA_EAVE_Y0 + ENGAWA_EAVE_Y1) / 2,
+          R.z + (ENGAWA_EAVE_Z0 + ENGAWA_EAVE_Z1) / 2,
+        ]}
+      >
+        <boxGeometry args={[ENGAWA_EAVE_W, ENGAWA_EAVE_H, ENGAWA_EAVE_D]} />
+        <meshStandardMaterial color="#3a2a1e" />
+      </mesh>
+      {ENGAWA_BRACKET_ZS.map((z, i) => (
+        <mesh
+          key={`eave-bracket-${i}`}
+          position={[
+            R.x + (ENGAWA_EAVE_WALL_X + ENGAWA_BRACKET_OUT_X) / 2,
+            (ENGAWA_EAVE_Y0 + ENGAWA_BRACKET_OUT_Y) / 2,
+            R.z + z,
+          ]}
+          rotation={[0, 0, ENGAWA_BRACKET_ANGLE]}
+        >
+          <boxGeometry args={[ENGAWA_BRACKET_LEN, 0.05, 0.05]} />
+          <meshStandardMaterial color="#4a3a2e" />
+        </mesh>
+      ))}
+
+      {/* ── paper lantern — hangs from the eave near the door (x -1.0, well
+          clear of the door's own x=0 threshold, inside the eave's
+          -2.4..-0.1 coverage). Warm off-white paper, slight emissive glow
+          + a warm pointLight NESTED inside this same group (rotation-safe
+          by construction), NO castShadow — the scene's 2-shadow-caster
+          budget (both in MusicNook) stays untouched. This is the deck's
+          own fixture light AND spills back through the open door
+          threshold into the room (threshold sits ~2.8m away in x+z,
+          comfortably inside distance=5's falloff). ── */}
+      <group position={[R.x + ENGAWA_LANTERN_X, ENGAWA_LANTERN_Y, R.z + ENGAWA_LANTERN_Z]}>
+        {/* cord, eave underside to lantern top cap */}
+        <mesh position={[0, ENGAWA_LANTERN_H / 2 + ENGAWA_LANTERN_CORD_LEN / 2, 0]}>
+          <cylinderGeometry args={[0.006, 0.006, ENGAWA_LANTERN_CORD_LEN, 5]} />
+          <meshStandardMaterial color="#2e2116" />
+        </mesh>
+        {/* top + bottom caps */}
+        <mesh position={[0, ENGAWA_LANTERN_H / 2, 0]}>
+          <cylinderGeometry args={[0.05, ENGAWA_LANTERN_R * 0.85, 0.03, 10]} />
+          <meshStandardMaterial color="#3a2a1e" />
+        </mesh>
+        <mesh position={[0, -ENGAWA_LANTERN_H / 2, 0]}>
+          <cylinderGeometry args={[ENGAWA_LANTERN_R * 0.85, 0.05, 0.03, 10]} />
+          <meshStandardMaterial color="#3a2a1e" />
+        </mesh>
+        {/* paper body — warm off-white, slight emissive so it glows even
+            before the nested light's own falloff is factored in */}
+        <mesh>
+          <cylinderGeometry args={[ENGAWA_LANTERN_R, ENGAWA_LANTERN_R, ENGAWA_LANTERN_H, 12, 1, true]} />
+          <meshStandardMaterial color="#f5ecd8" emissive="#f5ecd8" emissiveIntensity={0.45} side={2} />
+        </mesh>
+        {/* the fixture's own light — NESTED (rotation-safe by
+            construction, matches every other fixture-light in this file) */}
+        <pointLight color="#ffd9a0" intensity={5} distance={5} decay={2} />
+      </group>
+
+      {/* ── tea nook — collider TEA_TABLE_RECT/CHAIR_RECT, copied verbatim
+          from layout.ts's ENGAWA_TEA_TABLE_RECT/ENGAWA_CHAIR_RECT (see the
+          DRESSING WAVE comment above for the clearance arithmetic). Low
+          glass-top tea table (4 thin legs + a transparent round top + a
+          tiny teacup, each layer ≥6mm proud of the last: leg tops at
+          y=0.28, glass bottom at y≈0.2925 — 12.5mm clear; glass top at
+          y≈0.3075, teacup bottom at y=0.32 — 12.5mm clear) and a wooden
+          folding chair angled toward it (CHAIR_FACE_ANGLE, derived from
+          the two centers via atan2, not a chosen angle). ── */}
+      <group position={[R.x + TEA_TABLE_CENTER.x, 0, R.z + TEA_TABLE_CENTER.z]}>
+        {[
+          [-1, -1],
+          [-1, 1],
+          [1, -1],
+          [1, 1],
+        ].map(([sx, sz], i) => (
+          <mesh
+            key={i}
+            position={[sx * (TEA_TABLE_RECT.w / 2 - 0.04), 0.14, sz * (TEA_TABLE_RECT.d / 2 - 0.04)]}
+          >
+            <cylinderGeometry args={[0.012, 0.012, 0.28, 6]} />
+            <meshStandardMaterial color="#6b4128" />
+          </mesh>
+        ))}
+        {/* glass top — thin transparent disc, 12.5mm proud of the leg tops */}
+        <mesh position={[0, 0.3, 0]}>
+          <cylinderGeometry args={[TEA_TABLE_RECT.w / 2 - 0.03, TEA_TABLE_RECT.w / 2 - 0.03, 0.015, 16]} />
+          <meshStandardMaterial color="#a8c8d8" transparent opacity={0.3} />
+        </mesh>
+        {/* tiny teacup, 12.5mm proud of the glass top */}
+        <mesh position={[0.08, 0.335, -0.05]}>
+          <cylinderGeometry args={[0.025, 0.02, 0.03, 8]} />
+          <meshStandardMaterial color="#f2ecd8" />
+        </mesh>
+      </group>
+      <group position={[R.x + CHAIR_CENTER.x, 0, R.z + CHAIR_CENTER.z]} rotation={[0, CHAIR_FACE_ANGLE, 0]}>
+        {/* seat */}
+        <mesh position={[0, 0.42, 0]}>
+          <boxGeometry args={[CHAIR_RECT.w - 0.06, 0.03, CHAIR_RECT.d - 0.06]} />
+          <meshStandardMaterial color="#8a5a3b" />
+        </mesh>
+        {/* backrest — angled slat, local -z (matches the sofa's own
+            "backrest at local -z, away from the open front" convention) */}
+        <mesh position={[0, 0.62, -(CHAIR_RECT.d / 2 - 0.04)]} rotation={[-0.15, 0, 0]}>
+          <boxGeometry args={[CHAIR_RECT.w - 0.08, 0.34, 0.025]} />
+          <meshStandardMaterial color="#8a5a3b" />
+        </mesh>
+        {/* X-braced folding legs, front and back pairs */}
+        {[-1, 1].map((side) => (
+          <group key={side}>
+            <mesh position={[side * (CHAIR_RECT.w / 2 - 0.03), 0.21, 0]} rotation={[0.5, 0, 0]}>
+              <cylinderGeometry args={[0.012, 0.012, 0.46, 6]} />
+              <meshStandardMaterial color="#4a3a2e" />
+            </mesh>
+            <mesh position={[side * (CHAIR_RECT.w / 2 - 0.03), 0.21, 0]} rotation={[-0.5, 0, 0]}>
+              <cylinderGeometry args={[0.012, 0.012, 0.46, 6]} />
+              <meshStandardMaterial color="#4a3a2e" />
+            </mesh>
+          </group>
+        ))}
+      </group>
+
+      {/* ── railing plants (2-3, visual only, NO collider — small pots
+          tucked against a rail, see the DRESSING WAVE comment above for
+          why). Varied pots + species silhouettes (RAILING_PLANTS above),
+          distinct from this room's own corner plants. ── */}
+      {RAILING_PLANTS.map((p, i) => (
+        <group key={`rail-plant-${i}`} position={[R.x + p.x, 0, R.z + p.z]}>
+          <mesh position={[0, 0.1, 0]}>
+            <cylinderGeometry args={[0.11, 0.08, 0.2, 8]} />
+            <meshStandardMaterial color={p.potColor} />
+          </mesh>
+          {p.kind === "blade" &&
+            [0, 1, 2].map((k) => {
+              const a = (k / 3) * Math.PI * 2 + 0.5;
+              const h = 0.28 + (k % 2) * 0.1;
+              return (
+                <mesh
+                  key={k}
+                  position={[Math.sin(a) * 0.025, 0.2 + h / 2, Math.cos(a) * 0.025]}
+                  rotation={[0, a, 0.1]}
+                >
+                  <boxGeometry args={[0.045, h, 0.016]} />
+                  <meshStandardMaterial color={p.leafColor} />
+                </mesh>
+              );
+            })}
+          {p.kind === "bush" &&
+            [0, 1, 2, 3].map((k) => {
+              const a = (k / 4) * Math.PI * 2;
+              const s = 0.05 + (k % 2) * 0.015;
+              return (
+                <mesh key={k} position={[Math.sin(a) * 0.045, 0.2 + s, Math.cos(a) * 0.045]}>
+                  <sphereGeometry args={[s, 7, 6]} />
+                  <meshStandardMaterial color={p.leafColor} />
+                </mesh>
+              );
+            })}
+          {p.kind === "spike" &&
+            [0, 1, 2, 3, 4].map((k) => {
+              const a = (k / 5) * Math.PI * 2;
+              return (
+                <mesh
+                  key={k}
+                  position={[Math.sin(a) * 0.03, 0.28, Math.cos(a) * 0.03]}
+                  rotation={[Math.PI * 0.12, a, 0]}
+                >
+                  <coneGeometry args={[0.02, 0.22, 5]} />
+                  <meshStandardMaterial color={p.leafColor} />
+                </mesh>
+              );
+            })}
+        </group>
+      ))}
+
+      {/* ── bonsai pedestal — reserved spot (layout.ts's RESERVE comment,
+          x -1.6..-1.2, z 4.2-4.5), wooden stand + a SIMPLE placeholder
+          potted plant (mini trunk + foliage clusters). NO collider — see
+          the DRESSING WAVE comment above for why (the spot already sits
+          inside the south rail's own player-radius zone). bonsai GLB
+          lands here — CC-BY pending; this placeholder swaps out. ── */}
+      <group position={[R.x + BONSAI_PEDESTAL_X, 0, R.z + BONSAI_PEDESTAL_Z]}>
+        <mesh position={[0, BONSAI_PEDESTAL_H / 2, 0]}>
+          <cylinderGeometry args={[0.11, 0.13, BONSAI_PEDESTAL_H, 10]} />
+          <meshStandardMaterial color="#4a3a2e" />
+        </mesh>
+        <mesh position={[0, BONSAI_PEDESTAL_H + 0.01, 0]}>
+          <cylinderGeometry args={[0.13, 0.13, 0.02, 10]} />
+          <meshStandardMaterial color="#6b4128" />
+        </mesh>
+        {/* small pot, flush on the cap (same flush-stack convention the
+            nightstand's body/top slab uses) */}
+        <mesh position={[0, BONSAI_PEDESTAL_H + 0.06, 0]}>
+          <cylinderGeometry args={[0.09, 0.07, 0.08, 8]} />
+          <meshStandardMaterial color="#7a5a3f" />
+        </mesh>
+        {/* trunk, flush on the pot */}
+        <mesh position={[0, BONSAI_PEDESTAL_H + 0.17, 0]} rotation={[0, 0, 0.12]}>
+          <cylinderGeometry args={[0.012, 0.018, 0.14, 6]} />
+          <meshStandardMaterial color="#4a3a2e" />
+        </mesh>
+        {/* foliage clusters, stand-in for a real bonsai canopy */}
+        {[0, 1, 2].map((k) => {
+          const a = (k / 3) * Math.PI * 2;
+          const s = 0.05 + (k % 2) * 0.012;
+          return (
+            <mesh key={k} position={[Math.sin(a) * 0.04, BONSAI_PEDESTAL_H + 0.26, Math.cos(a) * 0.04]}>
+              <sphereGeometry args={[s, 7, 6]} />
+              <meshStandardMaterial color="#3f8f5a" />
+            </mesh>
+          );
+        })}
+      </group>
+
+      {/* ── moonlight shaft — see MOON_SHAFTS above for the geometry
+          derivation + the static/DYNAMIC-later note. Each is a thin box
+          (meshBasicMaterial — unlit, reads as a pure translucent SURFACE,
+          not a light source, so the no-invisible-light rule holds) whose
+          long axis is rotated about Z to point from its outside/high start
+          toward its inside/low end — same diagonal-streak idiom this
+          file's mirror highlight already uses, just derived via atan2/
+          hypot instead of a hand-picked angle. Additive-ish blending, low
+          opacity, depthWrite off so the 3 overlapping shafts don't
+          z-fight. STATIC this wave; DYNAMIC moon→sun-with-time-of-day
+          belongs to Plan 5's day/night system — swap this for a driven
+          version there. ── */}
+      {MOON_SHAFTS.map((s, i) => {
+        const dx = s.xe - s.xs;
+        const dy = s.ye - s.ys;
+        const length = Math.hypot(dx, dy);
+        const angle = Math.atan2(-dx, dy); // rotation.z for a box whose local +Y is its long axis
+        return (
+          <mesh
+            key={`moon-shaft-${i}`}
+            position={[R.x + (s.xs + s.xe) / 2, (s.ys + s.ye) / 2, R.z + s.z]}
+            rotation={[0, 0, angle]}
+          >
+            <boxGeometry args={[0.02, length, s.zWidth]} />
+            <meshBasicMaterial
+              color="#aebbe0"
+              transparent
+              opacity={s.opacity}
+              blending={THREE.AdditiveBlending}
+              depthWrite={false}
+              side={2}
+            />
+          </mesh>
+        );
+      })}
 
       {/* ── bed — collider {2.9,0.33,2.2,2.5} (SUPER-KING pass: centered on
           the north wall, x 2.9-5.1 around the room's x-center 4.0 —

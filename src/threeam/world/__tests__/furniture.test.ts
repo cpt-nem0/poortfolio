@@ -125,6 +125,8 @@ describe("bedroom furniture colliders", () => {
       { x: 3.3, z: 5.35, w: 2.2, d: 0.5 }, // clothes hanger stand
       { x: 5.62, z: 5.35, w: 0.8, d: 0.45 }, // shoe storage cubby (wardrobe corner upgrade)
       { x: 6.55, z: 5.3, w: 1.0, d: 0.5 }, // perfume stand
+      { x: -1.925, z: 2.475, w: 0.45, d: 0.45 }, // engawa tea table (DRESSING WAVE)
+      { x: -2.325, z: 2.575, w: 0.35, d: 0.35 }, // engawa chair (DRESSING WAVE)
     ];
 
     for (const rect of bedroomRects) {
@@ -181,6 +183,9 @@ describe("bedroom furniture colliders", () => {
       { name: "engawa north rail", r: { x: -2.7, z: 2.1, w: 2.7, d: 0.06 } },
       { name: "engawa south rail", r: { x: -2.7, z: 4.54, w: 2.7, d: 0.06 } },
       { name: "engawa fixed-glass pane", r: { x: -0.06, z: 2.5, w: 0.06, d: 0.9 } },
+      // DRESSING WAVE — tea nook, deck's north half
+      { name: "engawa tea table", r: { x: -1.925, z: 2.475, w: 0.45, d: 0.45 } },
+      { name: "engawa chair", r: { x: -2.325, z: 2.575, w: 0.35, d: 0.35 } },
     ];
     for (let i = 0; i < bedroomRects.length; i++) {
       for (let j = i + 1; j < bedroomRects.length; j++) {
@@ -276,6 +281,14 @@ describe("bedroom furniture colliders", () => {
     expect(isBlocked(ground, 5.62, 5.35)).toBe(true); // rect corner
   });
 
+  it("engawa tea table blocks players standing on it (DRESSING WAVE)", () => {
+    expect(isBlocked(ground, -1.7, 2.7)).toBe(true); // rect center
+  });
+
+  it("engawa chair blocks players standing on it (DRESSING WAVE)", () => {
+    expect(isBlocked(ground, -2.15, 2.75)).toBe(true); // rect center
+  });
+
   it("the old bed/nightstand spots along the west wall are open floor now", () => {
     expect(isBlocked(ground, 1.5, 3.5)).toBe(false); // old bed footprint
     // old single-nightstand footprint from the P4-recenter pass, still
@@ -334,7 +347,11 @@ describe("engawa (P4 engawa rework, renamed from 'balcony')", () => {
   it("standing on the enlarged deck is walkable, including its new far-west reach", () => {
     expect(isBlocked(ground, -1.35, 3.35)).toBe(false); // deck center
     expect(isBlocked(ground, -2.3, 3.35)).toBe(false); // deep west, clear of the west rail's radius
-    expect(isBlocked(ground, -1.35, 2.6)).toBe(false); // north half, clear of the north rail's radius (rail ends z=2.16, gap 0.44)
+    // north-half probe moved from (-1.35,2.6): the DRESSING WAVE's tea
+    // table (center -1.7,2.7) now sits there on purpose (see the "tea
+    // nook" describe below) — (-0.5,2.6) is still north-half/clear of the
+    // north rail's radius, but east of the nook entirely.
+    expect(isBlocked(ground, -0.5, 2.6)).toBe(false);
     expect(isBlocked(ground, -1.35, 4.1)).toBe(false); // south half, clear of the south rail's radius (rail starts z=4.54, gap 0.44)
   });
 
@@ -453,6 +470,70 @@ describe("engawa (P4 engawa rework, renamed from 'balcony')", () => {
       );
       expect(found, `stale old rail rect ${JSON.stringify(rect)} should be gone`).toBe(false);
     }
+  });
+
+  // DRESSING WAVE (tea nook, deck's north half) — TDD'd before landing:
+  // these probes assert both new colliders block, AND that the two things
+  // the brief called out explicitly stay clear of them (the z 3.4-4.3
+  // walk-through gap, and the path south to the reserved bonsai pedestal
+  // spot).
+  describe("tea nook (DRESSING WAVE)", () => {
+    it("the tea table and chair block the player at their centers", () => {
+      expect(isBlocked(ground, -1.7, 2.7)).toBe(true); // tea table
+      expect(isBlocked(ground, -2.15, 2.75)).toBe(true); // chair
+    });
+
+    it("the nook's rects don't overlap the west/north rails or the fixed glass pane (rect-level, matches the brief's ask)", () => {
+      // Rect-level non-overlap is the actual requirement (furniture.test.ts's
+      // exhaustive pairwise check asserts this for every pair). The nook
+      // hugs the corner tightly enough that the rail's and the chair's
+      // OWN 0.35 player-radius zones do overlap each other (37.5cm of rect
+      // gap minus 2×0.35 radius has no room left) — a player can't squeeze
+      // directly between the rail and the chair, which reads as "furniture
+      // snug against the railing," same as any real veranda nook, not a
+      // bug. The room-side approach (below) is what actually needs to stay
+      // open, and does.
+      const intersects = (a: Rect, b: Rect) =>
+        a.x < b.x + b.w && b.x < a.x + a.w && a.z < b.z + b.d && b.z < a.z + a.d;
+      const chair = { x: -2.325, z: 2.575, w: 0.35, d: 0.35 };
+      const table = { x: -1.925, z: 2.475, w: 0.45, d: 0.45 };
+      const railW = { x: -2.7 - 0.06, z: 2.1, w: 0.06, d: 2.5 };
+      const railN = { x: -2.7, z: 2.1, w: 2.7, d: 0.06 };
+      const glass = { x: -0.06, z: 2.5, w: 0.06, d: 0.9 };
+      for (const other of [railW, railN, glass]) {
+        expect(intersects(chair, other)).toBe(false);
+        expect(intersects(table, other)).toBe(false);
+      }
+    });
+
+    it("the room-side approach to the nook (east of the table) stays walkable", () => {
+      expect(isBlocked(ground, -1.0, 2.7)).toBe(false);
+    });
+
+    it("the walk-through gap (z 3.4-4.3) stays fully clear of the nook", () => {
+      // table's south edge (z 2.925) sits 47.5cm north of the gap's own
+      // z-min (3.4) — nowhere near the nook.
+      expect(isBlocked(ground, -1.7, 3.6)).toBe(false); // deck side of the open gap, in line with the table's x
+      expect(isBlocked(ground, -0.2, 3.8)).toBe(false); // inside the gap itself (pre-existing probe, still true post-nook)
+    });
+
+    it("a path from the walk gap south to the reserved bonsai pedestal spot stays clear", () => {
+      // bonsai spot: x -1.6..-1.2, z 4.2-4.5 (layout.ts's RESERVE comment).
+      // The whole south portion of the deck (z 3.4-4.6) is untouched by
+      // the nook (which sits entirely north of z 2.925), so a straight
+      // walk along that band is unobstructed the whole way up to the
+      // spot's own northern approach (4.15) — NOTE: the spot's own z-range
+      // (4.2-4.5) sits close enough to the south rail (z-min 4.54) that
+      // most of it already falls inside the rail's own 0.35 player-radius
+      // zone (pre-existing, unrelated to this pass — the rail starts at
+      // z=4.54, so anything past z≈4.19 is within 0.35 of it), which is
+      // exactly why the placeholder plant landing there gets no new
+      // collider of its own: a player was never going to stand dead-center
+      // on it anyway, same as standing flush against any railing.
+      expect(isBlocked(ground, -1.4, 3.6)).toBe(false);
+      expect(isBlocked(ground, -1.4, 4.0)).toBe(false);
+      expect(isBlocked(ground, -1.4, 4.15)).toBe(false); // the reserved spot's own northern approach
+    });
   });
 });
 

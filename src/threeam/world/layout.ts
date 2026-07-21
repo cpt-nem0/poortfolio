@@ -108,13 +108,36 @@ function dividerWithDoor(
 //    unaffected by any of this (posts/rail are visual-only additions on
 //    top of the existing collider footprint).
 //
-// 5. RESERVE (comment only, NOT built this wave): a bonsai-pedestal spot
-//    on the deck's SOUTH side, roughly x -1.6..-1.2, z 4.2-4.5 (clear of
-//    the south rail's 6cm band and the door-gap's walk line). The rest of
-//    the deck's dressing — folding chair + glass tea table, railing
-//    plants, paper lantern, eave overhang, moonlight shaft — is a
-//    separate, later wave; nothing beyond structure (wall/door/deck/rail)
-//    lands here.
+// 5. RESERVE (comment only, still NOT built): a bonsai-pedestal spot on the
+//    deck's SOUTH side, roughly x -1.6..-1.2, z 4.2-4.5 (clear of the south
+//    rail's 6cm band and the door-gap's walk line). The DRESSING WAVE below
+//    puts a small placeholder plant there (Bedroom.tsx, visual only, no new
+//    collider — same "no collider" convention as the railing plants) while
+//    the real bonsai GLB is pending; the pedestal spot itself stays
+//    reserved at these exact bounds.
+//
+// DRESSING WAVE (P4 engawa dressing, this pass — eave overhang, paper
+// lantern, tea nook, railing plants, moonlight shaft; owner's ask: light
+// the deck and give it some life). Only the seating nook needs new
+// colliders — everything else (eave, lantern, plants, moonlight shaft) is
+// either overhead (no XZ footprint a player can walk into) or small/
+// against a rail (same "no collider" convention the corner plants already
+// use elsewhere in the house):
+//   - folding chair + glass-top tea table, deck's NORTH half (z 2.1-3.4,
+//     clear of the z 3.4-4.3 walk-through gap): ENGAWA_TEA_TABLE_RECT
+//     (center -1.7,2.7, footprint 0.45x0.45) and ENGAWA_CHAIR_RECT (center
+//     -2.15,2.75, footprint 0.35x0.35, angled toward the table/view in
+//     Bedroom.tsx). Chosen footprints leave a clean 5cm gap between them
+//     (chair's x-max -1.975 to table's x-min -1.925) and comfortable
+//     clearance from every neighboring collider: 37.5cm from the west
+//     rail (chair x-min -2.325 vs rail x-max -2.70), 41.5cm from the north
+//     rail (chair z-min 2.575 vs rail z-max 2.16), and both rects sit
+//     entirely north of the walk gap (table z-max 2.925, 47.5cm clear of
+//     the gap's own z-min 3.4) and of the reserved bonsai spot (z-min
+//     4.2) — furniture.test.ts's pairwise-overlap check + layout.test.ts's
+//     dedicated engawa-nook probes both assert this (TDD'd RED→GREEN
+//     before landing, no adjustment needed from the owner's spec'd
+//     centers).
 //
 // ENGAWA FREED (kept from the prior pass, renamed from "BALCONY FREED"):
 // `isBlocked`/`resolveMovement` OR together `walls` and `furniture`
@@ -161,6 +184,15 @@ const ENGAWA_DOOR_GLASS_RECT: Rect = { x: -0.06, z: ENGAWA_DOOR_LO, w: 0.06, d: 
 const ENGAWA_RAIL_W: Rect = { x: ENGAWA_DECK_X0 - 0.06, z: ENGAWA_DECK_Z0, w: 0.06, d: 2.5 }; // x -2.76..-2.70
 const ENGAWA_RAIL_N: Rect = { x: ENGAWA_DECK_X0, z: ENGAWA_DECK_Z0, w: 2.7, d: 0.06 }; // z 2.1-2.16
 const ENGAWA_RAIL_S: Rect = { x: ENGAWA_DECK_X0, z: 4.54, w: 2.7, d: 0.06 }; // z 4.54-4.60
+
+// tea nook (DRESSING WAVE) — folding chair + glass-top tea table, deck's
+// north half. Footprints centered on the owner's spec'd points (table
+// -1.7,2.7; chair -2.15,2.75), sized down to "just the seat/tabletop"
+// (per the brief's "if colliders make the deck too cramped, make them
+// minimal") so the nook doesn't eat the whole north half. See the
+// DRESSING WAVE comment above for the full clearance arithmetic.
+const ENGAWA_TEA_TABLE_RECT: Rect = { x: -1.925, z: 2.475, w: 0.45, d: 0.45 }; // center -1.7,2.7
+const ENGAWA_CHAIR_RECT: Rect = { x: -2.325, z: 2.575, w: 0.35, d: 0.35 }; // center -2.15,2.75
 
 const GROUND: Area = {
   id: "ground",
@@ -220,6 +252,10 @@ const GROUND: Area = {
     // convention, just applied to a real (short) railing instead of no
     // railing at all.
     ENGAWA_RAIL_S,
+    // tea nook (DRESSING WAVE) — see the ENGAWA_TEA_TABLE_RECT/
+    // ENGAWA_CHAIR_RECT comment above for the clearance arithmetic.
+    ENGAWA_TEA_TABLE_RECT,
+    ENGAWA_CHAIR_RECT,
     // ENGAWA FREED — the flanking wall blocks (the void backstop beyond the
     // deck's own z-band) live in `furniture`, not `walls`, so House.tsx's
     // generic WallBox loop never draws them as giant flanking slabs.
