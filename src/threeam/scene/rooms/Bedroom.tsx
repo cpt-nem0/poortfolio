@@ -397,22 +397,18 @@ const BONSAI_PEDESTAL_X = -1.4;
 const BONSAI_PEDESTAL_Z = 5.75;
 const BONSAI_PEDESTAL_H = 0.35;
 
-// moonlight shaft — 3 static translucent quads, night-only atmosphere,
-// slanting from the upper door opening (outside, y≈2.2) down onto the
-// bedroom floor just inside (landing x 0.4-2.0, z 2.8-4.2, per the brief).
-// Each shaft is a thin box whose LONG axis (local Y) is rotated about Z to
-// point from its outside/high start to its inside/low end — same
-// diagonal-streak idiom this file's mirror highlight already uses
-// (MIRROR_GLASS_X's rotation={[0,0,0.55]} streak below), just derived via
-// atan2/hypot instead of a hand-picked angle. z stays fixed per shaft (its
-// own "width" dimension spans across z), so 3 shafts at different z fan
-// across the doorway/landing zone. STATIC this wave — DYNAMIC moon→sun-
-// with-time-of-day belongs to Plan 5's day/night system; swap this for a
-// driven version there.
-const MOON_SHAFTS: { xs: number; ys: number; xe: number; ye: number; z: number; zWidth: number; opacity: number }[] = [
-  { xs: -0.3, ys: 2.2, xe: 0.6, ye: 0, z: 3.0, zWidth: 0.5, opacity: 0.16 },
-  { xs: -0.2, ys: 2.2, xe: 1.2, ye: 0, z: 3.5, zWidth: 0.55, opacity: 0.14 },
-  { xs: -0.1, ys: 2.2, xe: 1.8, ye: 0, z: 4.0, zWidth: 0.6, opacity: 0.12 },
+// moonlight on the floor — FLAT translucent patches lying on the room floor
+// where light spills through the doorway. FIX (2026-07-22, owner): the old
+// version was 3 tall VERTICAL shaft-planes (y 2.2→0) — from the top-down
+// dollhouse camera those render edge-on as a solid white PLANK across the
+// floor. For this camera the light must lie FLAT on the floor as a soft
+// patch. Two overlapping cool patches (a broad faint spill + a smaller
+// brighter core) give a soft-edged pool without a texture; very low opacity,
+// additive blending on the dark floor. STATIC this wave — DYNAMIC
+// moon→sun-with-time-of-day belongs to Plan 5's day/night system.
+const MOON_PATCHES: { x: number; z: number; w: number; d: number; rotY: number; opacity: number }[] = [
+  { x: 1.35, z: 3.75, w: 2.7, d: 1.15, rotY: 0.32, opacity: 0.06 }, // broad soft spill
+  { x: 1.0, z: 3.7, w: 1.9, d: 0.5, rotY: 0.32, opacity: 0.055 }, // brighter core streak
 ];
 
 // manga dresser (Task 8) — REMOVED FOR NOW (P4 recenter): its rect (x
@@ -1243,41 +1239,33 @@ export function Bedroom() {
         })}
       </group>
 
-      {/* ── moonlight shaft — see MOON_SHAFTS above for the geometry
-          derivation + the static/DYNAMIC-later note. Each is a thin box
-          (meshBasicMaterial — unlit, reads as a pure translucent SURFACE,
-          not a light source, so the no-invisible-light rule holds) whose
-          long axis is rotated about Z to point from its outside/high start
-          toward its inside/low end — same diagonal-streak idiom this
-          file's mirror highlight already uses, just derived via atan2/
-          hypot instead of a hand-picked angle. Additive-ish blending, low
-          opacity, depthWrite off so the 3 overlapping shafts don't
-          z-fight. STATIC this wave; DYNAMIC moon→sun-with-time-of-day
-          belongs to Plan 5's day/night system — swap this for a driven
-          version there. ── */}
-      {MOON_SHAFTS.map((s, i) => {
-        const dx = s.xe - s.xs;
-        const dy = s.ye - s.ys;
-        const length = Math.hypot(dx, dy);
-        const angle = Math.atan2(-dx, dy); // rotation.z for a box whose local +Y is its long axis
-        return (
-          <mesh
-            key={`moon-shaft-${i}`}
-            position={[R.x + (s.xs + s.xe) / 2, (s.ys + s.ye) / 2, R.z + s.z]}
-            rotation={[0, 0, angle]}
-          >
-            <boxGeometry args={[0.02, length, s.zWidth]} />
+      {/* ── moonlight on the floor — see MOON_PATCHES above (flat patches, NOT
+          vertical shafts — the old shafts read as a solid plank from the
+          top-down camera). Each is a plane laid flat (inner mesh rotated
+          -90° about X) inside a group rotated about Y for its in-floor
+          diagonal; unlit meshBasicMaterial so it's a pure translucent SURFACE
+          (no-invisible-light rule holds — the source is the open night sky),
+          additive on the dark floor, depthWrite off so the two patches don't
+          z-fight each other or the floor. ── */}
+      {MOON_PATCHES.map((p, i) => (
+        <group
+          key={`moon-patch-${i}`}
+          position={[R.x + p.x, 0.05 + i * 0.004, R.z + p.z]}
+          rotation={[0, p.rotY, 0]}
+        >
+          <mesh rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[p.w, p.d]} />
             <meshBasicMaterial
-              color="#aebbe0"
+              color="#b9c4e6"
               transparent
-              opacity={s.opacity}
+              opacity={p.opacity}
               blending={THREE.AdditiveBlending}
               depthWrite={false}
               side={2}
             />
           </mesh>
-        );
-      })}
+        </group>
+      ))}
 
       {/* ── bed — collider {2.9,0.33,2.2,2.5} (SUPER-KING pass: centered on
           the north wall, x 2.9-5.1 around the room's x-center 4.0 —
