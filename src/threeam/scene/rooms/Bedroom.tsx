@@ -311,39 +311,12 @@ const DOOR_GLASS_OPEN_X = DOOR_GLASS_FIXED_X + 0.03; // slid 3cm outward
 //      deck). DYNAMIC moon→sun-with-time-of-day belongs to Plan 5's
 //      day/night system; this is a placeholder for that. Unchanged this
 //      pass — it still lands through the door, whose position didn't move.
-const ENGAWA_EAVE_WALL_X = -ENGAWA_WALL_T_HALF; // -0.1, flush with the wall's engawa-side (west) face — same plane the exterior wall paint sits proud of
-const ENGAWA_EAVE_FAR_X = -2.4; // west extent, owner's spec
-const ENGAWA_EAVE_Y0 = 2.5; // underside
-const ENGAWA_EAVE_Y1 = 2.7; // topside (both < WALL_H=2.8, so the eave reads as a beam partway up the wall, not a roofline at the very top)
-const ENGAWA_EAVE_H = ENGAWA_EAVE_Y1 - ENGAWA_EAVE_Y0; // 0.2
-const ENGAWA_EAVE_W = ENGAWA_EAVE_WALL_X - ENGAWA_EAVE_FAR_X; // 2.3
-// FULL-LENGTH PASS: eave Z0/Z1 derive from DECK_RECT (now z 0-6), so the
-// overhang automatically extends the full length with DECK_RECT's own edit
-// above — no separate change needed here.
-const ENGAWA_EAVE_Z0 = DECK_RECT.z; // 0 — spans the deck's own z-range exactly
-const ENGAWA_EAVE_Z1 = DECK_RECT.z + DECK_RECT.d; // 6
-const ENGAWA_EAVE_D = ENGAWA_EAVE_Z1 - ENGAWA_EAVE_Z0; // 6
-// support brackets — knee braces from the wall down-and-out to the
-// overhang's underside, angle/length derived (never hand-guessed), same
-// atan2/hypot idiom the A-frame clothes rack's legs use above.
-const ENGAWA_BRACKET_OUT_X = -1.5; // outer attach point
-const ENGAWA_BRACKET_OUT_Y = 2.15; // outer attach point, below the eave's underside — angled down-and-out like a knee brace
-const ENGAWA_BRACKET_DX = ENGAWA_BRACKET_OUT_X - ENGAWA_EAVE_WALL_X; // -1.4
-const ENGAWA_BRACKET_DY = ENGAWA_BRACKET_OUT_Y - ENGAWA_EAVE_Y0; // -0.35
-const ENGAWA_BRACKET_LEN = Math.hypot(ENGAWA_BRACKET_DX, ENGAWA_BRACKET_DY);
-const ENGAWA_BRACKET_ANGLE = Math.atan2(ENGAWA_BRACKET_DY, ENGAWA_BRACKET_DX); // rotation.z for a box whose local +X is its long axis
-// FULL-LENGTH PASS: the eave tripled in length (2.5m→6m), so a fixed
-// 2-bracket count (originally "0.5m in from each end") would leave a bare
-// 5m unsupported middle — generalized to evenly space brackets across the
-// same 0.5m end-inset, count derived from the inner span at roughly the
-// original pass's own ~1.5m spacing (never hand-picked per bracket).
-const ENGAWA_BRACKET_INSET = 0.5; // fixed inset from each end, unchanged from the original 2-bracket pass
-const ENGAWA_BRACKET_SPAN = ENGAWA_EAVE_D - ENGAWA_BRACKET_INSET * 2; // usable span between the two end brackets
-const ENGAWA_BRACKET_SPACING = 1.5; // target spacing, same order as the original pass's single 1.5m gap
-const ENGAWA_BRACKET_COUNT = Math.max(2, Math.round(ENGAWA_BRACKET_SPAN / ENGAWA_BRACKET_SPACING) + 1);
-const ENGAWA_BRACKET_ZS = Array.from({ length: ENGAWA_BRACKET_COUNT }, (_, i) =>
-  ENGAWA_EAVE_Z0 + ENGAWA_BRACKET_INSET + (i / (ENGAWA_BRACKET_COUNT - 1)) * ENGAWA_BRACKET_SPAN
-); // 0.5, 2.167, 3.833, 5.5 — evenly spaced, 0.5m in from each end
+// engawa hanging rail — the lanterns hang from an OPEN thin rail (NOT a
+// covering eave/roof; see the FIX note at the rail mesh below — a roof over
+// a top-down-viewed deck rendered as a black lid over the whole engawa).
+// The rail sits at the lantern line (x -1.0) at this height; lantern cords
+// reach up to it.
+const ENGAWA_HANGRAIL_Y = 2.62;
 
 // paper lanterns (×2, FULL-LENGTH PASS adds a second) — hang from the eave.
 // The first stays at its original spot near the door (x -1.0, well clear
@@ -360,9 +333,9 @@ const ENGAWA_LANTERNS: { x: number; y: number; z: number }[] = [
 ];
 const ENGAWA_LANTERN_R = 0.15;
 const ENGAWA_LANTERN_H = 0.32;
-// cord: from the eave's underside down to the lantern's own top cap —
+// cord: from the hanging rail down to the lantern's own top cap —
 // derived, not hand-guessed. Same y for every lantern, so one shared length.
-const ENGAWA_LANTERN_CORD_LEN = ENGAWA_EAVE_Y0 - (ENGAWA_LANTERNS[0].y + ENGAWA_LANTERN_H / 2);
+const ENGAWA_LANTERN_CORD_LEN = ENGAWA_HANGRAIL_Y - (ENGAWA_LANTERNS[0].y + ENGAWA_LANTERN_H / 2);
 
 // tea nook — collider rects copied VERBATIM from layout.ts's
 // ENGAWA_TEA_TABLE_RECT/ENGAWA_CHAIR_RECT (source of truth stays there,
@@ -1060,27 +1033,20 @@ export function Bedroom() {
           (ENGAWA_BRACKET_*), not hand-guessed — count grew from 2 to 4 to
           match the tripled span. No collider — well above head height,
           same "overhead, no XZ footprint" convention as the sconce/posters. ── */}
-      <mesh
-        position={[
-          R.x + (ENGAWA_EAVE_WALL_X + ENGAWA_EAVE_FAR_X) / 2,
-          (ENGAWA_EAVE_Y0 + ENGAWA_EAVE_Y1) / 2,
-          R.z + (ENGAWA_EAVE_Z0 + ENGAWA_EAVE_Z1) / 2,
-        ]}
-      >
-        <boxGeometry args={[ENGAWA_EAVE_W, ENGAWA_EAVE_H, ENGAWA_EAVE_D]} />
+      {/* FIX (2026-07-22): the eave was a solid 2.3×6m slab at y≈2.6 — a roof
+          over the deck, which the TOP-DOWN dollhouse camera rendered as a
+          black lid hiding the whole engawa. A covering roof fundamentally
+          can't work on a top-down-viewed deck. Replaced with an OPEN hanging
+          frame the lanterns still hang from: one thin longitudinal rail at
+          the lantern line (x -1.0) + a few support arms back to the wall. The
+          camera sees straight through it to the deck below. */}
+      <mesh position={[R.x - 1.0, ENGAWA_HANGRAIL_Y, R.z + 3.0]}>
+        <boxGeometry args={[0.07, 0.07, 5.4]} />
         <meshStandardMaterial color="#3a2a1e" />
       </mesh>
-      {ENGAWA_BRACKET_ZS.map((z, i) => (
-        <mesh
-          key={`eave-bracket-${i}`}
-          position={[
-            R.x + (ENGAWA_EAVE_WALL_X + ENGAWA_BRACKET_OUT_X) / 2,
-            (ENGAWA_EAVE_Y0 + ENGAWA_BRACKET_OUT_Y) / 2,
-            R.z + z,
-          ]}
-          rotation={[0, 0, ENGAWA_BRACKET_ANGLE]}
-        >
-          <boxGeometry args={[ENGAWA_BRACKET_LEN, 0.05, 0.05]} />
+      {[0.7, 3.0, 5.3].map((z, i) => (
+        <mesh key={`engawa-arm-${i}`} position={[R.x - 0.55, ENGAWA_HANGRAIL_Y, R.z + z]}>
+          <boxGeometry args={[0.9, 0.06, 0.06]} />
           <meshStandardMaterial color="#4a3a2e" />
         </mesh>
       ))}
