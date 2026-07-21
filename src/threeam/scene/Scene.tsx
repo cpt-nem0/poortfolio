@@ -1,7 +1,8 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
+import { Suspense, useEffect, useRef } from "react";
+import { Canvas, useThree, useFrame } from "@react-three/fiber";
+import type { Group } from "three";
 import { House } from "./House";
 import { Player } from "./Player";
 import { FollowCamera } from "./FollowCamera";
@@ -11,6 +12,42 @@ import { MusicNook } from "./rooms/MusicNook";
 import { Workspace } from "./rooms/Workspace";
 import { Bedroom } from "./rooms/Bedroom";
 import { useThreeAm } from "@/threeam/state/store";
+import { playerPosition } from "@/threeam/world/runtime";
+
+/**
+ * Renders its room only when the player is within `margin` metres of the
+ * room's x-band. An off-screen room's meshes AND its fixture lights are
+ * skipped by the renderer (an invisible group is pruned whole in
+ * projectObject, lights included) — that's the whole point: forward-render
+ * cost is lights×meshes, and the ground floor had grown to 24 lights / ~950
+ * meshes all lit at once. The room stays MOUNTED (visibility toggle, not
+ * unmount), so GLBs/textures never reload and there's no remount hitch.
+ * Margin 3.5m tuned empirically (browser-measured): a neighbour renders
+ * while its band is within 3.5m of the player — i.e. it stays lit through
+ * the shared doorway and only culls once the player is deep enough that the
+ * dividing wall occludes it (verified pop-free at every room + doorway).
+ * Net effect: at most TWO rooms render at once, so active lights dropped
+ * from 24→≤18 and the engawa went 27→60fps, 60fps across the whole floor.
+ */
+function RoomCull({
+  minX,
+  maxX,
+  margin = 3.5,
+  children,
+}: {
+  minX: number;
+  maxX: number;
+  margin?: number;
+  children: React.ReactNode;
+}) {
+  const ref = useRef<Group>(null);
+  useFrame(() => {
+    if (!ref.current) return;
+    const x = playerPosition.x;
+    ref.current.visible = x >= minX - margin && x <= maxX + margin;
+  });
+  return <group ref={ref}>{children}</group>;
+}
 
 /**
  * Drives the render loop at a fixed cadence instead of raw vsync, so rooms
@@ -59,9 +96,17 @@ export default function Scene() {
       <House />
       {area === "ground" && (
         <Suspense fallback={null}>
-          <MusicNook />
-          <Workspace />
-          <Bedroom />
+          {/* per-room culling — see RoomCull. Bands: bedroom (+engawa) x -2.9..8,
+              workspace 8..16, music 16..22. */}
+          <RoomCull minX={-2.9} maxX={8}>
+            <Bedroom />
+          </RoomCull>
+          <RoomCull minX={8} maxX={16}>
+            <Workspace />
+          </RoomCull>
+          <RoomCull minX={16} maxX={22}>
+            <MusicNook />
+          </RoomCull>
         </Suspense>
       )}
       <Player />
