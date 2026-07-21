@@ -397,19 +397,10 @@ const BONSAI_PEDESTAL_X = -1.4;
 const BONSAI_PEDESTAL_Z = 5.75;
 const BONSAI_PEDESTAL_H = 0.35;
 
-// moonlight on the floor — FLAT translucent patches lying on the room floor
-// where light spills through the doorway. FIX (2026-07-22, owner): the old
-// version was 3 tall VERTICAL shaft-planes (y 2.2→0) — from the top-down
-// dollhouse camera those render edge-on as a solid white PLANK across the
-// floor. For this camera the light must lie FLAT on the floor as a soft
-// patch. Two overlapping cool patches (a broad faint spill + a smaller
-// brighter core) give a soft-edged pool without a texture; very low opacity,
-// additive blending on the dark floor. STATIC this wave — DYNAMIC
-// moon→sun-with-time-of-day belongs to Plan 5's day/night system.
-const MOON_PATCHES: { x: number; z: number; w: number; d: number; rotY: number; opacity: number }[] = [
-  { x: 1.35, z: 3.75, w: 2.7, d: 1.15, rotY: 0.32, opacity: 0.06 }, // broad soft spill
-  { x: 1.0, z: 3.7, w: 1.9, d: 0.5, rotY: 0.32, opacity: 0.055 }, // brighter core streak
-];
+// moonlight spill: DEFERRED to Plan 5 (lighting/post-processing). Faking it
+// with translucent floor planes never read right (vertical shafts looked like
+// a plank; flat patches were invisible/wrong) — it needs real volumetric /
+// bloom post-processing. Removed for now; the render site carries the note.
 
 // manga dresser (Task 8) — REMOVED FOR NOW (P4 recenter): its rect (x
 // 2.8-4.4) overlapped the centered/enlarged bed's x-span (3.0-5.0), and
@@ -1239,33 +1230,12 @@ export function Bedroom() {
         })}
       </group>
 
-      {/* ── moonlight on the floor — see MOON_PATCHES above (flat patches, NOT
-          vertical shafts — the old shafts read as a solid plank from the
-          top-down camera). Each is a plane laid flat (inner mesh rotated
-          -90° about X) inside a group rotated about Y for its in-floor
-          diagonal; unlit meshBasicMaterial so it's a pure translucent SURFACE
-          (no-invisible-light rule holds — the source is the open night sky),
-          additive on the dark floor, depthWrite off so the two patches don't
-          z-fight each other or the floor. ── */}
-      {MOON_PATCHES.map((p, i) => (
-        <group
-          key={`moon-patch-${i}`}
-          position={[R.x + p.x, 0.05 + i * 0.004, R.z + p.z]}
-          rotation={[0, p.rotY, 0]}
-        >
-          <mesh rotation={[-Math.PI / 2, 0, 0]}>
-            <planeGeometry args={[p.w, p.d]} />
-            <meshBasicMaterial
-              color="#b9c4e6"
-              transparent
-              opacity={p.opacity}
-              blending={THREE.AdditiveBlending}
-              depthWrite={false}
-              side={2}
-            />
-          </mesh>
-        </group>
-      ))}
+      {/* moonlight spill DEFERRED to the lighting/post-processing plan (Plan 5):
+          a convincing "soft light coming out through the door" needs real
+          post-processing (volumetric god-rays / light bloom), not faked
+          translucent floor planes. Both attempts (vertical shafts, then flat
+          patches) read wrong, so it's removed for now — revisit with the
+          day/night + post-processing system. */}
 
       {/* ── bed — collider {2.9,0.33,2.2,2.5} (SUPER-KING pass: centered on
           the north wall, x 2.9-5.1 around the room's x-center 4.0 —
