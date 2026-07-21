@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useRef } from "react";
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
+import { Preload } from "@react-three/drei";
 import type { Group } from "three";
 import { House } from "./House";
 import { Player } from "./Player";
@@ -110,6 +111,10 @@ export default function Scene() {
           <RoomCull minX={16} maxX={22}>
             <MusicNook />
           </RoomCull>
+          {/* forces every loaded material/geometry onto the GPU once, so a
+              GLB that resolved while its room was culled doesn't pay its
+              first-frame shader-compile hitch when the room becomes visible */}
+          <Preload all />
         </Suspense>
       )}
       <Player />
