@@ -1,9 +1,17 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useRef } from "react";
+import { useFrame } from "@react-three/fiber";
+import type { Group } from "three";
 import { useThreeAm } from "@/threeam/state/store";
 import { HOUSE } from "@/threeam/world/layout";
 import type { Rect, RoomId } from "@/threeam/world/layout";
+import {
+  isBandVisible,
+  BEDROOM_WORKSPACE_BOUNDARY,
+  WORKSPACE_MUSIC_BOUNDARY,
+  type RoomBand,
+} from "@/threeam/world/runtime";
 import { usePixelTexture } from "./usePixelTexture";
 
 const WALL_H = 2.8; // raised from 2.5 at the style gate: wall art needs the headroom
@@ -34,6 +42,71 @@ function WallBox({
       <meshStandardMaterial color={color} />
     </mesh>
   );
+}
+
+/** A floor plane sized to a rect. Factored out of House() so the ground
+ *  floor can be split into 3 per-room slabs (see StructureBand) while roof
+ *  keeps a single full-bounds slab, both sharing one implementation. */
+function FloorSlab({ rect }: { rect: Rect }) {
+  return (
+    <mesh
+      rotation={[-Math.PI / 2, 0, 0]}
+      position={[rect.x + rect.w / 2, 0, rect.z + rect.d / 2]}
+      receiveShadow
+    >
+      <planeGeometry args={[rect.w, rect.d]} />
+      <meshStandardMaterial color="#3f3560" />
+    </mesh>
+  );
+}
+
+/**
+ * Gates a chunk of House's structural shell (a room's floor slab, its
+ * skeleton walls, or the stairs) to the ground-floor room band(s) it
+ * belongs to — reads the SAME `visibleBands` Scene's RoomCull reads (see
+ * runtime.ts), so structure and content can never disagree about which
+ * rooms are visible. `bands === null` means "always visible" (used for
+ * roof, which is a single room with no per-room culling). A tagged rect
+ * shows as soon as ANY of its bands is visible — so a rect spanning TWO
+ * bands (a shared divider wall between two rooms, tagged via
+ * `overlappingBands` below) renders whenever either neighbour is current OR
+ * approaching, same as a single-band rect renders when its one band is
+ * current or approaching. Never leaves a gap while a room that needs it is
+ * showing.
+ */
+function StructureBand({
+  bands,
+  children,
+}: {
+  bands: RoomBand[] | null;
+  children: React.ReactNode;
+}) {
+  const ref = useRef<Group>(null);
+  useFrame(() => {
+    if (!ref.current || !bands) return;
+    ref.current.visible = bands.some(isBandVisible);
+  });
+  return <group ref={ref}>{children}</group>;
+}
+
+/** Which room band(s) a rect's x-extent touches — used to tag House's
+ *  structural rects (floor slabs, skeleton walls) with the band(s) that
+ *  should show them. A rect that straddles a boundary (the short 0.2m-wide
+ *  divider walls at x≈8/x≈16) belongs to BOTH neighbouring bands, so it
+ *  keeps rendering for whichever one is current — no gap when a shared
+ *  wall vanishes mid-room. A rect that spans multiple bands entirely (the
+ *  old single-mesh perimeter walls/floor) isn't handled here — those are
+ *  geometrically SPLIT into one rect per band instead (see the floor/
+ *  perimeter rendering below), since tagging a single all-spanning mesh
+ *  with every band would make it permanently visible. */
+function overlappingBands(rect: Rect): RoomBand[] {
+  const bands: RoomBand[] = [];
+  if (rect.x < BEDROOM_WORKSPACE_BOUNDARY) bands.push(0);
+  if (rect.x + rect.w > BEDROOM_WORKSPACE_BOUNDARY && rect.x < WORKSPACE_MUSIC_BOUNDARY) {
+    bands.push(1);
+  }
+  if (rect.x + rect.w > WORKSPACE_MUSIC_BOUNDARY) bands.push(2);
+  return bands;
 }
 
 /**
@@ -263,24 +336,68 @@ export function House() {
   const b = a.bounds;
   const T = 0.2; // perimeter wall thickness (drawn just outside bounds)
 
+  // ground: bounds.x reaches -2.9 to cover the bedroom's engawa deck (P4
+  // engawa rework), but the deck's own north/south edges are NOT house
+  // walls — they're open railing (Bedroom.tsx's RailFence, on top of
+  // layout.ts's ENGAWA_RAIL_N/S colliders), same as the deck's west edge
+  // (already skipped below, i===2). Pre-fix, the naive `b.x - T` origin
+  // dragged the north/south perimeter boxes west with it, so they silently
+  // grew to span the deck's own width too — a full-height solid wall over
+  // the deck's north end (invisible before the deck ran its FULL length,
+  // z 0-6, right up against that wall) and a redundant low stub doubling
+  // up on the south rail. `northSouthX0` clips both to the "core" house's
+  // own x=0 edge (unaffected for the roof area, whose bounds.x=8 was never
+  // negative) so the deck's open edges stay open — collision is untouched,
+  // isBlocked reads straight from `bounds`/`walls`/`furniture` (layout.ts),
+  // never from this purely-visual perimeter.
+  const northSouthX0 = area === "ground" ? 0 : b.x - T;
   const perimeter: Rect[] = [
-    { x: b.x - T, z: b.z - T, w: b.w + 2 * T, d: T }, // north
-    { x: b.x - T, z: b.z + b.d, w: b.w + 2 * T, d: T }, // south
+    { x: northSouthX0, z: b.z - T, w: b.x + b.w + T - northSouthX0, d: T }, // north
+    { x: northSouthX0, z: b.z + b.d, w: b.x + b.w + T - northSouthX0, d: T }, // south
     { x: b.x - T, z: b.z, w: T, d: b.d }, // west
     { x: b.x + b.w, z: b.z, w: T, d: b.d }, // east
   ];
 
   return (
     <group>
-      {/* floor */}
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[b.x + b.w / 2, 0, b.z + b.d / 2]}
-        receiveShadow
-      >
-        <planeGeometry args={[b.w, b.d]} />
-        <meshStandardMaterial color="#3f3560" />
-      </mesh>
+      {/* floor: ground splits into 3 discrete room slabs, geometrically
+          split at the same x=8/x=16 boundaries Scene's RoomCull uses (the
+          bedroom slab absorbs the engawa's -2.9..0 strip — same "one unit"
+          treatment RoomCull gives Bedroom.tsx), each gated to its own
+          roomBand so a non-current room's floor doesn't show through the
+          dark void. Roof is a single room — one full-bounds slab, always
+          on, same as before. */}
+      {area === "ground" ? (
+        <>
+          <StructureBand bands={[0]}>
+            <FloorSlab
+              rect={{ x: b.x, z: b.z, w: BEDROOM_WORKSPACE_BOUNDARY - b.x, d: b.d }}
+            />
+          </StructureBand>
+          <StructureBand bands={[1]}>
+            <FloorSlab
+              rect={{
+                x: BEDROOM_WORKSPACE_BOUNDARY,
+                z: b.z,
+                w: WORKSPACE_MUSIC_BOUNDARY - BEDROOM_WORKSPACE_BOUNDARY,
+                d: b.d,
+              }}
+            />
+          </StructureBand>
+          <StructureBand bands={[2]}>
+            <FloorSlab
+              rect={{
+                x: WORKSPACE_MUSIC_BOUNDARY,
+                z: b.z,
+                w: b.x + b.w - WORKSPACE_MUSIC_BOUNDARY,
+                d: b.d,
+              }}
+            />
+          </StructureBand>
+        </>
+      ) : (
+        <FloorSlab rect={b} />
+      )}
 
       {/* room tint patches: visually confirms room detection boundaries */}
       {a.rooms.filter((r) => !ART_PASSED.has(r.id)).map((r) => (
@@ -305,38 +422,110 @@ export function House() {
           (rendered generically below, as real full-height boxes — same
           idiom as every interior divider) and painted on both faces by
           the bedroom's own wall meshes (Bedroom.tsx) — see layout.ts's
-          ENGAWA_* comment for the full reasoning. */}
-      {perimeter.map((rect, i) => {
-        if (area === "ground" && i === 2) return null; // west: bedroom/layout own this edge now
-        return (
-          <WallBox
-            key={`p${i}`}
-            rect={rect}
-            height={area === "roof" || i === 1 ? SOUTH_STUB_H : WALL_H}
-            color={i === 1 ? "#57497a" : undefined}
-          />
-        );
-      })}
-      {a.walls.map((rect, i) => (
-        <WallBox key={`w${i}`} rect={rect} color="#7d6fa8" />
-      ))}
+          ENGAWA_* comment for the full reasoning.
+
+          ENGAWA NORTH-WALL FIX (this pass): the north (i=0) and south
+          (i=1) perimeter rects have the same "dragged west by bounds.x"
+          problem the west edge already had — `northSouthX0` (above)
+          clips their west end to x=0, so they no longer extend a
+          full-height wall (north) or a redundant low stub (south) over
+          the deck. The deck's own north/south edges are railing only
+          (Bedroom.tsx's RailFence + layout.ts's ENGAWA_RAIL_N/S), same
+          open-edge treatment as the west edge below. */}
+      {area === "ground" ? (
+        <>
+          {/* north/south perimeter, split into 3 per-room segments at the
+              same x=8/x=16 boundaries as the floor above — the OLD code
+              drew these as two single boxes spanning the whole house
+              width, which is exactly why every room's skeleton wall showed
+              regardless of which room was current. East (i=3, the music
+              nook's own outer wall) is a single short rect already scoped
+              to one room, so it's tagged rather than split. West (i=2) is
+              still skipped — bedroom/layout own that edge (engawa). */}
+          {([0, 1, 2] as const).map((band) => {
+            const segX0 =
+              band === 0 ? northSouthX0 : band === 1 ? BEDROOM_WORKSPACE_BOUNDARY : WORKSPACE_MUSIC_BOUNDARY;
+            const segX1 =
+              band === 0 ? BEDROOM_WORKSPACE_BOUNDARY : band === 1 ? WORKSPACE_MUSIC_BOUNDARY : b.x + b.w + T;
+            return (
+              <StructureBand key={`ns${band}`} bands={[band]}>
+                <WallBox
+                  rect={{ x: segX0, z: b.z - T, w: segX1 - segX0, d: T }}
+                  height={WALL_H}
+                />
+                <WallBox
+                  rect={{ x: segX0, z: b.z + b.d, w: segX1 - segX0, d: T }}
+                  height={SOUTH_STUB_H}
+                  color="#57497a"
+                />
+              </StructureBand>
+            );
+          })}
+          <StructureBand bands={[2]}>
+            <WallBox rect={{ x: b.x + b.w, z: b.z, w: T, d: b.d }} />
+          </StructureBand>
+          {/* interior dividers: the x=8/x=16 doorway dividers straddle a
+              boundary, so overlappingBands tags them with BOTH neighbouring
+              rooms — they keep rendering for whichever one is current, no
+              gap mid-room. The engawa's own divider (x≈-0.1) only touches
+              band 0 (bedroom+engawa is one unit). */}
+          {a.walls.map((rect, i) => (
+            <StructureBand key={`w${i}`} bands={overlappingBands(rect)}>
+              <WallBox rect={rect} color="#7d6fa8" />
+            </StructureBand>
+          ))}
+        </>
+      ) : (
+        <>
+          {perimeter.map((rect, i) => (
+            <WallBox
+              key={`p${i}`}
+              rect={rect}
+              height={SOUTH_STUB_H}
+              color={i === 1 ? "#57497a" : undefined}
+            />
+          ))}
+          {a.walls.map((rect, i) => (
+            <WallBox key={`w${i}`} rect={rect} color="#7d6fa8" />
+          ))}
+        </>
+      )}
 
       {/* portal stairs: anchored flush against the north wall (4mm off its
           face, both areas); the flight runs toward the room, and the portal
-          trigger sits just south of the base where the player presses E. */}
+          trigger sits just south of the base where the player presses E.
+          On ground the flight sits at x≈15.2 — inside the workspace band —
+          so it's gated to band 1: it doesn't show while in the bedroom or
+          music nook, only in the workspace. Roof has one room; its own
+          stairs-down flight is never band-gated (nothing to disagree with,
+          and gating it here risked a stale-band flicker right after a
+          portal teleport lands the player mid-workspace-x-range on roof). */}
       {HOUSE.portals
         .filter((p) => p.area === area)
-        .map((p) => (
-          <Stairs key={p.id} x={p.trigger.x + p.trigger.w / 2} z={0.004} />
-        ))}
+        .map((p) => {
+          const flight = (
+            <Stairs key={p.id} x={p.trigger.x + p.trigger.w / 2} z={0.004} />
+          );
+          return area === "ground" ? (
+            <StructureBand key={p.id} bands={[1]}>
+              {flight}
+            </StructureBand>
+          ) : (
+            flight
+          );
+        })}
       {/* stairs-approach dressing (rug, photo wall, sconce) is a ground-
-          floor thing — the roof side is open parapet, no divider wall.
-          Own Suspense boundary: House sits OUTSIDE Scene's boundary, and
-          the rug texture must not suspend the whole canvas. */}
+          floor thing — the roof side is open parapet, no divider wall. It
+          sits in the workspace band (x≈15.2-15.9), same as the stairs
+          themselves, so it's gated the same way. Own Suspense boundary:
+          House sits OUTSIDE Scene's boundary, and the rug texture must not
+          suspend the whole canvas. */}
       {area === "ground" && (
-        <Suspense fallback={null}>
-          <StairsApproach />
-        </Suspense>
+        <StructureBand bands={[1]}>
+          <Suspense fallback={null}>
+            <StairsApproach />
+          </Suspense>
+        </StructureBand>
       )}
     </group>
   );

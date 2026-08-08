@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { Preload } from "@react-three/drei";
 import type { Group } from "three";
@@ -13,40 +13,54 @@ import { MusicNook } from "./rooms/MusicNook";
 import { Workspace } from "./rooms/Workspace";
 import { Bedroom } from "./rooms/Bedroom";
 import { useThreeAm } from "@/threeam/state/store";
-import { playerPosition } from "@/threeam/world/runtime";
+import {
+  playerPosition,
+  roomBand,
+  nextRoomBand,
+  updateVisibleBands,
+  isBandVisible,
+  type RoomBand,
+} from "@/threeam/world/runtime";
 
 /**
- * Renders its room only while the player is within `margin` of the room's
- * x-band; an off-screen room's meshes AND its fixture lights are then culled
- * whole by the renderer (an invisible group is pruned in projectObject,
- * lights included). This matters because forward-render cost is lights×meshes
- * and the ground floor grew to 24 lights / ~950 meshes lit at once (engawa
- * ran 27fps). Why player-distance and not a camera frustum/floor test: those
- * are occlusion-blind — the wide dollhouse view geometrically includes the
- * neighbour's floor *behind the dividing wall*, so they render everything
- * (40fps). Player-band is the cheap stand-in for "which rooms can I actually
- * see," since walls mean you only see your room plus a neighbour once you're
- * near its doorway. `margin` (4.5m) ≈ the on-screen half-width, so a
- * neighbour renders as soon as its doorway *could* edge into frame — that's
- * what kills the void the owner caught (too-tight margin dropped a room while
- * its doorway was still visible). Rooms stay MOUNTED (no GLB/texture reload).
+ * Advances the single shared `roomBand.current` (see runtime.ts) once per
+ * frame from the player's x, with hysteresis so standing on x=8/x=16 can't
+ * flicker two rooms in and out — then recomputes `visibleBands` from that
+ * same current band + the player's raw x, so an adjacent room starts
+ * rendering once the player is within DOOR_MARGIN of its doorway (smooth
+ * approach instead of a hard swap at the threshold). This is the ONLY
+ * writer of either — RoomCull below and House's StructureBand only READ
+ * `visibleBands`, so room CONTENT and the structural shell (floors/walls/
+ * stairs) can never disagree about which rooms are visible within a frame.
+ * Mounted once, ahead of the RoomCull/House readers, so they never read a
+ * stale prior-frame value.
  */
-function RoomCull({
-  minX,
-  maxX,
-  margin = 4.5,
-  children,
-}: {
-  minX: number;
-  maxX: number;
-  margin?: number;
-  children: React.ReactNode;
-}) {
+function RoomBandUpdater() {
+  useFrame(() => {
+    roomBand.current = nextRoomBand(roomBand.current, playerPosition.x);
+    updateVisibleBands(roomBand.current, playerPosition.x);
+  });
+  return null;
+}
+
+/**
+ * Renders its room while it is VISIBLE — the current band always, plus an
+ * adjacent band once the player is within DOOR_MARGIN of the doorway that
+ * borders it (see `visibleBands`/`updateVisibleBands` in runtime.ts).
+ * Usually 1-2 rooms' worth of lights are active; at the owner-chosen
+ * DOOR_MARGIN of 4.5 all 3 render in the ~1m strip at the workspace centre
+ * where both near-door zones overlap (accepted — see the DOOR_MARGIN doc).
+ * The approaching room fades in ahead of arrival instead of hard-cutting at
+ * the threshold, which is the point. A room with neither the
+ * player nor an approaching neighbour reads as dark void — intended, it's
+ * night and unentered rooms are unlit. Rooms stay MOUNTED (no GLB/texture
+ * reload) — only `visible` toggles.
+ */
+function RoomCull({ band, children }: { band: RoomBand; children: React.ReactNode }) {
   const ref = useRef<Group>(null);
   useFrame(() => {
     if (!ref.current) return;
-    const x = playerPosition.x;
-    ref.current.visible = x >= minX - margin && x <= maxX + margin;
+    ref.current.visible = isBandVisible(band);
   });
   return <group ref={ref}>{children}</group>;
 }
@@ -68,6 +82,13 @@ function FrameLimiter({ fps }: { fps: number }) {
       if (delta >= interval - 1) {
         last = t - (delta % interval); // keep cadence, don't drift
         advance(t / 1000);
+        // dev-only: counts actual advance()/logical-frame calls, for browser
+        // QA to read a true fps (renderer.info.render.frame overcounts —
+        // postprocessing invokes render() multiple times per logical frame).
+        if (process.env.NODE_ENV !== "production" && typeof window !== "undefined") {
+          const w = window as unknown as Record<string, unknown>;
+          w.__3amFrameCount = ((w.__3amFrameCount as number) ?? 0) + 1;
+        }
       }
     };
     raf = requestAnimationFrame(loop);
@@ -76,17 +97,41 @@ function FrameLimiter({ fps }: { fps: number }) {
   return null;
 }
 
+// Render-buffer width cap: the Pixelation pass (Effects.tsx) discards
+// sub-block detail anyway, so rendering past this is wasted fill-rate — a
+// maximized 3840px-wide window was dropping to ~42-49fps. Below this width,
+// dpr stays 1 (unchanged, existing behaviour); above it, dpr scales down so
+// the render buffer holds at ~MAX_RENDER_WIDTH px and the canvas upscales to
+// fill the window. Granularity in Effects.tsx is already at its floor (2 —
+// the postprocessing lib rounds up to the nearest even number), so it can't
+// be scaled down further to compensate; large windows read very slightly
+// chunkier as a result — see Effects.tsx.
+const MAX_RENDER_WIDTH = 1920;
+
+function cappedDpr() {
+  return Math.min(1, MAX_RENDER_WIDTH / window.innerWidth);
+}
+
+/** Recomputes the dpr cap on resize so a maximized/restored window keeps the
+ * render buffer capped, not just on initial mount. */
+function useCappedDpr() {
+  const [dpr, setDpr] = useState(cappedDpr);
+  useEffect(() => {
+    const onResize = () => setDpr(cappedDpr());
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return dpr;
+}
+
 /** The 3D world. Extended by House/Player/FollowCamera/Effects tasks. */
 export default function Scene() {
   const area = useThreeAm((s) => s.area);
+  const dpr = useCappedDpr();
   return (
     <Canvas
       shadows
-      // dpr capped at 1: the Pixelation pass discards sub-block detail anyway,
-      // so retina rendering paid 4x fill-rate for zero visual gain (46fps → low
-      // in the workspace on a 2x display). Granularity in Effects.tsx is sized
-      // for dpr 1 — change them together.
-      dpr={1}
+      dpr={dpr}
       frameloop="never" // FrameLimiter drives rendering at a fixed 60
       camera={{ fov: 35, position: [11, 9, 11] }}
       style={{ position: "absolute", inset: 0 }}
@@ -95,20 +140,30 @@ export default function Scene() {
       <color attach="background" args={["#0a0916"]} />
       <ambientLight intensity={0.3} color="#8d9bd6" />
       <directionalLight position={[6, 10, 4]} intensity={0.4} color="#7684c9" />
+      {/* advances roomBand.current once per frame — must mount before
+          House/RoomCull so neither reads a stale prior-frame band */}
+      <RoomBandUpdater />
       <House />
       {area === "ground" && (
         <Suspense fallback={null}>
-          {/* per-room culling by visible-floor overlap — see RoomCull. Bands:
-              bedroom (+engawa) x -2.9..8, workspace 8..16, music 16..22. A
-              room renders only when the floor it stands on is on screen, so
-              no void ever shows and 60fps holds. */}
-          <RoomCull minX={-2.9} maxX={8}>
+          {/* adjacent-room culling — see RoomCull/updateVisibleBands
+              (runtime.ts). Current band always renders; bedroom (+engawa)
+              x<8, workspace 8<=x<16, music x>=16, with ±0.4m hysteresis at
+              each boundary so the CURRENT room can't flicker at x=8 / x=16.
+              On top of that, whichever neighbour borders the nearest
+              doorway also renders once the player is within DOOR_MARGIN
+              (4.5m) of it, so it's visible through the doorway before
+              arrival instead of popping in at the threshold. House reads
+              the SAME visibleBands to
+              cull its own structural shell (floors/walls/stairs) to
+              match. */}
+          <RoomCull band={0}>
             <Bedroom />
           </RoomCull>
-          <RoomCull minX={8} maxX={16}>
+          <RoomCull band={1}>
             <Workspace />
           </RoomCull>
-          <RoomCull minX={16} maxX={22}>
+          <RoomCull band={2}>
             <MusicNook />
           </RoomCull>
           {/* forces every loaded material/geometry onto the GPU once, so a
