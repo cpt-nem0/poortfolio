@@ -5,16 +5,26 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
 /**
- * Sleeping black cat (Task 9), curled up in her own cat bed (FURNISHING
- * WAVE — she used to curl on the bed's duvet; the owner's final sketch
- * gives her a round pet bed in the room's NE corner instead, and moves her
- * there). Chunky "loaf" silhouette from 2 stacked boxes, a tucked head box,
- * 2 ear wedges (one twitches), and a tail that curls from the body's back
- * around toward the front. Near-black matte everywhere, one lighter
- * highlight band along the spine to catch the room's ambient light.
- * castShadow comes from Bedroom's mount-time traverse — this component
- * mounts inside that traversed root, so it deliberately sets no shadow
- * flags itself.
+ * Sleeping cat (Task 9), curled up in her own cat bed (FURNISHING WAVE —
+ * she used to curl on the bed's duvet; the owner's final sketch gives her a
+ * round pet bed in the room's NE corner instead, and moves her there).
+ * Chunky "loaf" silhouette from 2 stacked boxes, a tucked head box, 2 ear
+ * wedges (one twitches), and a tail that curls from the body's back around
+ * toward the front. castShadow comes from Bedroom's mount-time traverse —
+ * this component mounts inside that traversed root, so it deliberately
+ * sets no shadow flags itself.
+ *
+ * RECOLOR: the original spec described her as a near-black cat, matte
+ * everywhere with one lighter spine highlight — in this night-time room
+ * that read as effectively invisible. Recolored to a classic orange tabby
+ * with a cream/white underside (chest, muzzle, a tucked paw, tail tip) so
+ * she reads clearly against the dark wood floor and cat bed, plus a couple
+ * of subtle darker-orange tabby stripe bands. Still matte (roughness 1,
+ * metalness 0, no emissive) and kept under the scene's Bloom luminance
+ * threshold (0.6, Effects.tsx) so nothing blows out. A planned future
+ * dark-mode feature gives her glowing eyes — that still works fine on an
+ * orange coat. Purely a material/color (+ a few small decorative patch
+ * meshes) change: geometry proportions and all animation are untouched.
  *
  * Position is a prop, not a hand-guessed local constant: Bedroom.tsx
  * derives x/y/z from the cat bed's own constructed geometry (its inner
@@ -27,8 +37,14 @@ import * as THREE from "three";
  * is untouched by the move — only the seat changed.
  */
 
-const CAT_NEAR_BLACK = "#16161c";
-const CAT_HIGHLIGHT = "#232330";
+// Orange tabby palette. Kept mid-warm (see per-const luminance notes) so
+// none of it crosses the scene's Bloom luminanceThreshold (0.6) even when
+// lit — no neon, no pastel-out, no washed-out blowout.
+const CAT_ORANGE = "#c97a3a"; // main coat — luminance ≈0.53, under Bloom's 0.6
+const CAT_ORANGE_DARK = "#8a4a20"; // tabby stripe bands, subtle
+const CAT_CREAM = "#e8d9bc"; // chest/muzzle/paw/tail-tip — matches the room's
+// existing off-white fabric tones (Bedroom.tsx e.g. "#e6d8b8", "#e8e1d2")
+const CAT_EAR_PINK = "#cf8880"; // soft inner-ear hint — luminance ≈0.59
 const HEART_COLOR = "#ff7d9c";
 
 // Ear at rest is tilted outward this much (z-rotation); the twitch animates
@@ -55,7 +71,7 @@ function hash(n: number): number {
   return x - Math.floor(x);
 }
 
-function darkMat(color: string = CAT_NEAR_BLACK) {
+function matte(color: string = CAT_ORANGE) {
   return <meshStandardMaterial color={color} roughness={1} metalness={0} />;
 }
 
@@ -179,44 +195,76 @@ export function Cat({ x, y, z, rotationY = 0.35 }: CatProps) {
       <group ref={bodyRef} position={[0, 0.045, 0]}>
         <mesh>
           <boxGeometry args={[0.28, 0.09, 0.2]} />
-          {darkMat()}
+          {matte()}
         </mesh>
         <mesh position={[-0.01, 0.075, 0.005]}>
           <boxGeometry args={[0.21, 0.07, 0.16]} />
-          {darkMat()}
+          {matte()}
         </mesh>
-        {/* top highlight band along the spine */}
+        {/* tabby stripe bands along the spine — chunky, just 2, kept subtle */}
         <mesh position={[-0.01, 0.112, 0.005]}>
           <boxGeometry args={[0.19, 0.012, 0.05]} />
-          {darkMat(CAT_HIGHLIGHT)}
+          {matte(CAT_ORANGE_DARK)}
+        </mesh>
+        <mesh position={[-0.07, 0.09, 0.005]}>
+          <boxGeometry args={[0.03, 0.045, 0.15]} />
+          {matte(CAT_ORANGE_DARK)}
+        </mesh>
+
+        {/* cream chest patch — poking out at the body/head join, the main
+            spot the white reads from the dollhouse camera since the belly
+            itself is tucked away in the loaf pose */}
+        <mesh position={[0.11, 0.005, 0.005]}>
+          <boxGeometry args={[0.05, 0.06, 0.1]} />
+          {matte(CAT_CREAM)}
+        </mesh>
+        {/* cream tucked paw, front-bottom of the loaf near the chest patch */}
+        <mesh position={[0.135, -0.03, 0.035]}>
+          <boxGeometry args={[0.05, 0.03, 0.05]} />
+          {matte(CAT_CREAM)}
         </mesh>
 
         {/* head — tucked against the body's high-x end, tipped down */}
         <group position={[0.15, 0.03, 0.02]} rotation={[0.3, -0.3, 0]}>
           <mesh>
             <boxGeometry args={[0.1, 0.09, 0.1]} />
-            {darkMat()}
+            {matte()}
           </mesh>
-          {/* ears — 2 wedges; the +x one twitches */}
+          {/* cream muzzle patch, protruding toward the head's forward-bottom */}
+          <mesh position={[0.04, -0.02, 0.03]}>
+            <boxGeometry args={[0.045, 0.04, 0.045]} />
+            {matte(CAT_CREAM)}
+          </mesh>
+          {/* ears — 2 wedges; the +x one twitches. Each gets a small nested
+              pink cone as a soft inner-ear hint. */}
           <mesh position={[-0.025, 0.06, 0.01]} rotation={[0, 0, -EAR_BASE_TILT]}>
             <coneGeometry args={[0.025, 0.045, 3]} />
-            {darkMat()}
+            {matte()}
+            <mesh position={[0, -0.005, 0.008]} scale={0.5}>
+              <coneGeometry args={[0.025, 0.045, 3]} />
+              {matte(CAT_EAR_PINK)}
+            </mesh>
           </mesh>
           <mesh ref={earRef} position={[0.025, 0.06, 0.01]} rotation={[0, 0, EAR_BASE_TILT]}>
             <coneGeometry args={[0.025, 0.045, 3]} />
-            {darkMat()}
+            {matte()}
+            <mesh position={[0, -0.005, 0.008]} scale={0.5}>
+              <coneGeometry args={[0.025, 0.045, 3]} />
+              {matte(CAT_EAR_PINK)}
+            </mesh>
           </mesh>
         </group>
 
         {/* tail — curls from the body's low-x (back) end around toward the
-            front, 2 segments at increasing yaw to fake a curled sweep */}
+            front, 2 segments at increasing yaw to fake a curled sweep. The
+            far/front segment doubles as the cream tail tip. */}
         <mesh position={[-0.14, -0.005, 0.09]} rotation={[0, 0.5, 0]}>
           <boxGeometry args={[0.14, 0.045, 0.045]} />
-          {darkMat()}
+          {matte()}
         </mesh>
         <mesh position={[-0.06, -0.005, 0.15]} rotation={[0, 1.3, 0]}>
           <boxGeometry args={[0.12, 0.04, 0.04]} />
-          {darkMat()}
+          {matte(CAT_CREAM)}
         </mesh>
       </group>
 

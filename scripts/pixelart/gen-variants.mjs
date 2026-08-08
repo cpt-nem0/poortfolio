@@ -413,6 +413,103 @@ function rugBedroom(x, y) {
   return [...shade(c, (seam ? 0.84 : 0.97) + hash2(x, y, 361) * 0.06), 255];
 }
 
+/* ---- bedroom rug options (Plan 4 follow-up): five more rugs for the style
+   gate, all full 64×64 rectangular canvases (same non-alpha convention as
+   rug-kilim/rug-persian/rug-teal-field/rug-berber above) so they drop onto
+   the bedroom rug's existing 2.4×1.7 plane cleanly. Deliberately different
+   characters from rug-bedroom's warm-neutral braid so the owner has a real
+   choice; each stays legible against sage walls + oak floor under warm
+   lamplight. ---- */
+
+/* rug-shag-cream: thick plush pile, no pattern — soft cream/oatmeal clumps
+   with a per-column brushed-pile banding for a subtle directional grain. */
+const SHAG_OATMEAL = PALETTE.plaster300;
+function rugShagCream(x, y) {
+  const clump = hash2(Math.floor(x / 4), Math.floor(y / 4), 701);
+  const base = clump > 0.4 ? PALETTE.cream100 : SHAG_OATMEAL;
+  const pile = hash2(x, y, 702);
+  const streak = (hash2(Math.floor(x / 2), 0, 703) - 0.5) * 0.08; // brushed pile direction
+  return shade(base, 0.88 + pile * 0.12 + streak);
+}
+
+/* rug-tatami: fine woven straw weave — alternating wheat/olive warp/weft
+   cells with grooved strand edges, dark cloth border (heri) on all four
+   sides. Ties to the engawa/zen side of the room. */
+const TATAMI_WHEAT = "#c9b673";
+const TATAMI_OLIVE = "#9a9260";
+const TATAMI_HERI = "#33362e";
+function rugTatami(x, y) {
+  const border = Math.min(x, 63 - x, y, 63 - y);
+  if (border < 3) return shade(TATAMI_HERI, 0.82 + hash2(x, y, 711) * 0.22);
+  const cell = 4;
+  const fx = x - 3, fy = y - 3;
+  const cx = Math.floor(fx / cell), cy = Math.floor(fy / cell);
+  const warpCell = (cx + cy) % 2 === 0;
+  const lx = fx - cx * cell, ly = fy - cy * cell;
+  const grainLine = warpCell ? (lx === 0 || lx === cell - 1) : (ly === 0 || ly === cell - 1);
+  const base = warpCell ? TATAMI_WHEAT : TATAMI_OLIVE;
+  let f = 0.92 + hash2(x, y, 712) * 0.1;
+  if (grainLine) f *= 0.85;
+  return shade(base, f);
+}
+
+/* rug-midcentury: bold retro geometric — mustard bar, rust triangle, teal
+   arc, cream dot accent on a warm sand ground. Graphic, not busy. */
+const MC_MUSTARD = "#c98a2e";
+const MC_TEAL = "#1f5c55";
+function rugMidcentury(x, y) {
+  let c = shade(SAND, 0.94 + hash2(x, y, 721) * 0.08); // warm ground
+  if (y > 26 && y < 38) c = shade(MC_MUSTARD, 0.92 + hash2(x, y, 722) * 0.08); // bar
+  if (x < 64 - y && y > 34) c = shade(RUST, 0.9 + hash2(x, y, 723) * 0.1); // triangle
+  const adx = x - 63, ady = y;
+  const ar = Math.sqrt(adx * adx + ady * ady);
+  if (ar < 30 && ar > 18) c = shade(MC_TEAL, 0.9 + hash2(x, y, 724) * 0.1); // arc
+  const cdx = x - 16, cdy = y - 16;
+  if (cdx * cdx + cdy * cdy < 36) c = shade(PALETTE.cream100, 0.94 + hash2(x, y, 725) * 0.06); // dot
+  return c;
+}
+
+/* rug-moroccan: cream/ivory field, charcoal diamond lattice, tassel-strand
+   hints at the two short (top/bottom) edges. High contrast, modern-boho. */
+function rugMoroccan(x, y) {
+  if (y < 3 || y > 60) {
+    const strand = Math.floor(x / 2) % 2 === 0;
+    return shade(strand ? PALETTE.cream100 : PALETTE.plaster500, 0.85 + hash2(x, y, 731) * 0.15); // fringe
+  }
+  const b = Math.min(x, 63 - x, y - 3, 60 - y);
+  if (b < 2) return shade(CHARCOAL, 0.9 + hash2(x, y, 732) * 0.16); // ink frame
+  const gx = (((x - 4) % 16) + 16) % 16 - 8;
+  const gy = (((y - 3) % 16) + 16) % 16 - 8;
+  const diamond = Math.abs(gx) + Math.abs(gy);
+  let c = shade(PALETTE.cream100, 0.94 + hash2(x, y, 733) * 0.08);
+  if (Math.abs(diamond - 7) < 1.2) c = shade(CHARCOAL, 0.92 + hash2(x, y, 734) * 0.14); // lattice
+  if (diamond < 2) c = shade(CHARCOAL, 0.85); // center dot
+  return c;
+}
+
+/* rug-faded-vintage: dusty-blue/rust/sand medallion (same border→medallion
+   shape as rug-persian) with a low-frequency worn-patch fade that blends
+   large blotches toward the sand ground so parts of the pattern nearly
+   vanish — deliberately uneven, antique. */
+function rugFadedVintage(x, y) {
+  const b = Math.min(x, 63 - x, y, 63 - y);
+  let base;
+  if (b < 2) base = shade(DUSK, 0.8);
+  else if (b < 5) base = hexToRgb(SAND);
+  else {
+    const dx = Math.abs(x - 32), dy = Math.abs(y - 32);
+    const dia = dx + dy;
+    if (dia < 5) base = hexToRgb(SAND);
+    else if (dia < 9) base = shade(RUST, 0.95);
+    else if (dia < 11) base = hexToRgb(SAND);
+    else base = shade(DUSK, 0.85 + hash2(x, y, 741) * 0.12);
+  }
+  const fade = hash2(Math.floor(x / 6), Math.floor(y / 6), 742);
+  const t = fade < 0.35 ? (0.35 - fade) / 0.35 : 0; // worn-patch fade amount
+  const sandRgb = hexToRgb(SAND);
+  return base.map((c, i) => Math.round(c * (1 - t * 0.7) + sandRgb[i] * t * 0.7));
+}
+
 /* ---- bedroom poster wall (FURNISHING WAVE): four non-branded, textless
    posters for the "many posters, different alignments" salon wall behind
    the headboard. Same seeded hash2/shade idiom + 1px night900 frame border
@@ -492,6 +589,240 @@ function posterWaveArc(x, y) {
   return c;
 }
 
+/* ---- movie-poster gallery wall (plan 4): five ORIGINAL movie-poster-style
+   textures, sized like real posters — 2:3, 64×96 (bigger than the
+   32×88/40×56 gig/wave/moons set and the 32-40px bedroom furnishing-wave
+   posters above) for a bigger, better-organised salon wall behind the bed.
+   Every design is invented from scratch: no real film titles, logos,
+   studio marks, actor likenesses, or copyrighted character designs — these
+   only borrow the movie-poster FORM (dramatic central image over the upper
+   ~70%, a bold title block band, a thin illegible "credits" strip). Same
+   seeded hash2/shade idiom + 1px night900 frame as every poster above. ---- */
+const MP_W = 64, MP_H = 96;
+const MP_IMG_Y1 = 65; // rows 1-65 of 96 (~68%) — dramatic central image
+const MP_TITLE_Y0 = 66, MP_TITLE_Y1 = 87; // bold title block band
+const MP_CREDIT_Y0 = 88, MP_CREDIT_Y1 = 94; // thin illegible "credits" strip
+
+/* shared bottom credit strip: a few rows of alternating dark/light 1px
+   marks that read as a credit block from a distance — deliberately never
+   actual lettering. Reused verbatim by all five posters below. */
+function posterCredits(x, y, tone, seed) {
+  if (y < MP_CREDIT_Y0 || y > MP_CREDIT_Y1) return null;
+  const on = hash2(Math.floor(x / 2), (y - MP_CREDIT_Y0) * 17, seed) > 0.5;
+  return shade(tone, on ? 1.4 : 0.6);
+}
+
+/* 1. mecha 64×96 — tall angular violet humanoid silhouette backlit by a
+   stark disc, dark ground, one neon-green accent slash. Deliberately a
+   blocky abstract silhouette, not any specific mecha design. */
+const MECHA_BODY = PALETTE.purple700;
+function posterMecha(x, y) {
+  if (x === 0 || x === MP_W - 1 || y === 0 || y === MP_H - 1) return shade(PALETTE.night900, 1.4);
+  if (y <= MP_IMG_Y1) {
+    const cx = 32, cy = 24, r = 19;
+    const dx = x - cx, dy = y - cy;
+    const rr = Math.sqrt(dx * dx + dy * dy);
+    let c = shade(PALETTE.night700, 0.72 + (y / MP_IMG_Y1) * 0.15 + hash2(x, y, 601) * 0.05);
+    if (rr < r) c = shade(PALETTE.amber300, 0.68 + ((r - rr) / r) * 0.28); // backlit disc
+    if (y > 50) c = shade(PALETTE.night900, 1.05 + hash2(x, y, 602) * 0.1); // dark ground
+    const bx = x - 32;
+    const shoulderY = 16, hipY = 38, footY = 58;
+    let onBody = false;
+    if (y > 7 && y <= shoulderY) onBody = Math.abs(bx) < 3; // narrow head/helmet
+    else if (y > shoulderY && y < hipY) onBody = Math.abs(bx) < 9 - ((y - shoulderY) / (hipY - shoulderY)) * 4; // torso taper, chest to waist
+    else if (y >= hipY && y < footY) onBody = Math.abs(bx - 3) < 2 || Math.abs(bx + 3) < 2; // two-column legs
+    if (onBody) c = shade(MECHA_BODY, 0.82 + hash2(x, y, 603) * 0.16);
+    if (y > shoulderY - 4 && y < shoulderY + 3 && Math.abs(bx) > 7 && Math.abs(bx) < 13) c = shade(MECHA_BODY, 0.65); // wide shoulder blocks (epaulettes)
+    if (Math.abs(bx + (y - 28) * 0.55) < 1.1 && y > 18 && y < 46) c = shade(PALETTE.mint400, 0.75 + hash2(x, y, 604) * 0.15); // neon accent slash
+    return c;
+  }
+  if (y <= MP_TITLE_Y1) {
+    let c = shade(PALETTE.night900, 1.05 + hash2(x, y, 605) * 0.06);
+    if (y > MP_TITLE_Y0 + 2 && y < MP_TITLE_Y0 + 9 && y % 4 < 2 && x > 7 && x < 57 - ((y * 5) % 11)) c = shade(MECHA_BODY, 1.3);
+    if (y > MP_TITLE_Y0 + 11 && y < MP_TITLE_Y0 + 17 && y % 3 < 1 && x > 12 && x < 52) c = shade(PALETTE.mint400, 0.55);
+    return c;
+  }
+  return posterCredits(x, y, PALETTE.night900, 606) ?? shade(PALETTE.night900, 0.95);
+}
+
+/* 2. eclipse 64×96 — black sun disc with a burning corona ring on a deep
+   blood-red sky, jagged horizon silhouette below. Ominous dark fantasy,
+   wholly invented. */
+function posterEclipse(x, y) {
+  if (x === 0 || x === MP_W - 1 || y === 0 || y === MP_H - 1) return shade(PALETTE.night900, 1.4);
+  if (y <= MP_IMG_Y1) {
+    let c = shade(PALETTE.red500, 0.42 + (1 - y / MP_IMG_Y1) * 0.4 + hash2(x, y, 611) * 0.06);
+    const cx = 32, cy = 30, r = 13;
+    const dx = x - cx, dy = y - cy;
+    const rr = Math.sqrt(dx * dx + dy * dy);
+    if (rr < r) c = shade(PALETTE.night900, 1.15); // black sun disc
+    else if (rr < r + 4) {
+      const ang = Math.atan2(dy, dx);
+      const spike = Math.sin(ang * 9 + hash2(Math.floor((ang + Math.PI) * 6), 0, 612) * 2.5) > 0.15;
+      c = spike ? shade(PALETTE.amber500, 0.85 + hash2(x, y, 613) * 0.15) : shade(PALETTE.red500, 0.6); // burning corona
+    }
+    if (y > 50) {
+      const ridgeY = 50 + Math.round(Math.sin(x / 5.2) * 3 + Math.sin(x / 2.1) * 1.6);
+      if (y >= ridgeY) c = shade(PALETTE.night900, 1.1 + hash2(x, y, 614) * 0.08); // jagged horizon
+    }
+    return c;
+  }
+  if (y <= MP_TITLE_Y1) {
+    let c = shade(PALETTE.night900, 1.0 + hash2(x, y, 615) * 0.06);
+    if (y > MP_TITLE_Y0 + 2 && y < MP_TITLE_Y0 + 9 && y % 4 < 2 && x > 6 && x < 58 - ((y * 7) % 9)) c = shade(PALETTE.red500, 1.15);
+    if (y > MP_TITLE_Y0 + 11 && y < MP_TITLE_Y0 + 17 && y % 3 < 1 && x > 10 && x < 54) c = shade(PALETTE.amber500, 0.55);
+    return c;
+  }
+  return posterCredits(x, y, PALETTE.night900, 616) ?? shade(PALETTE.night900, 0.9);
+}
+
+/* 3. lone samurai 64×96 — small dark figure with a diagonal blade line, a
+   huge pale moon behind, muted indigo/ink palette, deliberately minimal. */
+function posterSamurai(x, y) {
+  if (x === 0 || x === MP_W - 1 || y === 0 || y === MP_H - 1) return shade(PALETTE.night900, 1.4);
+  if (y <= MP_IMG_Y1) {
+    let c = shade(PALETTE.night500, 0.5 + (y / MP_IMG_Y1) * 0.3 + hash2(x, y, 621) * 0.05);
+    const cx = 42, cy = 16, r = 16;
+    const dx = x - cx, dy = y - cy;
+    const rr = Math.sqrt(dx * dx + dy * dy);
+    if (rr < r) c = shade(PALETTE.cream100, 0.66 + ((r - rr) / r) * 0.16); // huge pale moon
+    if (y > 56) c = shade(PALETTE.night900, 1.05 + hash2(x, y, 622) * 0.08); // ground
+    const bx = x - 19, by = y - 48;
+    if (Math.abs(bx) < 2.5 && by > -14 && by < 10) c = shade(PALETTE.night900, 1.3); // body
+    if (Math.abs(bx) < 1.8 && by > -17 && by < -13) c = shade(PALETTE.night900, 1.3); // head
+    if (Math.abs(bx - 3.5 - by * 0.4) < 0.9 && by > -19 && by < -1) c = shade(PALETTE.cream100, 0.55); // diagonal blade
+    return c;
+  }
+  if (y <= MP_TITLE_Y1) {
+    let c = shade(PALETTE.night900, 1.02 + hash2(x, y, 623) * 0.05);
+    if (y > MP_TITLE_Y0 + 3 && y < MP_TITLE_Y0 + 9 && y % 4 < 2 && x > 14 && x < 50 - ((y * 4) % 8)) c = shade(PALETTE.night500, 1.5);
+    return c;
+  }
+  return posterCredits(x, y, PALETTE.night900, 624) ?? shade(PALETTE.night900, 0.9);
+}
+
+/* 4. noir city 64×96 — high-contrast rain-streaked city blocks in
+   near-monochrome, one warm lit window, dramatic vertical light shafts. */
+const NOIR = "#4a4a56"; // cool near-monochrome slate, indigo-tinted to stay in the house's night-blue family
+const NOIR_BUILDINGS = [
+  { x0: 2, x1: 14, top: 30 }, { x0: 14, x1: 24, top: 20 }, { x0: 24, x1: 30, top: 38 },
+  { x0: 30, x1: 40, top: 14 }, { x0: 40, x1: 48, top: 34 }, { x0: 48, x1: 58, top: 24 },
+  { x0: 58, x1: 62, top: 42 },
+];
+const NOIR_LIT_WINDOW = { x: 34, y: 22 }; // one warm lit window, in the tall central tower
+function posterNoirCity(x, y) {
+  if (x === 0 || x === MP_W - 1 || y === 0 || y === MP_H - 1) return shade(PALETTE.night900, 1.4);
+  if (y <= MP_IMG_Y1) {
+    let c = shade(NOIR, 0.46 + (y / MP_IMG_Y1) * 0.26 + hash2(x, y, 631) * 0.05); // sky
+    let inBuilding = false;
+    for (const b of NOIR_BUILDINGS) {
+      if (x >= b.x0 && x < b.x1 && y >= b.top) {
+        inBuilding = true;
+        c = shade(PALETTE.night900, 1.0 + hash2(x, y, 632) * 0.08);
+        if ((x - b.x0) % 3 === 1 && (y - b.top) % 4 === 1 && hash2(x, y, 633) > 0.55) c = shade(NOIR, 0.55); // sparse dim window
+      }
+    }
+    if (x === NOIR_LIT_WINDOW.x && y === NOIR_LIT_WINDOW.y) c = shade(PALETTE.amber500, 0.95); // the one warm lit window
+    if (!inBuilding && (x === 19 || x === 20 || x === 46 || x === 47)) c = shade(NOIR, 0.85 + hash2(x, y, 635) * 0.06); // vertical light shafts
+    if (!inBuilding && (x + y * 2) % 19 === 0) c = shade(NOIR, 1.3); // rain streaks (sky only, keeps buildings crisp)
+    return c;
+  }
+  if (y <= MP_TITLE_Y1) {
+    let c = shade(PALETTE.night900, 1.0 + hash2(x, y, 636) * 0.06);
+    if (y > MP_TITLE_Y0 + 2 && y < MP_TITLE_Y0 + 9 && y % 4 < 2 && x > 6 && x < 58 - ((y * 6) % 10)) c = shade(NOIR, 1.5);
+    if (y > MP_TITLE_Y0 + 11 && y < MP_TITLE_Y0 + 17 && y % 3 < 1 && x > 10 && x < 54) c = shade(PALETTE.amber500, 0.5);
+    return c;
+  }
+  return posterCredits(x, y, PALETTE.night900, 637) ?? shade(PALETTE.night900, 0.9);
+}
+
+/* 5. retro sci-fi 64×96 — ringed planet + small ship silhouette over a
+   horizon gradient, chunky 80s colour banding (teal→magenta), starfield
+   speckle. */
+const RETRO_BANDS = [PALETTE.teal500, "#3f7fae", PALETTE.purple500, "#8a4a72", PALETTE.red500];
+function posterRetroSpace(x, y) {
+  if (x === 0 || x === MP_W - 1 || y === 0 || y === MP_H - 1) return shade(PALETTE.night900, 1.4);
+  if (y <= MP_IMG_Y1) {
+    const band = Math.min(Math.floor(y / 13), RETRO_BANDS.length - 1);
+    let c = shade(RETRO_BANDS[band], 0.8 + hash2(x, y, 641) * 0.1);
+    const star = hash2(x, y, 642);
+    if (band < 3 && star > 0.975) c = shade(PALETTE.cream100, 0.7 + hash2(x, y, 643) * 0.2); // starfield, upper bands only
+    const cx = 44, cy = 24, r = 10;
+    const dx = x - cx, dy = y - cy;
+    const rr = Math.sqrt(dx * dx + dy * dy);
+    if (rr < r) {
+      const ringTone = Math.floor((dy + r) / 3) % 2 === 0 ? PALETTE.amber500 : "#e89a48";
+      c = shade(ringTone, 0.85 + hash2(x, y, 644) * 0.1); // ringed planet
+    }
+    const ang = -0.35;
+    const rx = dx * Math.cos(ang) - dy * Math.sin(ang);
+    const ry = dx * Math.sin(ang) + dy * Math.cos(ang);
+    const ellipse = (rx * rx) / (17 * 17) + (ry * ry) / (3.6 * 3.6);
+    if (ellipse > 0.75 && ellipse < 1.15 && !(rr < r * 0.55)) c = shade(PALETTE.cream100, 0.75); // tilted ring
+    const sx = x - 16, sy = y - 52;
+    if (Math.abs(sx) < 5 - Math.abs(sy) * 0.6 && sy > -3 && sy < 2) c = shade(PALETTE.night900, 1.2); // small ship silhouette
+    return c;
+  }
+  if (y <= MP_TITLE_Y1) {
+    let c = shade(PALETTE.purple700, 0.85 + hash2(x, y, 645) * 0.06);
+    if (y > MP_TITLE_Y0 + 2 && y < MP_TITLE_Y0 + 9 && y % 4 < 2 && x > 6 && x < 58 - ((y * 5) % 12)) c = shade(PALETTE.teal500, 1.05);
+    if (y > MP_TITLE_Y0 + 11 && y < MP_TITLE_Y0 + 17 && y % 3 < 1 && x > 10 && x < 54) c = shade(PALETTE.red500, 0.9);
+    return c;
+  }
+  return posterCredits(x, y, PALETTE.purple700, 646) ?? shade(PALETTE.purple700, 0.85);
+}
+
+/* ---- zen garden inset (bedroom engawa, south end): raked gravel bed,
+   moss between stones, stepping-stone/rock surface. Same seeded hash2/shade
+   idiom as the rest of this file. ---- */
+
+/* raked zen gravel (64×64, tiling): pale warm grey-tan gravel with smooth
+   curved rake furrows (ridge→trough sine shading, period 8 so it divides
+   the 64px tile cleanly) plus fine speckle. The sin() curve term uses the
+   tile's own width as its period so it closes up seamlessly at the x=0/63
+   wrap; the furrow period (8) divides both 64 and the y wrap too. */
+const GRAVEL = "#cec5ae";
+function zenGravel(x, y) {
+  const curve = Math.sin((x / 64) * Math.PI * 2) * 2.5; // seamless S-curve
+  const period = 8;
+  const phase = (((y + curve) % period) + period) % period;
+  const ridge = Math.sin((phase / period) * Math.PI * 2); // -1 trough .. +1 ridge
+  let c = shade(GRAVEL, 0.92 + ridge * 0.08);
+  if (phase > period - 1) c = shade(GRAVEL, 0.8); // furrow line at the trough floor
+  const speck = hash2(x, y, 501);
+  if (speck > 0.985) c = shade(GRAVEL, 1.12);
+  else if (speck < 0.02) c = shade(GRAVEL, 0.82);
+  return c;
+}
+
+/* zen moss (32×32, tiling): mottled deep/mid green clumps between stones,
+   tiny darker flecks. Two-tone clump field straight from PALETTE's green
+   pair, no new hue introduced. */
+function zenMoss(x, y) {
+  const clump = hash2(Math.floor(x / 3), Math.floor(y / 3), 511);
+  const base = clump > 0.45 ? PALETTE.green700 : PALETTE.green500;
+  const n = hash2(x, y, 512);
+  let c = shade(base, 0.85 + n * 0.2);
+  const fleck = hash2(x, y, 513);
+  if (fleck > 0.94) c = shade(base, 0.55); // tiny dark flecks
+  return c;
+}
+
+/* stone slab (32×32, tiling): flat warm-grey stepping-stone surface, subtle
+   mottling, a soft diagonal mineral streak, and a hairline crack kept clear
+   of the tile edges (x 4..27) so it doesn't need seam-matching. */
+const STONE = "#8a8072";
+function stoneSlab(x, y) {
+  const n = hash2(x, y, 521);
+  let c = shade(STONE, 0.92 + n * 0.14);
+  const diag = (x + y) % 32; // wraps cleanly on a 32px tile
+  if (diag > 14 && diag < 17) c = shade(STONE, 1.08 + hash2(x, y, 522) * 0.05);
+  const crackY = 20 + Math.round(Math.sin(x / 6) * 2);
+  if (y === crackY && x > 4 && x < 27) c = shade(STONE, 0.78);
+  if (y === crackY + 1 && x > 10 && x < 20 && hash2(x, y, 523) > 0.6) c = shade(STONE, 0.83);
+  return c;
+}
+
 /* Only textures referenced by src/ belong here — a JOBS entry for a deleted
    PNG silently resurrects it on the next generator run. Prune both together.
    (Variant fns for rejected style-gate options are kept below for reference.) */
@@ -513,10 +844,23 @@ const JOBS = [
   ["linen-quilt", 64, 64, linenQuilt],
   ["curtain-weave", 32, 64, curtainWeave],
   ["rug-bedroom", 64, 64, rugBedroom],
+  ["rug-shag-cream", 64, 64, rugShagCream],
+  ["rug-tatami", 64, 64, rugTatami],
+  ["rug-midcentury", 64, 64, rugMidcentury],
+  ["rug-moroccan", 64, 64, rugMoroccan],
+  ["rug-faded-vintage", 64, 64, rugFadedVintage],
   ["poster-sunset-bars", 32, 44, posterSunsetBars],
   ["poster-mountain-ridge", 40, 32, posterMountainRidge],
   ["poster-space-planet", 36, 48, posterSpacePlanet],
   ["poster-wave-arc", 32, 40, posterWaveArc],
+  ["poster-mecha", 64, 96, posterMecha],
+  ["poster-eclipse", 64, 96, posterEclipse],
+  ["poster-samurai", 64, 96, posterSamurai],
+  ["poster-noir-city", 64, 96, posterNoirCity],
+  ["poster-retro-space", 64, 96, posterRetroSpace],
+  ["zen-gravel", 64, 64, zenGravel],
+  ["zen-moss", 32, 32, zenMoss],
+  ["stone-slab", 32, 32, stoneSlab],
 ];
 
 for (const [name, w, h, fn] of JOBS) {

@@ -108,16 +108,11 @@ function dividerWithDoor(
 //    unaffected by any of this (posts/rail are visual-only additions on
 //    top of the existing collider footprint).
 //
-// 5. RESERVE (comment only, still NOT built): a bonsai-pedestal spot on the
-//    deck's SOUTH side, roughly x -1.6..-1.2, z 5.6-5.9 (clear of the south
-//    rail's 6cm band and the door-gap's walk line) — FULL-LENGTH PASS moved
-//    this from z 4.2-4.5 to keep the same relationship to the south rail
-//    (19cm north of the rail's own z-min) now that the rail itself moved
-//    from z=4.54 to z=5.94. The DRESSING WAVE below puts a small
-//    placeholder plant there (Bedroom.tsx, visual only, no new collider —
-//    same "no collider" convention as the railing plants) while the real
-//    bonsai GLB is pending; the pedestal spot itself stays reserved at
-//    these exact bounds.
+// 5. RESERVE — SUPERSEDED (ZEN GARDEN PASS, below): the placeholder
+//    bonsai-pedestal spot this item used to reserve (x -1.6..-1.2,
+//    z 5.6-5.9) is now the real built zen garden corner — see the ZEN
+//    GARDEN PASS comment and ENGAWA_ZEN_STAND_RECT/ENGAWA_ZEN_ROCK_RECT
+//    below. Kept here as history only.
 //
 // DRESSING WAVE (P4 engawa dressing, this pass — eave overhang, paper
 // lantern, tea nook, railing plants, moonlight shaft; owner's ask: light
@@ -170,8 +165,42 @@ function dividerWithDoor(
 // flanking it are UNTOUCHED — the door is still the only way between the
 // bedroom and the deck; the rest of the west wall (z 0-2.5, z 4.3-6) stays
 // solid.
-const ENGAWA_DOOR_LO = 2.5; // sliding-door opening start (z) — was 2.7
-const ENGAWA_DOOR_HI = 4.3; // sliding-door opening end (z) — was 4.1
+//
+// ENGAWA NORTH-WALL FIX (this pass, owner ask: a full-height wall was
+// visible on the deck's north end — remove it, railing there like the
+// other edges): the culprit was NOT a rect in this file — every wall/rail
+// rect here checked out fine (ENGAWA_WALL_N/S is the bedroom/deck divider,
+// oriented along z at x≈0, not a wall across the deck's own north/south
+// ends). It was House.tsx's generic perimeter-wall renderer: its
+// north/south boxes are built from `bounds.x`, which the FULL-LENGTH PASS
+// above left at -2.9 (to cover the deck) — so those boxes silently grew to
+// span the deck's own width too, becoming invisible while the deck was
+// still a short stub set back from z=0/z=6, then suddenly very visible
+// once the deck ran the house's full z 0-6 length right up against them.
+// Purely a rendering bug (isBlocked reads `bounds`/`walls`/`furniture`
+// directly, never House.tsx's perimeter), fixed in House.tsx by clipping
+// those two boxes to the core house's own x=0 edge — same treatment the
+// west perimeter already gets. No rects in this file changed for it; the
+// ENGAWA_RAIL_N/S colliders above already provide the deck's north/south
+// edge collision, unaffected by any of this.
+//
+// DRESS2 PASS (this pass, owner ask: "the 0.9m gap is hard to line up" —
+// widen the walkable pass-through to ~1.3m): two changes, neither touches
+// the deck/rail footprint —
+//   1. the door opening itself grows z 2.5-4.3 (1.8m) → z 2.4-4.4 (2.0m),
+//      symmetric around the same center (ENGAWA_DOOR_ZC stays 3.4).
+//   2. the fixed glass pane's own width SHRINKS from half the opening
+//      (0.9m) to a fixed 0.7m (ENGAWA_DOOR_GLASS_W below) — no longer
+//      derived as ENGAWA_DOOR_W/2, an intentional asymmetric split so the
+//      extra opening width goes entirely to the walkable half instead of
+//      being split 50/50 with the glass. Net walkable gap: (4.4-2.4)-0.7 =
+//      1.3m (z 3.1-4.4), up from 0.9m (z 3.4-4.3) — the glass collider
+//      (ENGAWA_DOOR_GLASS_RECT) still exactly matches the visible glass
+//      pane Bedroom.tsx renders (DOOR_PANEL_W there, copied verbatim), and
+//      the solid wall on both sides of the whole opening is untouched
+//      (dividerWithDoor still splits the wall at the new, wider LO/HI).
+const ENGAWA_DOOR_LO = 2.4; // sliding-door opening start (z) — was 2.5 (DRESS2 pass), 2.7 before that
+const ENGAWA_DOOR_HI = 4.4; // sliding-door opening end (z) — was 4.3 (DRESS2 pass), 4.1 before that
 const ENGAWA_DECK_Z0 = 0; // deck's north edge (z) — was 2.1, now the house's own north edge (FULL-LENGTH PASS)
 const ENGAWA_DECK_Z1 = 6; // deck's south edge (z) — was 4.6, now the house's own south edge (FULL-LENGTH PASS)
 const ENGAWA_DECK_X0 = -2.7; // deck's west edge (x) — was -1.5
@@ -184,12 +213,21 @@ const [ENGAWA_WALL_N, ENGAWA_WALL_S] = dividerWithDoor(
   6,
   ENGAWA_DOOR_LO,
   ENGAWA_DOOR_HI
-); // {x:-0.1,z:0,w:0.2,d:2.5} and {x:-0.1,z:4.3,w:0.2,d:1.7}
+); // {x:-0.1,z:0,w:0.2,d:2.4} and {x:-0.1,z:4.4,w:0.2,d:1.6} (DRESS2 pass)
 
 // fixed glass pane's collider — the walk-through gap's OTHER half (z
-// 2.5-3.4) is genuinely solid glass, not just uncollided air (see fix #1
-// above). Thin, centered on the wall plane, same 0.06 thickness as a rail.
-const ENGAWA_DOOR_GLASS_RECT: Rect = { x: -0.06, z: ENGAWA_DOOR_LO, w: 0.06, d: 0.9 };
+// 2.4-3.1, DRESS2 pass) is genuinely solid glass, not just uncollided air
+// (see fix #1 above). Thin, centered on the wall plane, same 0.06
+// thickness as a rail. Width is now its own constant (DRESS2 pass), NOT
+// half of ENGAWA_DOOR_W — see the DRESS2 PASS comment above for why the
+// split is asymmetric.
+const ENGAWA_DOOR_GLASS_W = 0.7; // fixed pane width — was ENGAWA_DOOR_W/2 (0.9) pre-DRESS2
+const ENGAWA_DOOR_GLASS_RECT: Rect = {
+  x: -0.06,
+  z: ENGAWA_DOOR_LO,
+  w: 0.06,
+  d: ENGAWA_DOOR_GLASS_W,
+}; // z 2.4-3.1, leaving z 3.1-4.4 (1.3m) as the walkable gap
 
 // railing colliders — FULL-LENGTH PASS: west rail now spans the deck's
 // entire new z-range (0-6, was just the stub's 2.1-4.6); north/south rails
@@ -226,6 +264,65 @@ const ENGAWA_RAIL_S: Rect = { x: ENGAWA_DECK_X0, z: ENGAWA_DECK_Z1 - 0.06, w: 2.
 const ENGAWA_TEA_TABLE_RECT: Rect = { x: -1.525, z: 0.775, w: 0.45, d: 0.45 }; // center -1.3,1.0
 const ENGAWA_CHAIR_RECT: Rect = { x: -1.925, z: 0.875, w: 0.35, d: 0.35 }; // center -1.75,1.05
 
+// ── ZEN GARDEN PASS (this pass, owner ask: "big bonsai on a zen corner…
+// whole section should be zen stone path, small grass kinda thing") — the
+// engawa's SOUTH end (south of the sliding door, z>4.4; north of the south
+// rail, z-min 5.94) becomes a recessed raked-gravel garden with a
+// stepping-stone path, moss, grass, accent rocks, a fancy display stand
+// (kadai), and a big hand-built bonsai (Bedroom.tsx's ZEN_* consts render
+// all of it — this file stays the source of truth for the two pieces that
+// actually block: the stand and the one big accent rock). Everything else
+// in the corner — the gravel bed itself, the curb, the stepping stones,
+// moss, small rocks, grass tufts — is walk-over floor dressing with no
+// footprint, same "no collider" convention the railing plants already use
+// on this deck.
+//   - display stand: south-center of the gravel bed (the stone path leads
+//     up to it). Clear of the west rail (x-min -1.9 vs rail x-max -2.70,
+//     0.80m) and the south rail (z-max 5.55 vs rail z-min 5.94, 0.39m) —
+//     comfortable walk-around room on every side. x-min -1.9 (not -1.95)
+//     is deliberate: it keeps a real >0.35 margin from the pre-existing
+//     deep-west regression probe at x=-2.3 (0.4m clear, not exactly 0.35 —
+//     landing exactly on the player-radius boundary is floating-point-
+//     flaky in circleIntersectsRect's strict `<` check).
+//   - big accent rock: just south-east of the stand — deliberately NOT
+//     tucked against the west rail (that same x=-2.3 probe). Its z-range
+//     (5.62..5.86) sits entirely south of the stand's own z-range
+//     (5.15..5.55, a 0.07m gap) even though the x-ranges overlap, so the
+//     two rects never intersect; also clear of the south rail (0.08m gap
+//     to its z-min, 5.94).
+const ENGAWA_ZEN_STAND_RECT: Rect = { x: -1.9, z: 5.15, w: 0.5, d: 0.4 };
+const ENGAWA_ZEN_ROCK_RECT: Rect = { x: -1.67, z: 5.62, w: 0.24, d: 0.24 };
+
+// ── PLANT PASS (this pass, owner ask: place the newly-prepared plant GLBs
+// — FicusLyrata/PottedTree/BroadleafPlant/TallPalm, see
+// scene/models/Plants.tsx — around the house) — two new floor plants on
+// the engawa deck.
+//   - TALLPALM: the "statement plant" near the tea nook, deck's north tip
+//     (between the north-end rail and the nook). Its real footprint
+//     (1.25x1.11m frond spread, per Plants.tsx) does NOT fit anywhere on
+//     this deck without either re-blocking the FULL-LENGTH PASS's
+//     hard-won nook west-side walkaround (the {-2.3125,1.05} probe) or the
+//     room-side east approach ({-0.6,1.0}/{-0.5,1.0}/{-0.5,2.6} probes) —
+//     checked exhaustively against every existing engawa probe in
+//     furniture.test.ts, no placement with the full 1.25x1.11 rect clears
+//     all of them simultaneously. So the COLLIDER here is sized to the
+//     plant's pot/trunk base instead (0.6x0.6), matching this house's own
+//     established plant-collider convention (every existing corner plant's
+//     leaf spread already exceeds its pot-sized collider; RAILING_PLANTS
+//     get no collider at all) — the visual model still renders at its full
+//     native scale (1.75m tall), fronds simply extend past the collision
+//     box, same as everywhere else in the house. Placed clear of the tea
+//     nook (z max 0.69, nook z min 0.775) and the north-end rail (z min
+//     0.09, rail z max 0.06), with wide margins on both the west-rail and
+//     wall/nook approach probes (checked below).
+//   - FICUS: the second/balancing floor plant, opposite side (east, near
+//     the interior wall) and a different z-band (the deck's north-third
+//     "connector" strip between the nook and the sliding-door wall) — this
+//     one DOES fit at its real 0.45x0.55m footprint with real margins,
+//     clear of every existing probe.
+const ENGAWA_TALLPALM_RECT: Rect = { x: -1.85, z: 0.09, w: 0.6, d: 0.6 };
+const ENGAWA_FICUS_RECT: Rect = { x: -0.6, z: 1.55, w: 0.45, d: 0.55 };
+
 const GROUND: Area = {
   id: "ground",
   bounds: { x: -2.9, z: 0, w: 24.9, d: 6 },
@@ -257,12 +354,29 @@ const GROUND: Area = {
     { x: 2.9, z: 0.33, w: 2.2, d: 2.5 }, // bed (headboard north, centered on the wall, SUPER-KING)
     { x: 2.25, z: 0.4, w: 0.55, d: 0.5 }, // west nightstand (bed's west flank, two-drawer cabinet + lamp)
     { x: 5.25, z: 0.4, w: 0.55, d: 0.5 }, // east nightstand (bed's east flank, two-drawer cabinet + lamp)
-    { x: 0.45, z: 5.1, w: 0.4, d: 0.4 }, // plant (SW corner)
-    { x: 0.95, z: 5.15, w: 0.35, d: 0.35 }, // second plant (SW corner, beside the first)
+    // PLANT PASS: the two hand-built corner plants are REPLACED by real GLB
+    // models (BroadleafPlant + PottedTree, see scene/models/Plants.tsx) —
+    // sized to their own real footprints, nudged 12cm further south (z
+    // 5.1/5.15 -> 5.0) so the bigger broadleaf clears the {1.6,4.6} walkway
+    // probe with real margin (was 1.2cm at the old z, now 4.6cm).
+    { x: 0.43, z: 5.0, w: 0.94, d: 0.84 }, // broadleaf plant (SW corner, real GLB model)
+    { x: 1.55, z: 5.0, w: 0.66, d: 0.66 }, // potted tree (SW corner, beside the broadleaf, real GLB model)
     { x: 0.6, z: 0.4, w: 0.95, d: 0.95 }, // single-person sofa/armchair (NW corner)
     { x: 5.85, z: 0.42, w: 0.4, d: 0.4 }, // sunset-lamp stool (NE-ish, east of the east nightstand)
-    { x: 7.05, z: 0.45, w: 0.55, d: 0.55 }, // cat's round bed (NE corner)
-    { x: 3.5, z: 2.95, w: 1.2, d: 0.4 }, // bed-front bench (bed's foot, south of the bed's z-max 2.83)
+    // cat's round bed (NE corner) — CATBED ENLARGE PASS (owner ask: "make
+    // the cat's bed bigger"): 1.6x the old diameter (0.55→0.88), grown off
+    // the NE corner closest to the walls so its old wall margins (0.3m off
+    // the east wall, 0.45m off the north wall) stay exactly unchanged; the
+    // extra width/depth is added south-west instead, where the room is
+    // open. New x-min (6.72) still clears the sunset-lamp stool (x-max
+    // 6.25) by 0.47m — see Bedroom.tsx's CATBED_RECT comment for the full
+    // arithmetic.
+    { x: 6.72, z: 0.45, w: 0.88, d: 0.88 },
+    // bed-front bench — REMOVED (owner ask: "that sitting thing at the
+    // bottom of the bed" gone). Old collider was {3.5,2.95,1.2,0.4}. SPAWN
+    // ({4,4.3}) doesn't need to move — it's still clear of every remaining
+    // bedroom rect (nearest is the bed, far z edge 2.83 + player radius
+    // 0.35 = 3.18 < 4.3); see furniture.test.ts's SPAWN checks.
     { x: 3.3, z: 5.35, w: 2.2, d: 0.5 }, // clothes hanger stand (south-center, A-frame rack + boutique clothes)
     // shoe storage — NEW (wardrobe corner upgrade, 2026-07-19), beside the
     // rack's east flank. TDD'd against its neighbors: rack's x-max is
@@ -272,6 +386,12 @@ const GROUND: Area = {
     // needed from the owner's spec'd numbers.
     { x: 5.62, z: 5.35, w: 0.8, d: 0.45 }, // shoe storage cubby (2-shelf, east of the rack)
     { x: 6.55, z: 5.3, w: 1.0, d: 0.5 }, // perfume stand / slim dresser (SE)
+    // south floor lamp — NEW (P4 art+light+ruggate pass, owner ask: "add
+    // some lighting on the bedroom south areas"). Sits in the open pocket
+    // between the potted tree (x-max 2.21) and the clothes hanger stand
+    // (x-min 3.3) — 0.34m/0.40m clear of each, see Bedroom.tsx's
+    // SOUTH_LAMP_RECT comment for the full arithmetic.
+    { x: 2.55, z: 5.25, w: 0.35, d: 0.35 },
     // window table + its west-window neighbor are REMOVED (superseded by
     // the engawa: glass sliding door + walkable deck); see the ENGAWA_*
     // rects above `GROUND` and Bedroom.tsx. The bonsai that was slated for
@@ -291,6 +411,14 @@ const GROUND: Area = {
     // ENGAWA_CHAIR_RECT comment above for the clearance arithmetic.
     ENGAWA_TEA_TABLE_RECT,
     ENGAWA_CHAIR_RECT,
+    // zen garden corner (ZEN GARDEN PASS) — see the comment above these
+    // consts for the clearance arithmetic.
+    ENGAWA_ZEN_STAND_RECT,
+    ENGAWA_ZEN_ROCK_RECT,
+    // PLANT PASS — see the comment above ENGAWA_TALLPALM_RECT/
+    // ENGAWA_FICUS_RECT for the placement/collider-sizing arithmetic.
+    ENGAWA_TALLPALM_RECT,
+    ENGAWA_FICUS_RECT,
     // ENGAWA_WALL_BLOCK_N/S (the old void backstop beyond the stub deck's
     // z-band) are GONE — FULL-LENGTH PASS: the deck now spans the whole
     // z 0-6 west side, so there's no more void to backstop. See the
@@ -307,6 +435,11 @@ const GROUND: Area = {
     { x: 9.7, z: 0.3, w: 2.6, d: 0.9 }, // desk
     { x: 10.4, z: 1.5, w: 0.8, d: 0.8 }, // desk chair (shifted west so the desk front reads clear)
     { x: 8.8, z: 5.15, w: 0.65, d: 0.7 }, // EVA-01 shrine (SW corner) — figure + plinth; widened wave F round 2 (1.8m figure's forward-leaning footprint measures ~8.80-9.41 x, 5.20-5.82 z in-browser)
+    // PLANT PASS: a real potted-tree GLB (see scene/models/Plants.tsx) in
+    // the open south-wall gap between the shrine (x max 9.45) and the
+    // coffee counter (x min 11.3) — softens the corner, clear of both with
+    // room to spare (0.52m/0.67m gaps).
+    { x: 9.97, z: 5.32, w: 0.66, d: 0.66 }, // potted tree (south wall, between the EVA shrine and the coffee counter)
     { x: 11.3, z: 5.54, w: 1.4, d: 0.44 }, // coffee counter (south wall, center) — machine + mug rack + lamp on top
     { x: 13.55, z: 5.3, w: 0.5, d: 0.5 }, // paper-lantern floor lamp (south wall, right of the coffee counter — same rect as the old tripod it replaced)
     { x: 15.45, z: 3.85, w: 0.44, d: 2.1 }, // full-wall bookshelf (east divider, workspace face, south of doorway — SE corner)
@@ -364,15 +497,15 @@ export const HOUSE: { areas: Record<AreaId, Area>; portals: Portal[] } = {
   ],
 };
 
-// SPAWN — FURNISHING WAVE moved this from {4,3.6}: the new bed-front bench
-// ({3.5,2.95,1.2,0.4}, x 3.5-4.7, z 2.95-3.35) sits under the old spawn's
-// x (4 is inside the bench's x-span), and its far z edge (3.35) is now
-// closer than the player radius to z=3.6: 3.6-3.35=0.25 < 0.35 — the old
-// spawn point is blocked. {4,4.3} is the new spot: x=4 is still inside the
-// bench's x-span, so distance-to-bench is again just the z gap,
-// 4.3-3.35=0.95 > 0.35 (clear), and it stays north of the clothes-hanger
-// stand (z-min 5.35) and every other new south-wall rect. Also still clear
-// of the about trigger {5.15,1.3,1.25,1.1} (x=4 is west of the trigger's
-// x-min 5.15, unchanged from before) — see furniture.test.ts and
+// SPAWN — FURNISHING WAVE moved this from {4,3.6} to {4,4.3} because of the
+// (now-removed) bed-front bench: the bench used to sit under x=4 with its
+// far z edge at 3.35, blocking {4,3.6} (0.25 < player radius 0.35). BENCH
+// REMOVAL (this pass, owner ask: "that sitting thing at the bottom of the
+// bed" gone): the bench and its collider are gone, but SPAWN stays at
+// {4,4.3} — no test forces a move, and it's still comfortably clear of
+// every remaining bedroom rect (nearest is the bed, far z edge 2.83 +
+// player radius 0.35 = 3.18 < 4.3), north of the clothes-hanger stand
+// (z-min 5.35), and clear of the about trigger {5.15,1.3,1.25,1.1} (x=4 is
+// west of the trigger's x-min 5.15) — see furniture.test.ts and
 // invariants.test.ts for the exhaustive checks.
 export const SPAWN = { area: "ground" as AreaId, x: 4, z: 4.3 };

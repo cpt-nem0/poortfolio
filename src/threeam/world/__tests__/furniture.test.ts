@@ -101,6 +101,14 @@ describe("workspace furniture colliders", () => {
     expect(isBlocked(ground, 15.0, 4.9)).toBe(false); // west of the bookshelf, still walkable
     expect(isBlocked(ground, 16, 3)).toBe(false); // doorway into the music room stays open
   });
+
+  it("PLANT PASS: the potted tree between the EVA shrine and the coffee counter blocks", () => {
+    expect(isBlocked(ground, 9.97, 5.32)).toBe(true); // rect corner
+  });
+
+  it("PLANT PASS: the floor in front of the potted tree stays walkable", () => {
+    expect(isBlocked(ground, 10.3, 4.9)).toBe(false); // north of the plant, room-facing
+  });
 });
 
 describe("bedroom furniture colliders", () => {
@@ -116,17 +124,21 @@ describe("bedroom furniture colliders", () => {
       { x: 2.9, z: 0.33, w: 2.2, d: 2.5 }, // bed (headboard north, centered on the wall, SUPER-KING)
       { x: 2.25, z: 0.4, w: 0.55, d: 0.5 }, // west nightstand
       { x: 5.25, z: 0.4, w: 0.55, d: 0.5 }, // east nightstand
-      { x: 0.45, z: 5.1, w: 0.4, d: 0.4 }, // plant
-      { x: 0.95, z: 5.15, w: 0.35, d: 0.35 }, // second plant
+      { x: 0.43, z: 5.0, w: 0.94, d: 0.84 }, // broadleaf plant (PLANT PASS, real GLB, replaces the two hand-built plants)
+      { x: 1.55, z: 5.0, w: 0.66, d: 0.66 }, // potted tree (PLANT PASS, real GLB, beside the broadleaf)
       { x: 0.6, z: 0.4, w: 0.95, d: 0.95 }, // sofa
       { x: 5.85, z: 0.42, w: 0.4, d: 0.4 }, // sunset-lamp stool
-      { x: 7.05, z: 0.45, w: 0.55, d: 0.55 }, // cat bed
-      { x: 3.5, z: 2.95, w: 1.2, d: 0.4 }, // bed-front bench
+      { x: 6.72, z: 0.45, w: 0.88, d: 0.88 }, // cat bed (CATBED ENLARGE PASS, 1.6x diameter)
       { x: 3.3, z: 5.35, w: 2.2, d: 0.5 }, // clothes hanger stand
       { x: 5.62, z: 5.35, w: 0.8, d: 0.45 }, // shoe storage cubby (wardrobe corner upgrade)
       { x: 6.55, z: 5.3, w: 1.0, d: 0.5 }, // perfume stand
+      { x: 2.55, z: 5.25, w: 0.35, d: 0.35 }, // south floor lamp (ART+LIGHT+RUGGATE pass)
       { x: -1.525, z: 0.775, w: 0.45, d: 0.45 }, // engawa tea table (DRESSING WAVE, repositioned FULL-LENGTH PASS)
       { x: -1.925, z: 0.875, w: 0.35, d: 0.35 }, // engawa chair (DRESSING WAVE, repositioned FULL-LENGTH PASS)
+      { x: -1.9, z: 5.15, w: 0.5, d: 0.4 }, // zen garden display stand (kadai), ZEN GARDEN PASS
+      { x: -1.67, z: 5.62, w: 0.24, d: 0.24 }, // zen garden big accent rock, ZEN GARDEN PASS
+      { x: -1.85, z: 0.09, w: 0.6, d: 0.6 }, // tall palm (PLANT PASS), engawa north tip
+      { x: -0.6, z: 1.55, w: 0.45, d: 0.55 }, // ficus (PLANT PASS), engawa east side
     ];
 
     for (const rect of bedroomRects) {
@@ -155,6 +167,13 @@ describe("bedroom furniture colliders", () => {
     expect(found).toBe(false);
   });
 
+  it("the bed-front bench rect is gone (owner ask: remove the bed-foot bench)", () => {
+    const found = ground.furniture.some(
+      (f) => f.x === 3.5 && f.z === 2.95 && f.w === 1.2 && f.d === 0.4
+    );
+    expect(found).toBe(false);
+  });
+
   it("the dragonslayer lean-zone rect is gone (parked for the den)", () => {
     const found = ground.furniture.some(
       (f) => f.x === 6.55 && f.z === 0.32 && f.w === 0.85 && f.d === 0.5
@@ -162,39 +181,20 @@ describe("bedroom furniture colliders", () => {
     expect(found).toBe(false);
   });
 
-  it("no two bedroom furniture rects overlap", () => {
+  it("no two furniture rects overlap (live sweep over ground.furniture, not a hand-copied snapshot)", () => {
+    // Pulls straight from the live layout data (imported above) instead of a
+    // hardcoded copy, so it can never drift from the real furniture list
+    // again — a hand-copied array previously omitted two engawa plant rects
+    // (tall palm, ficus) from this sweep entirely, a coverage hole that let
+    // a real overlap slip past unnoticed.
     const intersects = (a: Rect, b: Rect) =>
       a.x < b.x + b.w && b.x < a.x + a.w && a.z < b.z + b.d && b.z < a.z + a.d;
-    const bedroomRects = [
-      { name: "bed", r: { x: 2.9, z: 0.33, w: 2.2, d: 2.5 } },
-      { name: "west nightstand", r: { x: 2.25, z: 0.4, w: 0.55, d: 0.5 } },
-      { name: "east nightstand", r: { x: 5.25, z: 0.4, w: 0.55, d: 0.5 } },
-      { name: "plant", r: { x: 0.45, z: 5.1, w: 0.4, d: 0.4 } },
-      { name: "second plant", r: { x: 0.95, z: 5.15, w: 0.35, d: 0.35 } },
-      { name: "sofa", r: { x: 0.6, z: 0.4, w: 0.95, d: 0.95 } },
-      { name: "sunset-lamp stool", r: { x: 5.85, z: 0.42, w: 0.4, d: 0.4 } },
-      { name: "cat bed", r: { x: 7.05, z: 0.45, w: 0.55, d: 0.55 } },
-      { name: "bed-front bench", r: { x: 3.5, z: 2.95, w: 1.2, d: 0.4 } },
-      { name: "clothes hanger stand", r: { x: 3.3, z: 5.35, w: 2.2, d: 0.5 } },
-      { name: "shoe storage cubby", r: { x: 5.62, z: 5.35, w: 0.8, d: 0.45 } },
-      { name: "perfume stand", r: { x: 6.55, z: 5.3, w: 1.0, d: 0.5 } },
-      // x computed (-2.7 - 0.06), not a -2.76 literal — see layout.ts's ENGAWA_RAIL_W comment.
-      // FULL-LENGTH PASS: west rail now spans z 0-6; north/south rails moved
-      // to the deck's true outer edges (z=0/z=5.94-6).
-      { name: "engawa west rail", r: { x: -2.7 - 0.06, z: 0, w: 0.06, d: 6 } },
-      { name: "engawa north rail", r: { x: -2.7, z: 0, w: 2.7, d: 0.06 } },
-      { name: "engawa south rail", r: { x: -2.7, z: 5.94, w: 2.7, d: 0.06 } },
-      { name: "engawa fixed-glass pane", r: { x: -0.06, z: 2.5, w: 0.06, d: 0.9 } },
-      // DRESSING WAVE — tea nook, repositioned FULL-LENGTH PASS to the
-      // longer deck's north third (was the old stub deck's north half)
-      { name: "engawa tea table", r: { x: -1.525, z: 0.775, w: 0.45, d: 0.45 } },
-      { name: "engawa chair", r: { x: -1.925, z: 0.875, w: 0.35, d: 0.35 } },
-    ];
-    for (let i = 0; i < bedroomRects.length; i++) {
-      for (let j = i + 1; j < bedroomRects.length; j++) {
+    const rects = ground.furniture;
+    for (let i = 0; i < rects.length; i++) {
+      for (let j = i + 1; j < rects.length; j++) {
         expect(
-          intersects(bedroomRects[i].r, bedroomRects[j].r),
-          `${bedroomRects[i].name} overlaps ${bedroomRects[j].name}`
+          intersects(rects[i], rects[j]),
+          `furniture rect ${JSON.stringify(rects[i])} overlaps ${JSON.stringify(rects[j])}`
         ).toBe(false);
       }
     }
@@ -204,36 +204,26 @@ describe("bedroom furniture colliders", () => {
     expect(isBlocked(ground, 4, 4.3)).toBe(false); // SPAWN point
   });
 
-  it("SPAWN clears the bed-front bench's far edge by exactly 95cm", () => {
-    // bench: {x:3.5, z:2.95, w:1.2, d:0.4} → z-span 2.95-3.35, x-span
-    // 3.5-4.7. SPAWN.x (4.0) is inside the bench's x-span, so this is a
-    // straight z-gap probe, not a diagonal corner case: bench far z edge
-    // (3.35) + player radius (0.35) = 3.70 is the tangent point.
-    // 4.3 - 3.70 = 0.60m of open margin past the tangent point (and
-    // 4.3 - 3.35 = 0.95m from the bench's edge itself, the "95cm" in the
-    // title, matching the earlier SUPER-KING pass's clearance-by-title
-    // convention of citing the raw edge gap).
-    expect(isBlocked(ground, 4, 3.70)).toBe(false); // 3.70 = tangent point, still clear (strict <)
-    expect(isBlocked(ground, 4, 3.69)).toBe(true); // 1cm inside the 0.35 radius = blocked
-  });
-
   it("the old SPAWN point {4,3} is still blocked by the super-king bed", () => {
     // bed far z edge (2.83) + player radius (0.35) = 3.18 > 3.0.
     expect(isBlocked(ground, 4, 3)).toBe(true);
   });
 
-  it("the P4-SUPER-KING SPAWN point {4,3.6} is now blocked by the bed-front bench", () => {
-    // bench far z edge (3.35) + player radius (0.35) = 3.70 > 3.6 — this is
-    // exactly why SPAWN moved again, from {4,3.6} to {4,4.3}.
-    expect(isBlocked(ground, 4, 3.6)).toBe(true);
+  it("BENCH REMOVAL: the old bed-front-bench spot {4,3.6} is walkable again (bench removed)", () => {
+    // pre-removal this was blocked by the bench's far z edge (3.35) +
+    // player radius (0.35) = 3.70 > 3.6 — the bench is gone now, and
+    // nothing else reaches this point (bed far z edge 2.83 + 0.35 = 3.18
+    // < 3.6, also clear).
+    expect(isBlocked(ground, 4, 3.6)).toBe(false);
   });
 
   it("bedroom walkway probes all walkable", () => {
-    expect(isBlocked(ground, 4.5, 4.3)).toBe(false); // open floor, south of the bench, at the new spawn's z
+    expect(isBlocked(ground, 4.5, 4.3)).toBe(false); // open floor, at the spawn's z (the bench used to sit north of here, now gone)
     expect(isBlocked(ground, 7.5, 3.0)).toBe(false); // door approach
     expect(isBlocked(ground, 1.6, 4.6)).toBe(false); // open floor west of the room, south side (between the hanger and the plants)
     expect(isBlocked(ground, 2.0, 1.8)).toBe(false); // open floor between the sofa and the west nightstand (z=1.8 clears both z-ranges)
-    expect(isBlocked(ground, 6.0, 3.5)).toBe(false); // open floor east of the bench, between it and the about trigger
+    expect(isBlocked(ground, 6.0, 3.5)).toBe(false); // open floor east of the old bench spot, between it and the about trigger
+    expect(isBlocked(ground, 4, 3.35)).toBe(false); // BENCH REMOVAL: dead-center of the old bench footprint, now open floor
   });
 
   it("bed blocks players standing on it", () => {
@@ -248,12 +238,12 @@ describe("bedroom furniture colliders", () => {
     expect(isBlocked(ground, 5.25, 0.4)).toBe(true); // rect corner
   });
 
-  it("plant blocks players standing on it", () => {
-    expect(isBlocked(ground, 0.45, 5.1)).toBe(true); // plant center
+  it("broadleaf plant blocks players standing on it (PLANT PASS, real GLB)", () => {
+    expect(isBlocked(ground, 0.43, 5.0)).toBe(true); // rect corner
   });
 
-  it("second plant blocks players standing on it", () => {
-    expect(isBlocked(ground, 0.95, 5.15)).toBe(true); // rect corner
+  it("potted tree blocks players standing on it (PLANT PASS, real GLB)", () => {
+    expect(isBlocked(ground, 1.55, 5.0)).toBe(true); // rect corner
   });
 
   it("sofa blocks players standing on it", () => {
@@ -264,12 +254,17 @@ describe("bedroom furniture colliders", () => {
     expect(isBlocked(ground, 5.85, 0.42)).toBe(true); // rect corner
   });
 
-  it("cat bed blocks players standing on it", () => {
-    expect(isBlocked(ground, 7.05, 0.45)).toBe(true); // rect corner
+  it("cat bed blocks players standing on it (CATBED ENLARGE PASS, 1.6x diameter)", () => {
+    expect(isBlocked(ground, 6.72, 0.45)).toBe(true); // rect corner
+    expect(isBlocked(ground, 7.5, 1.2)).toBe(true); // far SE corner, inside the enlarged footprint
   });
 
-  it("bed-front bench blocks players standing on it", () => {
-    expect(isBlocked(ground, 3.5, 2.95)).toBe(true); // rect corner
+  it("the enlarged cat bed still clears the sunset-lamp stool (no overlap)", () => {
+    // stool x-max 6.25, cat-bed x-min 6.72, a 0.47m gap — (6.3, 0.6) sits
+    // within the stool's own 0.35 player-radius (dx 0.05) but clear of the
+    // enlarged cat bed's radius (dx 0.42 > 0.35), proving the two rects
+    // still don't overlap (also checked in the pairwise-overlap sweep above).
+    expect(isBlocked(ground, 6.3, 0.6)).toBe(true); // blocked by the stool only
   });
 
   it("clothes hanger stand blocks players standing on it", () => {
@@ -282,6 +277,17 @@ describe("bedroom furniture colliders", () => {
 
   it("shoe storage cubby blocks players standing on it", () => {
     expect(isBlocked(ground, 5.62, 5.35)).toBe(true); // rect corner
+  });
+
+  it("south floor lamp blocks players standing on it (ART+LIGHT+RUGGATE pass)", () => {
+    expect(isBlocked(ground, 2.55, 5.25)).toBe(true); // rect corner
+  });
+
+  it("the walkway north of the new south floor lamp stays open", () => {
+    // z=4.8 sits north of the lamp/potted-tree/clothes-hanger z-bands —
+    // clear of all three by more than the player radius (checked: 0.45m,
+    // 0.53m, 0.81m respectively).
+    expect(isBlocked(ground, 2.7, 4.8)).toBe(false);
   });
 
   it("engawa tea table blocks players standing on it (DRESSING WAVE, repositioned FULL-LENGTH PASS)", () => {
@@ -311,18 +317,16 @@ describe("bedroom furniture colliders", () => {
 
   it("the old dragonslayer spot is now covered by the cat bed and its approach", () => {
     // the old dragonslayer rect ({x:6.55,z:0.32,w:0.85,d:0.5}, x 6.55-7.4)
-    // is gone, but this wave's cat bed ({x:7.05,z:0.45,w:0.55,d:0.55})
-    // reoccupies most of that footprint, and the sunset-lamp stool
-    // (x 5.85-6.25) sits close enough (0.3m gap to x=6.55, inside the 0.35
-    // player radius) to also reach into it — so the spot reads "furnished
-    // again", just by different pieces. (6.55, 0.55): nearest stool edge is
-    // x=6.25, dx=0.3 < 0.35 radius → blocked by the stool, not the (absent)
-    // dragonslayer rect nor the cat bed (nearest cat-bed edge is x=7.05,
-    // dx=0.5, clear on its own).
+    // is gone, but the sunset-lamp stool (x 5.85-6.25) sits close enough
+    // (0.3m gap to x=6.55, inside the 0.35 player radius) to reach into it,
+    // and — post CATBED ENLARGE PASS — so does the cat bed itself (its
+    // x-min is now 6.72, dx=0.17 < 0.35) — so the spot reads "furnished
+    // again", just by different pieces. (6.55, 0.55) is blocked by both the
+    // stool's and the enlarged cat bed's proximity radius now.
     expect(isBlocked(ground, 6.55, 0.55)).toBe(true);
-    // (7.2, 0.7) sits inside the cat bed's own footprint (x 7.05-7.6,
-    // z 0.45-1.0) — directly blocked by the new furniture, not a proximity
-    // effect.
+    // (7.2, 0.7) sits inside the cat bed's own footprint (x 6.72-7.6,
+    // z 0.45-1.33, CATBED ENLARGE PASS) — directly blocked by the new
+    // furniture, not a proximity effect.
     expect(isBlocked(ground, 7.2, 0.7)).toBe(true);
   });
 });
@@ -352,6 +356,13 @@ describe("engawa (P4 engawa rework, renamed from 'balcony')", () => {
   // the stub's own inner edges (z 2.1/4.6) to the house's true north/south
   // edges (z 0/z 6). The tea nook relocates into the now-much-longer deck's
   // north third (its own describe block below has the up-to-date numbers).
+  //
+  // DRESS2 PASS (this pass, owner ask: "the 0.9m gap is hard to line up"):
+  // door opening widens z 2.5-4.3 (1.8m) → z 2.4-4.4 (2.0m), and the fixed
+  // glass pane shrinks from half the opening (0.9m) to a fixed 0.7m
+  // (ENGAWA_DOOR_GLASS_W, layout.ts) — an intentional asymmetric split so
+  // the walkable half grows to 1.3m (z 3.1-4.4), up from 0.9m. See
+  // layout.ts's DRESS2 PASS comment for the full arithmetic.
 
   it("bounds now include the engawa deck footprint west of x=0", () => {
     expect(isBlocked(ground, -1.35, 3.35)).toBe(false); // deck center, was out-of-bounds pre-P4
@@ -370,35 +381,49 @@ describe("engawa (P4 engawa rework, renamed from 'balcony')", () => {
     expect(isBlocked(ground, -2.3, 5.5)).toBe(false); // near the true south end, clear of the south-end rail's radius
   });
 
-  it("walking through the widened sliding-door gap (z 2.5-4.3) crosses x=0 freely — open half only", () => {
-    // the open half is z 3.4-4.3 (see the fixed-glass-pane test below for
-    // the OTHER half, which is now solid).
+  it("DRESS2 PASS: walking through the widened sliding-door gap (physical opening z 3.1-4.4, now 1.3m) crosses x=0 freely — open half only", () => {
+    // the open half is z 3.1-4.4 (see the fixed-glass-pane test below for
+    // the OTHER half, which is now solid). Player-center navigable band
+    // shrinks from the physical opening by PLAYER_RADIUS (0.35) on each
+    // side: 3.1+0.35=3.45 to 4.4-0.35=4.05 (0.6m navigable center band, up
+    // from 0.2m pre-DRESS2 — the actual "easier to line up" improvement).
     expect(isBlocked(ground, 0.05, 3.8)).toBe(false);
     expect(isBlocked(ground, -0.2, 3.8)).toBe(false);
+    // near both new edges of the navigable band
+    expect(isBlocked(ground, 0.05, 3.5)).toBe(false); // just clear of the shrunk glass pane's radius (3.1+0.35=3.45)
+    expect(isBlocked(ground, 0.05, 4.0)).toBe(false); // just clear of the solid wall's radius (4.4-0.35=4.05)
     const p = resolveMovement(ground, { x: 0.05, z: 3.8 }, { x: -0.4, z: 0 });
     expect(p.x).toBeCloseTo(-0.35);
   });
 
-  it("the fixed glass pane (z 2.5-3.4, the OTHER half of the door) is now solid, not walk-through", () => {
+  it("DRESS2 PASS: the old glass-pane band (z 3.1-3.4, plus its old radius buffer) is walkable now that the pane shrunk to grow the gap", () => {
+    // pre-DRESS2 this was inside the old fixed glass pane's radius buffer
+    // (pane z-max 3.4 + player radius 0.35 = blocked up to z=3.75) and
+    // therefore blocked; the pane's z-max is now 3.1 (blocked only up to
+    // z=3.45), so z=3.6 joined the walkable gap.
+    expect(isBlocked(ground, 0.05, 3.6)).toBe(false);
+  });
+
+  it("the fixed glass pane (z 2.4-3.1, the OTHER half of the door, DRESS2 pass) is solid, not walk-through", () => {
     // pre-rework this half had no collider at all — the glass was purely
     // decorative and a player could walk straight through it.
-    expect(isBlocked(ground, 0.05, 2.9)).toBe(true);
-    expect(isBlocked(ground, -0.05, 2.9)).toBe(true);
-    const p = resolveMovement(ground, { x: 0.4, z: 2.9 }, { x: -0.4, z: 0 });
+    expect(isBlocked(ground, 0.05, 2.7)).toBe(true);
+    expect(isBlocked(ground, -0.05, 2.7)).toBe(true);
+    const p = resolveMovement(ground, { x: 0.4, z: 2.7 }, { x: -0.4, z: 0 });
     expect(p.x).toBeGreaterThan(0); // blocked before reaching x=0
   });
 
-  it("the thick west wall is solid at x=0 outside the door gap (north and south of it)", () => {
+  it("the thick west wall is solid at x=0 outside the door gap (north and south of it, DRESS2 pass)", () => {
     expect(isBlocked(ground, -0.05, 1.0)).toBe(true); // north segment interior
     expect(isBlocked(ground, -0.05, 5.0)).toBe(true); // south segment interior
     expect(isBlocked(ground, 0.05, 1.0)).toBe(true); // solid from the bedroom side too
     expect(isBlocked(ground, 0.05, 5.0)).toBe(true);
   });
 
-  it("the west wall rects are the proper WALL_T=0.2 thick-wall boxes (same idiom as every interior divider)", () => {
+  it("the west wall rects are the proper WALL_T=0.2 thick-wall boxes (same idiom as every interior divider, DRESS2 pass)", () => {
     const wallRects = [
-      { x: -0.1, z: 0, w: 0.2, d: 2.5 }, // north segment
-      { x: -0.1, z: 4.3, w: 0.2, d: 1.7 }, // south segment
+      { x: -0.1, z: 0, w: 0.2, d: 2.4 }, // north segment
+      { x: -0.1, z: 4.4, w: 0.2, d: 1.6 }, // south segment
     ];
     for (const rect of wallRects) {
       const found = ground.walls.some(
@@ -468,9 +493,9 @@ describe("engawa (P4 engawa rework, renamed from 'balcony')", () => {
     }
   });
 
-  it("the fixed-glass-pane collider rect is present verbatim in furniture", () => {
+  it("the fixed-glass-pane collider rect is present verbatim in furniture (DRESS2 pass: z 2.4, d 0.7)", () => {
     const found = ground.furniture.some(
-      (f) => f.x === -0.06 && f.z === 2.5 && f.w === 0.06 && f.d === 0.9
+      (f) => f.x === -0.06 && f.z === 2.4 && f.w === 0.06 && f.d === 0.7
     );
     expect(found).toBe(true);
   });
@@ -518,7 +543,7 @@ describe("engawa (P4 engawa rework, renamed from 'balcony')", () => {
       const table = { x: -1.525, z: 0.775, w: 0.45, d: 0.45 };
       const railW = { x: -2.7 - 0.06, z: 0, w: 0.06, d: 6 };
       const railN = { x: -2.7, z: 0, w: 2.7, d: 0.06 };
-      const glass = { x: -0.06, z: 2.5, w: 0.06, d: 0.9 };
+      const glass = { x: -0.06, z: 2.4, w: 0.06, d: 0.7 }; // DRESS2 pass
       for (const other of [railW, railN, glass]) {
         expect(intersects(chair, other)).toBe(false);
         expect(intersects(table, other)).toBe(false);
@@ -544,24 +569,124 @@ describe("engawa (P4 engawa rework, renamed from 'balcony')", () => {
       expect(isBlocked(ground, -0.2, 3.8)).toBe(false); // inside the gap itself (pre-existing probe, still true post-nook)
     });
 
-    it("a path from the walk gap south to the reserved (and relocated) bonsai pedestal spot stays clear", () => {
-      // bonsai spot: x -1.6..-1.2, z 5.6-5.9 (layout.ts's RESERVE comment,
-      // moved south this pass to keep pace with the south-end rail's own
-      // move from z=4.54 to z=5.94 — same 19cm gap between spot and rail as
-      // before). The nook sits entirely north of z 1.225, nowhere near this
-      // path, so a straight walk south is unobstructed the whole way up to
-      // the spot's own northern approach (5.55) — NOTE: the spot's own
-      // z-range (5.6-5.9) sits close enough to the south-end rail (z-min
-      // 5.94) that most of it already falls inside the rail's own 0.35
-      // player-radius zone (same pre-existing relationship as before this
-      // pass, just at the new rail position), which is exactly why the
-      // placeholder plant landing there gets no new collider of its own: a
-      // player was never going to stand dead-center on it anyway, same as
-      // standing flush against any railing.
+    it("a path from the walk gap south to the zen garden corner's own north edge stays clear", () => {
+      // SUPERSEDED (ZEN GARDEN PASS): the reserved placeholder spot this
+      // test used to walk right up to (x -1.6..-1.2, z 5.6-5.9) is now the
+      // real built zen garden (display stand + accent rock — see the "zen
+      // garden corner" describe block below for their own blocking tests).
+      // The nook sits entirely north of z 1.225, nowhere near this path, so
+      // a straight walk south is unobstructed up to the garden's own north
+      // edge (z 4.5, where the gravel bed itself begins — gravel/stones/
+      // moss are walk-over floor dressing with no collider of their own).
       expect(isBlocked(ground, -1.4, 4.5)).toBe(false);
-      expect(isBlocked(ground, -1.4, 5.0)).toBe(false);
-      expect(isBlocked(ground, -1.4, 5.55)).toBe(false); // the reserved spot's own northern approach
     });
+  });
+});
+
+describe("zen garden corner (engawa south end, ZEN GARDEN PASS)", () => {
+  // Built this pass: a recessed gravel bed, stepping-stone path, moss,
+  // grass, accent rocks, a display stand (kadai), and a big hand-built
+  // bonsai (Bedroom.tsx's ZEN_* consts). Only the display stand and the
+  // one big accent rock get colliders — everything else is walk-over floor
+  // dressing, same "no collider" convention the railing plants already use
+  // on this deck.
+  it("the display stand (kadai) blocks players standing on it", () => {
+    expect(isBlocked(ground, -1.65, 5.35)).toBe(true); // rect center
+  });
+
+  it("the big accent rock blocks players standing on it", () => {
+    expect(isBlocked(ground, -1.55, 5.74)).toBe(true); // rect center
+  });
+
+  it("the stand and rock don't overlap each other or the west/south rails", () => {
+    const intersects = (a: Rect, b: Rect) =>
+      a.x < b.x + b.w && b.x < a.x + a.w && a.z < b.z + b.d && b.z < a.z + a.d;
+    const stand = { x: -1.9, z: 5.15, w: 0.5, d: 0.4 };
+    const rock = { x: -1.67, z: 5.62, w: 0.24, d: 0.24 };
+    const railW = { x: -2.7 - 0.06, z: 0, w: 0.06, d: 6 };
+    const railS = { x: -2.7, z: 5.94, w: 2.7, d: 0.06 };
+    expect(intersects(stand, rock)).toBe(false);
+    for (const other of [railW, railS]) {
+      expect(intersects(stand, other)).toBe(false);
+      expect(intersects(rock, other)).toBe(false);
+    }
+  });
+
+  it("the previously-open interior of the old placeholder spot is now correctly blocked by the built stand", () => {
+    // pre-build (placeholder era) these were walkable (see the superseded
+    // "path to the reserved bonsai pedestal" test above) — now that the
+    // real display stand actually stands there, a player can't stand on
+    // it, same as any other real furniture in the room.
+    expect(isBlocked(ground, -1.4, 5.0)).toBe(true);
+    expect(isBlocked(ground, -1.4, 5.55)).toBe(true);
+  });
+
+  it("the deck stays walkable around the garden — the east-side path (between the garden and the solid wall) clears the full south end", () => {
+    expect(isBlocked(ground, -0.6, 4.6)).toBe(false);
+    expect(isBlocked(ground, -0.6, 5.2)).toBe(false);
+    // z=5.55 (not further south): the south rail's own z-min (5.94) blocks
+    // anything within player-radius 0.35 of it regardless of x, i.e. z>5.59
+    // — this is the deepest south probe the rail itself allows.
+    expect(isBlocked(ground, -0.6, 5.55)).toBe(false);
+  });
+
+  it("the sliding-door walk gap and tea nook are unaffected by the garden", () => {
+    expect(isBlocked(ground, -0.2, 3.8)).toBe(false); // door gap, pre-existing probe
+    expect(isBlocked(ground, -1.3, 1.0)).toBe(true); // tea table, still blocks
+  });
+});
+
+describe("engawa deck plants (PLANT PASS)", () => {
+  // TallPalm (statement plant, deck's north tip near the tea nook) and
+  // FicusLyrata (balancing second plant, east side/different z-band) — see
+  // layout.ts's PLANT PASS comment (above ENGAWA_TALLPALM_RECT) for the
+  // full placement + collider-sizing arithmetic, including why the palm's
+  // collider is pot-sized (0.6x0.6) rather than its full 1.25x1.11m
+  // frond-spread footprint: the full footprint doesn't fit anywhere on
+  // this deck without re-blocking either the FULL-LENGTH PASS's nook
+  // west-side walkaround ({-2.3125,1.05}, below) or the room-side east
+  // approach ({-0.6,1.0}/{-0.5,1.0}/{-0.5,2.6}, all pre-existing tests
+  // above, still green — checked exhaustively against every existing
+  // probe on this deck before landing.
+  it("the tall palm blocks players standing on it", () => {
+    expect(isBlocked(ground, -1.85, 0.09)).toBe(true); // rect corner
+  });
+
+  it("the ficus blocks players standing on it", () => {
+    expect(isBlocked(ground, -0.6, 1.55)).toBe(true); // rect corner
+  });
+
+  it("neither plant overlaps the tea nook, the rails, or each other", () => {
+    const intersects = (a: Rect, b: Rect) =>
+      a.x < b.x + b.w && b.x < a.x + a.w && a.z < b.z + b.d && b.z < a.z + a.d;
+    const palm = { x: -1.85, z: 0.09, w: 0.6, d: 0.6 };
+    const ficus = { x: -0.6, z: 1.55, w: 0.45, d: 0.55 };
+    const table = { x: -1.525, z: 0.775, w: 0.45, d: 0.45 };
+    const chair = { x: -1.925, z: 0.875, w: 0.35, d: 0.35 };
+    const railN = { x: -2.7, z: 0, w: 2.7, d: 0.06 };
+    const railW = { x: -2.7 - 0.06, z: 0, w: 0.06, d: 6 };
+    expect(intersects(palm, ficus)).toBe(false);
+    for (const other of [table, chair, railN, railW]) {
+      expect(intersects(palm, other)).toBe(false);
+      expect(intersects(ficus, other)).toBe(false);
+    }
+  });
+
+  it("the FULL-LENGTH PASS's nook west-side walkaround stays clear of the new palm", () => {
+    // the same {-2.3125,1.05} probe the FULL-LENGTH PASS added — re-checked
+    // here explicitly since the palm sits close by (deck's north tip).
+    expect(isBlocked(ground, -2.3125, 1.05)).toBe(false);
+  });
+
+  it("the room-side approach to the tea nook stays clear of the new palm", () => {
+    expect(isBlocked(ground, -0.6, 1.0)).toBe(false); // pre-existing probe, re-checked against the palm
+  });
+
+  it("walking space stays open on both sides of the palm and around the ficus", () => {
+    expect(isBlocked(ground, -2.3, 0.45)).toBe(false); // west of the palm, rail side
+    expect(isBlocked(ground, -0.85, 0.45)).toBe(false); // east of the palm, nook side
+    expect(isBlocked(ground, -0.5, 1.15)).toBe(false); // north of the ficus
+    expect(isBlocked(ground, -0.5, 2.5)).toBe(false); // south of the ficus, before the door wall
   });
 });
 
