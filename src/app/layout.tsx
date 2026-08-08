@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Inter, Bungee } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
-import { site } from "@/content/site";
 import { themeInitScript } from "@/components/bento/theme";
 import { GoatCounterPageviews } from "@/components/GoatCounterPageviews";
 
@@ -19,15 +18,14 @@ const bungee = Bungee({
   display: "swap",
 });
 
+// metadataBase is intentionally UNSET: Next resolves relative OG/Twitter image
+// URLs from VERCEL_PROJECT_PRODUCTION_URL, which tracks whatever the current
+// production domain is (the vercel.app name today, 3am.quest once attached) —
+// no code change needed when the real domain lands.
 export const metadata: Metadata = {
-  title: `${site.name} — ${site.role}`,
-  description: site.bio,
-  metadataBase: new URL("https://cpt-nem0.github.io"),
-  openGraph: {
-    title: site.name,
-    description: site.bio,
-    url: "https://cpt-nem0.github.io",
-    type: "website",
+  title: {
+    template: "%s",
+    default: "3am.quest",
   },
 };
 
