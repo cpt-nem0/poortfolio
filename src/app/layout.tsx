@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { Inter, Bungee } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { site } from "@/content/site";
+import { themeInitScript } from "@/components/bento/theme";
+import { GoatCounterPageviews } from "@/components/GoatCounterPageviews";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -26,17 +29,24 @@ export const metadata: Metadata = {
     url: "https://cpt-nem0.github.io",
     type: "website",
   },
-  icons: { icon: "/logo.jpg" },
 };
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${bungee.variable}`}>
+    <html lang="en" data-theme="night" className={`${inter.variable} ${bungee.variable}`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className="min-h-screen antialiased">
-        <div className="underlay" aria-hidden />
         {children}
+        <GoatCounterPageviews />
+        <Script
+          data-goatcounter="https://cpt-n3m0.goatcounter.com/count"
+          src="https://gc.zgo.at/count.js"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );

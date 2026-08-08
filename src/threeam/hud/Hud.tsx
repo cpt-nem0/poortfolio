@@ -13,7 +13,7 @@ const ROOM_LABELS: Record<RoomId, string> = {
   rooftop: "the rooftop",
 };
 
-export function Hud() {
+export function Hud({ onOpenCredits }: { onOpenCredits: () => void }) {
   const room = useThreeAm((s) => s.room);
   const portal = useThreeAm((s) => s.activePortal);
   const activeStation = useThreeAm((s) => s.activeStation);
@@ -33,10 +33,10 @@ export function Hud() {
       )}
 
       <Link
-        href="/"
+        href="/boring"
         className="pointer-events-auto absolute right-5 top-4 rounded bg-black/50 px-3 py-1.5 text-[#cfc6ee] transition-colors hover:text-[#ffb35c]"
       >
-        ← back to normal
+        ← the boring version
       </Link>
 
       {portal && (
@@ -94,10 +94,21 @@ export function Hud() {
       )}
 
       {audioError && (
-        <div className="absolute bottom-16 left-5 rounded bg-black/60 px-3 py-1.5 text-xs text-[#ff8f70]">
+        <div className="absolute bottom-28 left-5 rounded bg-black/60 px-3 py-1.5 text-xs text-[#ff8f70]">
           {audioError}
         </div>
       )}
+
+      <button
+        type="button"
+        onClick={(e) => {
+          onOpenCredits();
+          e.currentTarget.blur();
+        }}
+        className="pointer-events-auto absolute bottom-16 left-5 rounded bg-black/50 px-2 py-1 text-xs text-[#7d729e] outline-none transition-colors hover:text-[#ffb35c] focus:outline-none"
+      >
+        credits
+      </button>
     </div>
   );
 }

@@ -44,17 +44,17 @@ function RoomBandUpdater() {
 }
 
 /**
- * Renders its room while it is VISIBLE — the current band always, plus an
- * adjacent band once the player is within DOOR_MARGIN of the doorway that
- * borders it (see `visibleBands`/`updateVisibleBands` in runtime.ts).
- * Usually 1-2 rooms' worth of lights are active; at the owner-chosen
- * DOOR_MARGIN of 4.5 all 3 render in the ~1m strip at the workspace centre
- * where both near-door zones overlap (accepted — see the DOOR_MARGIN doc).
- * The approaching room fades in ahead of arrival instead of hard-cutting at
- * the threshold, which is the point. A room with neither the
- * player nor an approaching neighbour reads as dark void — intended, it's
- * night and unentered rooms are unlit. Rooms stay MOUNTED (no GLB/texture
- * reload) — only `visible` toggles.
+ * Renders its room while it is VISIBLE — the current band always, plus at
+ * most ONE adjacent band once the player is within DOOR_MARGIN of the
+ * doorway that borders it (see `visibleBands`/`updateVisibleBands`/
+ * `selectNeighbourBand` in runtime.ts). Never more than 2 rooms' worth of
+ * lights are active, even at the workspace centre where both doorways are
+ * simultaneously in margin — `selectNeighbourBand` picks the nearer one,
+ * with hysteresis so it doesn't flicker between them. The approaching room
+ * fades in ahead of arrival instead of hard-cutting at the threshold, which
+ * is the point. A room with neither the player nor an approaching neighbour
+ * reads as dark void — intended, it's night and unentered rooms are unlit.
+ * Rooms stay MOUNTED (no GLB/texture reload) — only `visible` toggles.
  */
 function RoomCull({ band, children }: { band: RoomBand; children: React.ReactNode }) {
   const ref = useRef<Group>(null);

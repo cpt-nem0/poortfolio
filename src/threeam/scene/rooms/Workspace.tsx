@@ -33,10 +33,20 @@ const ACCENTS = ["#b3475f", "#c98a2e", "#2e6e54", "#5b4b8a"]; // wine, mustard, 
 /* corkboard pin positions (board-local), one per site.experience entry.
    The red string is DERIVED from these so its endpoints land exactly on
    the pin centers — never hand-tune the string separately. */
-const PINS = site.experience.map((_, i) => ({
-  x: -0.45 + i * 0.9,
-  y: 0.3 - (i % 2) * 0.35,
-}));
+const PINS = (() => {
+  // board mesh is boxGeometry [1.7, 1.15, 0.05] (see the corkboard station
+  // below); note cards are planeGeometry [0.42, 0.34]. Keep every card's
+  // edge, not just its pin, ~0.15 inside the board edge.
+  const boardHalfW = 1.7 / 2;
+  const cardHalfW = 0.42 / 2;
+  const margin = 0.15;
+  const usableHalfW = boardHalfW - margin - cardHalfW;
+  const n = site.experience.length;
+  return site.experience.map((_, i) => ({
+    x: n === 1 ? 0 : -usableHalfW + i * ((2 * usableHalfW) / (n - 1)),
+    y: 0.3 - (i % 2) * 0.35,
+  }));
+})();
 const PIN_R = 0.02;
 const PIN_Z = 0.045; // note group z (0.035) + pin-local z (0.01)
 const PIN_A = PINS[0];

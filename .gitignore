@@ -40,3 +40,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .superpowers/
+
+# local-only working docs (session handoff notes — not part of the repo)
+docs/superpowers/HANDOFF.md
+
+# favicon style-gate preview PNGs (scripts/pixelart/gen-favicon.mjs)
+scripts/pixelart/.favicon-preview/

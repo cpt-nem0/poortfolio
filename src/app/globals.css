@@ -9,7 +9,6 @@
   --color-accent-bg: #ff66001e;
   --color-text: #8b9dbb;
   --color-highlight: #dde4ee;
-  --color-underlay: #0b192c;
   --color-void: #000000;
 
   /* fonts are injected by next/font as CSS variables */
@@ -41,26 +40,9 @@ body {
   background-attachment: fixed;
 }
 
-h1,
-h2,
-h3,
-h4 {
-  color: var(--color-highlight);
-}
-
 ::selection {
   background: var(--color-accent);
   color: var(--color-void);
-}
-
-/* Fixed navy wash sitting behind everything. */
-.underlay {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background-color: var(--color-underlay);
-  opacity: 0.5;
-  pointer-events: none;
 }
 
 /* Bungee display font helper. */
@@ -95,3 +77,145 @@ h4 {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── bento theme tokens (spec 2026-08-08-bento-homepage-design §5) ── */
+[data-theme="night"] {
+  --sky-from: #060614; --sky-2: #0a0a1c; --sky-3: #131230; --sky-to: #1d1838;
+  --tile: #101016; --tile-border: #26262e; --tile-border-hover: #4a4a58;
+  --ink: #f4f2ec; --label: #8f8fa3; --dim: #6d6d80;
+  --amber: #ffb35c; --door-pink: #ff5c7a; --lyric: #e8c98a;
+  --presence: #7fd88f; --lime: #c8f542; --heat: #ef9f27;
+  --cloud: rgba(52,52,84,.55); --cloud-lit: rgba(90,90,130,.5);
+  --celestial-core: #e8e4d2; --celestial-detail: #c9c4ae;
+  --star: #cfd6ff; --ray: rgba(255,205,110,.42);
+}
+[data-theme="day"] {
+  --sky-from: #7db4e0; --sky-2: #a8cdec; --sky-3: #cfe4f5; --sky-to: #f2e8d8;
+  --tile: #fbf9f4; --tile-border: #d8d2c4; --tile-border-hover: #a89f8d;
+  --ink: #1c1a24; --label: #6b6577; --dim: #8a8496;
+  --amber: #d98324; --door-pink: #ff5c7a; --lyric: #b0842f;
+  --presence: #3d9e52; --lime: #6d8a12; --heat: #a35c00;
+  --cloud: rgba(255,255,255,.75); --cloud-lit: rgba(255,255,255,.95);
+  --celestial-core: #ffd75e; --celestial-detail: #ffb838;
+  --star: #cfd6ff; --ray: rgba(255,205,110,.42);
+}
+
+/* ── bento sky ── */
+@keyframes bento-drift { from { transform: translateX(-18vw); } to { transform: translateX(118vw); } }
+@keyframes bento-twinkle-soft { 0%, 100% { opacity: 0.85; } 50% { opacity: 0.55; } }
+@keyframes bento-ray-spin { to { transform: rotate(360deg); } }
+.bento-celestial {
+  box-shadow: 0 0 10px 3px rgba(232, 228, 210, .4), 0 0 34px 14px rgba(232, 228, 210, .18);
+  animation: bento-twinkle-soft 6s ease-in-out infinite;
+}
+[data-theme="day"] .bento-celestial {
+  box-shadow: 0 0 14px 4px rgba(255, 215, 94, .55), 0 0 44px 18px rgba(255, 215, 94, .28);
+  animation: none;
+}
+.bento-celestial-rays { opacity: 0; transition: opacity 500ms ease; }
+[data-theme="day"] .bento-celestial-rays { opacity: 1; }
+.bento-stars { opacity: 0; transition: opacity 500ms ease; }
+[data-theme="night"] .bento-stars { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .bento-cloud, .bento-celestial, .bento-celestial-rays, .bento-star { animation: none !important; }
+}
+
+/* ── bento tile animations (idle budget: these three only) ── */
+@keyframes bento-verse-wipe {
+  0% { background-position: 100% 0; opacity: 0; }
+  6% { opacity: 1; }
+  82% { background-position: -100% 0; opacity: 1; }
+  94% { opacity: 0; }
+  100% { background-position: -100% 0; opacity: 0; }
+}
+@keyframes bento-ring { 0%, 100% { box-shadow: 0 0 0 0 rgba(226, 75, 74, 0.35); } 50% { box-shadow: 0 0 0 8px rgba(226, 75, 74, 0); } }
+@keyframes bento-window { 0%, 92%, 100% { opacity: 1; } 94% { opacity: 0.55; } 96% { opacity: 0.9; } 98% { opacity: 0.7; } }
+@media (prefers-reduced-motion: reduce) {
+  .bento-ring, .bento-window { animation: none !important; }
+}
+
+/* ── bento meanwhile log feed ── */
+@keyframes bento-log-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes bento-log-out { from { opacity: 1; } to { opacity: 0; } }
+.bento-log-enter { animation: bento-log-in 400ms ease; }
+.bento-log-leave { animation: bento-log-out 400ms ease forwards; }
+.bento-log-shift { transition: transform 400ms ease; }
+
+/* ── bento hero quote crossfade ── */
+@keyframes bento-quote-out {
+  0% { transform: translateY(0); opacity: 1; filter: blur(0); }
+  100% { transform: translateY(-14px); opacity: 0; filter: blur(2px); }
+}
+@keyframes bento-quote-in {
+  0% { transform: translateY(14px); opacity: 0; filter: blur(2px); }
+  100% { transform: translateY(0); opacity: 1; filter: blur(0); }
+}
+.bento-quote-out { animation: bento-quote-out 650ms ease forwards; }
+.bento-quote-in { animation: bento-quote-in 650ms ease forwards; }
+@media (prefers-reduced-motion: reduce) {
+  .bento-quote-out, .bento-quote-in { animation: none !important; }
+}
+
+/* ── sekiro egg: "the slash" ── */
+[data-slash] body > * { animation: bento-jolt 400ms cubic-bezier(.36,.07,.19,.97) both; }
+@keyframes bento-jolt {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(4px, -3px) rotate(0.35deg); }
+  50% { transform: translate(-2px, 1.5px) rotate(-0.15deg); }
+  75% { transform: translate(1px, -0.5px) rotate(0.05deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+.bento-slash-line {
+  transform: translate(-50%, -50%) rotate(-32deg) scaleX(0);
+  transform-origin: center;
+  background: linear-gradient(90deg, transparent 0%, #d98324 12%, #f4f2ec 50%, #d98324 88%, transparent 100%);
+  box-shadow: 0 0 18px 3px rgba(244, 242, 236, .55);
+  animation: bento-slash-sweep 260ms ease-out forwards;
+}
+@keyframes bento-slash-sweep {
+  0% { transform: translate(-50%, -50%) rotate(-32deg) scaleX(0); opacity: 0; }
+  15% { opacity: 1; }
+  55% { transform: translate(-50%, -50%) rotate(-32deg) scaleX(1); opacity: 1; }
+  100% { transform: translate(-50%, -50%) rotate(-32deg) scaleX(1); opacity: 0; }
+}
+.bento-slash-flash { background: #f4f2ec; opacity: .25; animation: bento-slash-flash 200ms ease-out forwards; }
+@keyframes bento-slash-flash { from { opacity: .25; } to { opacity: 0; } }
+.bento-spark {
+  position: absolute; height: 4px; width: 4px; border-radius: 1px;
+  background: var(--amber); box-shadow: 0 0 6px 1px var(--amber);
+  opacity: 0; animation: bento-spark-fly 320ms ease-out forwards;
+}
+@keyframes bento-spark-fly {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--tx), var(--ty)) scale(.3); opacity: 0; }
+}
+
+/* ── konami egg: synced light-show ── */
+.konami-lit {
+  transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+  border-color: var(--konami-color, var(--amber));
+  box-shadow: 0 0 24px color-mix(in srgb, var(--konami-color, var(--amber)) 55%, transparent);
+  background-color: color-mix(in srgb, var(--konami-color, var(--amber)) 10%, transparent);
+}
+.konami-lit-strong {
+  box-shadow: 0 0 32px color-mix(in srgb, var(--konami-color, var(--amber)) 75%, transparent);
+}
+
+/* ── berserk eclipse egg ── */
+[data-eclipse] {
+  --sky-from: #0d0508; --sky-2: #1a0a10; --sky-3: #2a0d12; --sky-to: #451015;
+  --celestial-core: #8a0f1e; --celestial-detail: #5c0a14; --star: #e8a0a0;
+}
+[data-eclipse][data-theme="day"] {
+  --sky-from: #0d0508; --sky-2: #1a0a10; --sky-3: #2a0d12; --sky-to: #451015;
+  --celestial-core: #8a0f1e; --celestial-detail: #5c0a14; --star: #e8a0a0;
+}
+[data-eclipse] .bento-celestial {
+  box-shadow: 0 0 16px 5px rgba(220, 40, 50, .6), 0 0 54px 20px rgba(220, 40, 50, .32);
+  transform: scale(1.35);
+  transition: transform 1.2s ease, box-shadow 1.2s ease;
+  animation: none;
+}
+[data-eclipse] .bento-stars { opacity: 1; }
+[data-eclipse][data-theme="day"] .bento-stars { opacity: 1; }
+[data-eclipse][data-theme="day"] .bento-celestial-rays { opacity: 0; }

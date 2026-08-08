@@ -78,41 +78,121 @@ export const roomBand: { current: RoomBand } = {
  * because this branch also band-gates House's floors/walls, so the far side
  * degrades to raw background rather than an unlit room.
  *
- * The tradeoff, explicitly accepted: the two near-door zones — |x-8|<4.5
- * (x∈(3.5,12.5)) and |x-16|<4.5 (x∈(11.5,20.5)) — now OVERLAP on x∈(11.5,
- * 12.5), so all 3 ground rooms render in that ~1m strip at the workspace
- * centre. That used to cost ~49fps, but the render-resolution cap plus the
- * workspace light trim (9→5) left enough headroom that it no longer matters.
- * If perf ever regresses there, narrow this back to 4.0 rather than
- * re-architecting — and expect the spawn dark edge to return with it. */
+ * At the workspace centre, x∈(11.5,12.5) sits within DOOR_MARGIN of BOTH
+ * doorways (x8 and x16) at once. Rather than reintroducing the 4.0 dark-edge
+ * regression to keep that zone out of margin, `selectNeighbourBand` below
+ * caps how many of those in-margin doorways actually render a neighbour: at
+ * most one, the nearer one, with switch hysteresis so it doesn't flicker
+ * between the two as the player crosses the strip. See that function's doc
+ * for the cap logic. */
 export const DOOR_MARGIN = 4.5;
 
+/** Hysteresis for `selectNeighbourBand`'s neighbour CHOICE, distinct from
+ * `BAND_HYSTERESIS` (which gates the CURRENT band crossing a boundary).
+ * Only matters from band 1 (workspace), the one band with two candidate
+ * doorways at once: once a neighbour is selected, the other candidate must
+ * become closer by MORE than this before it takes over, so standing near
+ * the workspace centre can't flicker the rendered neighbour back and forth
+ * every frame. Same numeric value as BAND_HYSTERESIS by coincidence, not by
+ * shared meaning — keep them separate constants. */
+export const NEIGHBOUR_SWITCH_HYSTERESIS = 0.4;
+
+/** Which neighbour band (if any) is currently rendered alongside the
+ * current band, and which `current` value that choice was made for. The
+ * `forCurrent` field is how `selectNeighbourBand` detects a current-band
+ * change and resets the choice (see its doc). Mutated in place, like
+ * `roomBand` — single writer: `updateVisibleBands`. */
+export type NeighbourSelection = { band: RoomBand | null; forCurrent: RoomBand };
+
+export const neighbourSelection: NeighbourSelection = {
+  band: null,
+  forCurrent: roomBand.current,
+};
+
+/**
+ * Pure decision function (extracted for unit testing): given the current
+ * band, the player's raw x, and the previous frame's neighbour selection,
+ * returns which single neighbour band (if any) should render alongside
+ * `current` this frame.
+ *
+ * Only band 1 (workspace) ever has two in-margin candidate doorways at
+ * once (see the DOOR_MARGIN doc) — bands 0 and 2 each border only one
+ * doorway, so they fall straight into the zero/one-candidate cases below
+ * regardless of prior selection, same as before this cap existed.
+ *
+ * - Zero in-margin doorways → no neighbour.
+ * - Exactly one in-margin doorway → that neighbour, unconditionally (no
+ *   hysteresis needed — there's no choice to flicker between).
+ * - Two in-margin doorways (band 1 only):
+ *   - If `current` differs from `prev.forCurrent` (the active band just
+ *     changed), there's no prior choice to hold onto — pick whichever
+ *     doorway is nearer.
+ *   - Otherwise, keep the previously selected neighbour UNLESS the other
+ *     candidate's doorway is now closer by more than
+ *     `NEIGHBOUR_SWITCH_HYSTERESIS`.
+ */
+export function selectNeighbourBand(
+  current: RoomBand,
+  x: number,
+  prev: NeighbourSelection
+): NeighbourSelection {
+  const candidates: Array<[RoomBand, number]> = [];
+  if (current === 0 || current === 1) {
+    const d = Math.abs(x - BEDROOM_WORKSPACE_BOUNDARY);
+    if (d < DOOR_MARGIN) candidates.push([current === 0 ? 1 : 0, d]);
+  }
+  if (current === 1 || current === 2) {
+    const d = Math.abs(x - WORKSPACE_MUSIC_BOUNDARY);
+    if (d < DOOR_MARGIN) candidates.push([current === 1 ? 2 : 1, d]);
+  }
+
+  if (candidates.length === 0) {
+    return { band: null, forCurrent: current };
+  }
+  if (candidates.length === 1) {
+    return { band: candidates[0][0], forCurrent: current };
+  }
+
+  // Two candidates: only reachable from band 1.
+  const prevCand =
+    prev.forCurrent === current && prev.band !== null
+      ? candidates.find(([b]) => b === prev.band)
+      : undefined;
+
+  if (!prevCand) {
+    const nearest = candidates[0][1] <= candidates[1][1] ? candidates[0] : candidates[1];
+    return { band: nearest[0], forCurrent: current };
+  }
+
+  const other = candidates.find(([b]) => b !== prevCand[0])!;
+  if (other[1] < prevCand[1] - NEIGHBOUR_SWITCH_HYSTERESIS) {
+    return { band: other[0], forCurrent: current };
+  }
+  return { band: prevCand[0], forCurrent: current };
+}
+
 /** Which bands render this frame: the current band (from `roomBand`,
- * hysteresis-gated — see `nextRoomBand`) ALWAYS, plus an adjacent band
- * whenever the player's raw x is within `DOOR_MARGIN` of the boundary that
- * borders it. A plain 3-slot boolean array, mutated in place like
- * `playerPosition`/`roomBand` — no per-frame allocation, and both Scene's
- * RoomCull and House's StructureBand read the exact same array so content
- * and structural shell can never disagree about which rooms are visible.
- * Usually 1-2 slots are true; at DOOR_MARGIN 4.5 all 3 are true in the ~1m
- * strip x∈(11.5,12.5) where both near-door zones overlap — an accepted
- * tradeoff, see the DOOR_MARGIN doc above. */
+ * hysteresis-gated — see `nextRoomBand`) ALWAYS, plus at most ONE adjacent
+ * band, chosen by `selectNeighbourBand`. A plain 3-slot boolean array,
+ * mutated in place like `playerPosition`/`roomBand` — no per-frame
+ * allocation, and both Scene's RoomCull and House's StructureBand read the
+ * exact same array so content and structural shell can never disagree about
+ * which rooms are visible. Never more than 2 slots are true. */
 export const visibleBands: [boolean, boolean, boolean] = [false, false, false];
 
-/** Recomputes `visibleBands` for this frame. Call once per frame, after
- * `roomBand.current` has been advanced (Scene's RoomBandUpdater does both,
- * in order). Cheap: 3 assignments + 2 boundary checks, no allocation. */
+/** Recomputes `neighbourSelection` and `visibleBands` for this frame. Call
+ * once per frame, after `roomBand.current` has been advanced (Scene's
+ * RoomBandUpdater does both, in order). */
 export function updateVisibleBands(current: RoomBand, x: number): void {
+  const next = selectNeighbourBand(current, x, neighbourSelection);
+  neighbourSelection.band = next.band;
+  neighbourSelection.forCurrent = next.forCurrent;
+
   visibleBands[0] = current === 0;
   visibleBands[1] = current === 1;
   visibleBands[2] = current === 2;
-  if (Math.abs(x - BEDROOM_WORKSPACE_BOUNDARY) < DOOR_MARGIN) {
-    visibleBands[0] = true;
-    visibleBands[1] = true;
-  }
-  if (Math.abs(x - WORKSPACE_MUSIC_BOUNDARY) < DOOR_MARGIN) {
-    visibleBands[1] = true;
-    visibleBands[2] = true;
+  if (neighbourSelection.band !== null) {
+    visibleBands[neighbourSelection.band] = true;
   }
 }
 
