@@ -55,8 +55,14 @@ class Engine {
 
   private makePositional(mount: THREE.Object3D) {
     const node = new THREE.PositionalAudio(this.listener!);
-    node.setRefDistance(3);
-    node.setRolloffFactor(1.6);
+    // The listener rides the dollhouse follow-camera (see FollowCamera.tsx),
+    // not the player — it sits ~10.5m up and ~9.5m back, so the real
+    // camera-to-turntable distance is ~15-24m across the floor, not the few
+    // meters it'd be at ground level. refDistance is raised to match (so the
+    // music nook still reads full-volume) and rolloffFactor raised to fade
+    // more steeply as you walk toward the bedroom.
+    node.setRefDistance(5.6);
+    node.setRolloffFactor(2.6);
     node.setDistanceModel("exponential");
     mount.add(node);
     return node;
