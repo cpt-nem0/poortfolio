@@ -1,8 +1,14 @@
 # Audio attribution
 
-- `ambient.mp3` — "3 am West End" by statusq, from https://freepd.com/electronic.php (freepd.com has since
-  closed; retrieved via the Wayback Machine capture at
-  https://web.archive.org/web/20251202214002/https://freepd.com/music/3%20am%20West%20End.mp3).
+- `ambient.mp3` (CURRENT — jazz, since Aug 2026) — sourced by Rohan from https://pixabay.com
+  (Pixabay Content License: free for commercial and non-commercial use, no attribution required —
+  credited anyway). The exact track title/artist was not recorded at download time and the file
+  carries no ID3 tags; fill this in here if it's ever identified. Replaced the freepd track noted
+  below, which is kept for the record.
+
+- `ambient.mp3` (PREVIOUS — superseded Aug 2026) — "3 am West End" by statusq, from
+  https://freepd.com/electronic.php (freepd.com has since closed; retrieved via the Wayback Machine
+  capture at https://web.archive.org/web/20251202214002/https://freepd.com/music/3%20am%20West%20End.mp3).
   License: CC0 — freepd.com published its entire catalog as "100% Free Music - Free for Commercial Use,
   Free Of Royalties, Free Of Attribution, Creative Commons 0" (see the archived
   https://web.archive.org/web/20210924175658/https://freepd.com/legal.php), and the track's own listing

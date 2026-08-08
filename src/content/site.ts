@@ -40,6 +40,21 @@ export const site = {
   resumeHref:
     "https://drive.google.com/file/d/1fiUtvGqhxkTOoIlBrE5Bg2DA_qNwEgXf/view?usp=sharing",
 
+  /**
+   * Full about-me bio paragraphs, lifted verbatim from the `/` route's
+   * About section (src/components/sections/About.tsx). That component keeps
+   * a couple of inline hyperlinks (Quantive/Cliff.ai/Sekiro/Lethal Company)
+   * styled as JSX anchors; this plain-text export drops the inline
+   * hyperlinking (site.ts is data-only) but preserves the copy exactly.
+   */
+  about: {
+    paragraphs: [
+      "It all started back in high school when I watched a show about the coolest places to work. Google's and Facebook's laid-back office setups—with slides, nap pods, and a chill vibe—had me hooked. That, and the fact that my only other elective was Hindi, led me to computer science, where I learned Java and started coding. Fast forward to today, I've had the chance to build software at two startups—one early stage and the other more established.",
+      "These days, I'm focused on backend development but have always been curious about frontend. I'm currently learning to become a full-stack developer so I can build systems that not only work like magic but also look great for users.",
+      "When I'm not coding, I'm either battling it out in Sekiro or playing co-op horror games like Lethal Company with friends (because nothing bonds like shared terror, right?). I'm also a big fan of cooking — it's a passion of mine that I love to dive into whenever I can. And when I'm not in the kitchen, I'm probably deep into manga and anime — currently hooked on One Piece and Berserk.",
+    ],
+  },
+
   socials: [
     { label: "Email", href: "mailto:rohany1103@gmail.com", icon: "envelope" },
     { label: "GitHub", href: "https://github.com/cpt-nem0", icon: "github" },

@@ -33,6 +33,6 @@ export const useThreeAm = create<ThreeAmState>((set) => ({
   travel: (portal) => {
     playerPosition.x = portal.toPosition.x;
     playerPosition.z = portal.toPosition.z;
-    set({ area: portal.toArea, activePortal: null });
+    set({ area: portal.toArea, activePortal: null, focus: null, activeStation: null });
   },
 }));

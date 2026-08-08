@@ -5,8 +5,8 @@ import { portalAt } from "@/threeam/world/detect";
 import { isBlocked } from "@/threeam/world/collision";
 
 describe("stations", () => {
-  it("registry has the projects and experience stations on the ground floor", () => {
-    expect(STATIONS.map((s) => s.id).sort()).toEqual(["experience", "projects"]);
+  it("registry has the projects, experience, and about stations on the ground floor", () => {
+    expect(STATIONS.map((s) => s.id).sort()).toEqual(["about", "experience", "projects"]);
     for (const s of STATIONS) expect(s.area).toBe("ground");
   });
 
@@ -17,6 +17,23 @@ describe("stations", () => {
     expect(stationAt("ground", cx, cz)?.id).toBe("experience");
     expect(stationAt("ground", 4, 3)).toBeNull();
     expect(stationAt("roof", cx, cz)).toBeNull();
+  });
+
+  it("stationAt hits inside the about trigger and misses just outside it", () => {
+    const about = STATIONS.find((s) => s.id === "about")!;
+    const cx = about.trigger.x + about.trigger.w / 2;
+    const cz = about.trigger.z + about.trigger.d / 2;
+    expect(stationAt("ground", cx, cz)?.id).toBe("about");
+    expect(stationAt("ground", about.trigger.x - 0.01, about.trigger.z)?.id).not.toBe("about");
+  });
+
+  it("about station camera pos sits inside the ground floor bounds", () => {
+    const about = STATIONS.find((s) => s.id === "about")!;
+    const [px, , pz] = about.camera.pos;
+    expect(px).toBeGreaterThanOrEqual(HOUSE.areas.ground.bounds.x);
+    expect(px).toBeLessThanOrEqual(HOUSE.areas.ground.bounds.x + HOUSE.areas.ground.bounds.w);
+    expect(pz).toBeGreaterThanOrEqual(HOUSE.areas.ground.bounds.z);
+    expect(pz).toBeLessThanOrEqual(HOUSE.areas.ground.bounds.z + HOUSE.areas.ground.bounds.d);
   });
 
   it("station triggers never overlap portal triggers (E-key can't conflict)", () => {

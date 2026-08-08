@@ -11,7 +11,7 @@ import { stationAt } from "@/threeam/world/stations";
 import { playerPosition } from "@/threeam/world/runtime";
 import { useThreeAm } from "@/threeam/state/store";
 
-const SPEED = 3.5; // m/s
+const SPEED = 3.0; // m/s — was 3.5; retuned after the 60fps lock (jitter-era dt clamping used to eat distance, so the true 3.5 reads faster than the originally tuned feel)
 
 export function Player() {
   const meshRef = useRef<Mesh>(null);
