@@ -8,6 +8,7 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { usePixelTexture } from "../usePixelTexture";
 import { useThreeAm } from "@/threeam/state/store";
 import { site } from "@/content/site";
+import { PottedTree } from "../models/Plants";
 
 const WALL_H = 2.8; // must match House.tsx
 export const WORKSPACE = { x: 8, z: 0, w: 8, d: 6 };
@@ -1013,15 +1014,20 @@ export function Workspace() {
                 <boxGeometry args={[0.76, 0.05, 0.09]} />
                 <meshStandardMaterial color="#3a3a46" />
               </mesh>
+              {/* perf pass (ws-center 3-room overlap, 2026-07): dropped this
+                  fixture's pointLight — it was pure decorative wash on an
+                  already-emissive strip right at the wall, negligible actual
+                  spill vs. the monitor screen + desk lamp doing the real
+                  illumination here. Emissive-only now (bumped slightly so
+                  the strip still reads as lit without the point light). */}
               <mesh position={[0, 0.588, 0.04]}>
                 <boxGeometry args={[0.7, 0.01, 0.05]} />
                 <meshStandardMaterial
                   color="#ffdcb0"
                   emissive="#ffcf9e"
-                  emissiveIntensity={2.2}
+                  emissiveIntensity={2.6}
                 />
               </mesh>
-              <pointLight position={[0, 0.57, 0.11]} color="#ffcf9e" intensity={1.3} distance={1.6} decay={2} />
             </group>
           </group>
 
@@ -1263,39 +1269,63 @@ export function Workspace() {
         </group>
 
         {/* sunset cans — two small uplights on the plinth top's front
-            corners (visible fixtures; each spotlight is nested INSIDE its
-            fixture group so it inherits the shrine rotation). Crossfire:
-            the right can targets the left flank and vice versa. */}
-        {[
-          { x: 0.18, target: evaTargetAcrossL }, // right can → left flank
-          { x: -0.18, target: evaTargetAcrossR }, // left can → right flank
-        ].map(({ x, target }) => (
-          <group key={x} position={[x, 0.42, 0.18]}>
-            <mesh position={[0, 0.03, 0]}>
-              <cylinderGeometry args={[0.04, 0.05, 0.06, 8]} />
-              <meshStandardMaterial color="#2e2a4d" />
-            </mesh>
-            <mesh position={[0, 0.065, 0]}>
-              <cylinderGeometry args={[0.03, 0.03, 0.012, 8]} />
-              <meshStandardMaterial color="#ff7a5c" emissive="#ff6a45" emissiveIntensity={3} />
-            </mesh>
-            <spotLight
-              position={[0, 0.07, 0]}
-              target={target}
-              angle={0.75}
-              penumbra={0.55}
-              intensity={2.5}
-              distance={4}
-              decay={1.4}
-              color="#ff7a5c"
-            />
-          </group>
-        ))}
+            corners (visible fixtures; the real spotlight is nested INSIDE
+            its fixture group so it inherits the shrine rotation).
+            Perf pass (ws-center 3-room overlap, 2026-07): dropped the LEFT
+            can's spotLight — a single crossfire beam from the right can
+            still washes the figure (it's aimed across at the left flank,
+            covering most of the visible torso from the walking camera's
+            usual approach), and the left can's own bulb stays emissive so
+            the fixture itself still visibly glows. Kept the right can's
+            beam rather than either arbitrarily: it's the one that reads in
+            the room's default approach angle. */}
+        <group position={[0.18, 0.42, 0.18]}>
+          <mesh position={[0, 0.03, 0]}>
+            <cylinderGeometry args={[0.04, 0.05, 0.06, 8]} />
+            <meshStandardMaterial color="#2e2a4d" />
+          </mesh>
+          <mesh position={[0, 0.065, 0]}>
+            <cylinderGeometry args={[0.03, 0.03, 0.012, 8]} />
+            <meshStandardMaterial color="#ff7a5c" emissive="#ff6a45" emissiveIntensity={3} />
+          </mesh>
+          <spotLight
+            position={[0, 0.07, 0]}
+            target={evaTargetAcrossL}
+            angle={0.75}
+            penumbra={0.55}
+            intensity={2.5}
+            distance={4}
+            decay={1.4}
+            color="#ff7a5c"
+          />
+        </group>
+        <group position={[-0.18, 0.42, 0.18]}>
+          <mesh position={[0, 0.03, 0]}>
+            <cylinderGeometry args={[0.04, 0.05, 0.06, 8]} />
+            <meshStandardMaterial color="#2e2a4d" />
+          </mesh>
+          <mesh position={[0, 0.065, 0]}>
+            <cylinderGeometry args={[0.03, 0.03, 0.012, 8]} />
+            <meshStandardMaterial color="#ff7a5c" emissive="#ff6a45" emissiveIntensity={3} />
+          </mesh>
+        </group>
         {/* crossfire aim points — shrine-local (rotation-safe), upper
             torso height so both beams cover chest→head of the 1.8m figure */}
         <primitive object={evaTargetAcrossL} position={[-0.16, 1.85, -0.02]} />
         <primitive object={evaTargetAcrossR} position={[0.16, 1.85, -0.02]} />
       </group>
+
+      {/* ── PLANT PASS (owner ask: place the newly-prepared plant GLBs
+          around the house) — a real potted-tree GLB (see
+          scene/models/Plants.tsx), collider {9.97,5.32,0.66,0.66} in
+          layout.ts. Sits on the south wall in the open gap between the EVA
+          shrine (x max 9.45) and the coffee counter (x min 11.3) —
+          0.52m/0.67m clear of each, softening the corner without touching
+          either station's footprint or sightline. Own Suspense so the
+          fetch never blocks the room's first paint. ── */}
+      <Suspense fallback={null}>
+        <PottedTree position={[10.3, 0, 5.65]} rotationY={1.0} />
+      </Suspense>
 
       {/* ── coffee counter — collider {11.3,5.54,1.4,0.44}, waist height
           ~0.9m (slab top at 0.90). Wave G overhaul (owner: the old
@@ -1458,11 +1488,18 @@ export function Workspace() {
             <cylinderGeometry args={[0.008, 0.008, 0.09, 6]} />
             <meshStandardMaterial color="#2e2a4d" />
           </mesh>
+          {/* perf pass (ws-center 3-room overlap, 2026-07): dropped this
+              fixture's pointLight — the paper-lantern floor lamp a couple
+              meters east already washes this end of the counter, so this
+              dome's real illumination was mostly redundant. Emissive-only
+              now; the old 0.55 clamp existed to stay under Bloom threshold
+              alongside the point light's direct hit — with that hit gone
+              there's headroom to push the glow up so the bulb still reads
+              as "on" from across the room. */}
           <mesh position={[0, 0.125, 0]} rotation={[Math.PI, 0, 0]}>
             <sphereGeometry args={[0.055, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2]} />
-            <meshStandardMaterial color="#ffd9a0" emissive="#ffd9a0" emissiveIntensity={0.55} side={2} />
+            <meshStandardMaterial color="#ffd9a0" emissive="#ffd9a0" emissiveIntensity={0.95} side={2} />
           </mesh>
-          <pointLight position={[0, 0.11, 0]} color="#ffd9a0" intensity={0.9} distance={1.8} decay={2} />
         </group>
       </group>
 
@@ -1593,7 +1630,14 @@ export function Workspace() {
 
         {/* small brass picture-light under the top shelf — this corner is
             otherwise unlit (same convention as the music nook's east-wall
-            sconce next to its neon sign). No shadow casting. */}
+            sconce next to its neon sign). No shadow casting.
+            Perf pass (ws-center 3-room overlap, 2026-07): dropped this
+            fixture's pointLight — of everything on this wall it was
+            carrying the highest intensity (7.5) for the smallest, most
+            tucked-away fixture, mostly spilling onto book spines nobody
+            reads up close. Emissive-only now, bulb bumped well past the
+            old value so the corner still visibly glows instead of going
+            fully dark without its point light. */}
         <group position={[-0.32, 2.52, -0.2]} rotation={[0.4, 0, 0]}>
           <mesh>
             <boxGeometry args={[0.05, 0.05, 0.16]} />
@@ -1601,10 +1645,8 @@ export function Workspace() {
           </mesh>
           <mesh position={[0, -0.03, 0.07]}>
             <sphereGeometry args={[0.025, 8, 6]} />
-            <meshStandardMaterial color="#ffd9a0" emissive="#ffd9a0" emissiveIntensity={1} />
+            <meshStandardMaterial color="#ffd9a0" emissive="#ffd9a0" emissiveIntensity={2} />
           </mesh>
-          {/* light emits from the visible bulb (fixture-attached, no shadow) */}
-          <pointLight position={[0, -0.05, 0.08]} color="#ffd9a0" intensity={7.5} distance={3.8} decay={1.8} />
         </group>
 
         {/* vine plant on top — organic strands (wave E rework) of varied
