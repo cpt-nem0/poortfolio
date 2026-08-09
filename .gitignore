@@ -47,6 +47,9 @@ docs/superpowers/HANDOFF.md
 # favicon style-gate preview PNGs (scripts/pixelart/gen-favicon.mjs)
 scripts/pixelart/.favicon-preview/
 
+# tile contact-sheet preview PNG (scripts/pixelart/gen-textures.mjs)
+scripts/pixelart/.texture-preview/
+
 # celestial sprite extraction preview PNGs (scripts/pixelart/gen-celestial.mjs)
 scripts/pixelart/.celestial-preview/
 
