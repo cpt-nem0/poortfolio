@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { clsx } from "clsx";
 import { site } from "@/content/site";
 import { HERO_QUOTES } from "@/content/bento";
@@ -22,14 +22,37 @@ function useLocalClock(): string {
 }
 
 /** Renders a quote with its trailing . ? ! or … colored amber — the tile's signature. */
-function renderQuote(quote: string): ReactNode {
-  const m = quote.match(/[.?!…]$/);
-  if (!m) return quote;
+function renderQuote(text: string): ReactNode {
+  const m = text.match(/[.?!…]$/);
+  if (!m) return text;
   return (
     <>
-      {quote.slice(0, -1)}
+      {text.slice(0, -1)}
       <span className="text-[var(--amber)]">{m[0]}</span>
     </>
+  );
+}
+
+const SOURCE_SERIF_STYLE = { fontFamily: 'Georgia, "Times New Roman", serif' } as const;
+
+/** A crossfading line: renders the outgoing item (if any) and the incoming item as
+ *  stacked absolute spans sharing the bento-quote-in/out animation, so any number of
+ *  these driven by the same idx/prevIdx move in lockstep as one visual unit. */
+function CrossfadeLine({ idx, prevIdx, reduced, render, className, style }: {
+  idx: number; prevIdx: number | null; reduced: boolean;
+  render: (i: number) => ReactNode; className: string; style?: CSSProperties;
+}) {
+  return (
+    <div className={className} style={style}>
+      {prevIdx !== null && (
+        <span key={`out-${prevIdx}`} className={clsx("absolute inset-0 top-0", !reduced && "bento-quote-out")}>
+          {render(prevIdx)}
+        </span>
+      )}
+      <span key={`in-${idx}`} className={clsx("absolute inset-0 top-0", !reduced && "bento-quote-in")}>
+        {render(idx)}
+      </span>
+    </div>
   );
 }
 
@@ -77,18 +100,26 @@ export function IdentityTile() {
     { label: "resume", href: site.resumeHref },
   ];
   return (
-    <Tile label={`rohan yadav · earth-616 · ${clock}`} span="2x2">
+    <Tile label={`rohan yadav · earth-1218 · ${clock}`} span="2x2">
       <h1 className="relative mt-5 h-[3.2em] overflow-hidden font-sans text-4xl font-extrabold leading-[1.04] tracking-tight text-[var(--ink)] md:h-[3.25em] md:text-5xl lg:text-6xl xl:h-[2.2em]">
         {prevIdx !== null && (
           <span key={`out-${prevIdx}`} className={clsx("absolute inset-0 top-0", !reduced && "bento-quote-out")}>
-            {renderQuote(HERO_QUOTES[prevIdx])}
+            {renderQuote(HERO_QUOTES[prevIdx].text)}
           </span>
         )}
         <span key={`in-${idx}`} className={clsx("absolute inset-0 top-0", !reduced && "bento-quote-in")}>
-          {renderQuote(HERO_QUOTES[idx])}
+          {renderQuote(HERO_QUOTES[idx].text)}
         </span>
       </h1>
-      <p className="mt-4 font-mono text-xs text-[var(--dim)]">
+      <CrossfadeLine
+        idx={idx}
+        prevIdx={prevIdx}
+        reduced={reduced}
+        render={(i) => `— ${HERO_QUOTES[i].source}`}
+        className="relative mt-1 h-[1.4em] overflow-hidden text-right text-xs italic text-[var(--dim)] opacity-85"
+        style={SOURCE_SERIF_STYLE}
+      />
+      <p className="mt-3 font-mono text-xs text-[var(--dim)]">
         engineer · senior swe @ <a href="https://atlys.com" target="_blank" rel="noreferrer" className="text-[var(--ink)] underline-offset-2 hover:underline">atlys</a>
       </p>
       <ul className="mt-5 flex flex-wrap gap-x-4 gap-y-1 font-mono text-xs text-[var(--dim)]">

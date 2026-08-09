@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MEANWHILE_LOG, DOOR_TEASER, MORE_PROJECT_BLURBS } from "../bento";
+import { MEANWHILE_LOG, DOOR_TEASER, MORE_PROJECT_BLURBS, HERO_QUOTES } from "../bento";
 import { site } from "../site";
 
 describe("bento content", () => {
@@ -27,5 +27,12 @@ describe("bento content", () => {
   });
   it("meanwhile read pool name-drops berserk", () => {
     expect(MEANWHILE_LOG.read.some((l) => l.startsWith("berserk"))).toBe(true);
+  });
+  it("every hero quote has non-empty text and source", () => {
+    expect(HERO_QUOTES.length).toBeGreaterThan(0);
+    for (const q of HERO_QUOTES) {
+      expect(q.text.length).toBeGreaterThan(0);
+      expect(q.source.length).toBeGreaterThan(0);
+    }
   });
 });
