@@ -145,16 +145,16 @@ export function SkyBackground() {
         <span aria-hidden className="bento-celestial-slot bento-moon-slot absolute inset-0">
           <span className="bento-celestial-drift relative block h-full w-full">
             {/* eslint-disable-next-line @next/next/no-img-element -- tiny local pixel art, next/image blurs it */}
-            <img src="/boring/celestial/moon.png" alt="" className="bento-moon-sprite absolute left-1/2 top-1/2 h-[52px] w-[52px] -translate-x-1/2 -translate-y-1/2" style={PIXELATED} />
+            <img src="/9am/celestial/moon.png" alt="" className="bento-moon-sprite absolute left-1/2 top-1/2 h-[52px] w-[52px] -translate-x-1/2 -translate-y-1/2" style={PIXELATED} />
             {/* eslint-disable-next-line @next/next/no-img-element -- tiny local pixel art, next/image blurs it */}
-            <img src="/boring/celestial/bloodmoon.png" alt="" className="bento-bloodmoon-sprite absolute left-1/2 top-1/2 h-[52px] w-[52px] -translate-x-1/2 -translate-y-1/2" style={PIXELATED} />
+            <img src="/9am/celestial/bloodmoon.png" alt="" className="bento-bloodmoon-sprite absolute left-1/2 top-1/2 h-[52px] w-[52px] -translate-x-1/2 -translate-y-1/2" style={PIXELATED} />
           </span>
         </span>
         <span aria-hidden className="bento-celestial-slot bento-sun-slot absolute inset-0">
           <span className="bento-celestial-drift block h-full w-full">
             <span className="bento-sun-breathe block h-full w-full">
               {/* eslint-disable-next-line @next/next/no-img-element -- tiny local pixel art, next/image blurs it */}
-              <img src="/boring/celestial/sun.png" alt="" className="block h-full w-full" style={PIXELATED} />
+              <img src="/9am/celestial/sun.png" alt="" className="block h-full w-full" style={PIXELATED} />
             </span>
           </span>
         </span>

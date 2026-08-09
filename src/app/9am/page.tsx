@@ -10,7 +10,7 @@ export const metadata: Metadata = {
     description: site.bio,
     images: [
       {
-        url: "/og/boring.png",
+        url: "/og/9am.png",
         width: 1200,
         height: 630,
         alt: "Rohan Yadav's portfolio",
@@ -23,10 +23,10 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Rohan Yadav — Engineer",
     description: site.bio,
-    images: ["/og/boring.png"],
+    images: ["/og/9am.png"],
   },
 };
 
-export default function BoringPage() {
+export default function NineAmPage() {
   return <BentoGrid />;
 }

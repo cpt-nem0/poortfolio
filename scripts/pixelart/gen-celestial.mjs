@@ -20,7 +20,7 @@ import { writePng } from "./png.mjs";
  *      light checker, bloodmoon a dark one) as fully transparent,
  *   5. quantizes the remaining opaque cells to a <=8 color palette per
  *      sprite for crisp flat-shaded output,
- *   6. writes a true-alpha 32x32 PNG to public/boring/celestial/.
+ *   6. writes a true-alpha 32x32 PNG to public/9am/celestial/.
  *
  * Deterministic: no Math.random, no Date, no external state — median +
  * threshold + a farthest-point/Lloyd quantizer with fixed iteration counts.
@@ -35,9 +35,9 @@ const SAMPLE = 6; // center patch side length (px) used for the per-cell median
 const MAX_COLORS = 8;
 
 const SOURCES = [
-  { name: "moon", in: "design/celestial-raw/moon.png", out: "public/boring/celestial/moon.png" },
-  { name: "sun", in: "design/celestial-raw/sun.png", out: "public/boring/celestial/sun.png" },
-  { name: "bloodmoon", in: "design/celestial-raw/bloodmoon.png", out: "public/boring/celestial/bloodmoon.png" },
+  { name: "moon", in: "design/celestial-raw/moon.png", out: "public/9am/celestial/moon.png" },
+  { name: "sun", in: "design/celestial-raw/sun.png", out: "public/9am/celestial/sun.png" },
+  { name: "bloodmoon", in: "design/celestial-raw/bloodmoon.png", out: "public/9am/celestial/bloodmoon.png" },
 ];
 
 const PREVIEW_DIR = "scripts/pixelart/.celestial-preview";

@@ -33,10 +33,10 @@ export function Hud({ onOpenCredits }: { onOpenCredits: () => void }) {
       )}
 
       <Link
-        href="/boring"
+        href="/9am"
         className="pointer-events-auto absolute right-5 top-4 rounded bg-black/50 px-3 py-1.5 text-[#cfc6ee] transition-colors hover:text-[#ffb35c]"
       >
-        ← the boring version
+        ← the 9am version
       </Link>
 
       {portal && (

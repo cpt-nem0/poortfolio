@@ -100,7 +100,18 @@ export function IdentityTile() {
     { label: "resume", href: site.resumeHref },
   ];
   return (
-    <Tile label={`rohan yadav · earth-1218 · ${clock}`} span="2x2">
+    <Tile
+      label={
+        <>
+          {/* the name sits in the same label row as the location/clock, so it
+              gets the ink colour and a touch more weight to lift it out of
+              the metadata around it — the rest stays label-dim */}
+          <span className="font-semibold text-[var(--ink)]">rohan yadav</span>
+          {` · earth-1218 · ${clock}`}
+        </>
+      }
+      span="2x2"
+    >
       <h1 className="relative mt-5 h-[3.2em] overflow-hidden font-sans text-4xl font-extrabold leading-[1.04] tracking-tight text-[var(--ink)] md:h-[3.25em] md:text-5xl lg:text-6xl xl:h-[2.2em]">
         {prevIdx !== null && (
           <span key={`out-${prevIdx}`} className={clsx("absolute inset-0 top-0", !reduced && "bento-quote-out")}>
