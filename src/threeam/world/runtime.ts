@@ -1,4 +1,20 @@
-import { SPAWN } from "./layout";
+import { SPAWN, WS_DOOR_LO, WS_DOOR_HI } from "./layout";
+import type { AreaId as LayoutAreaId } from "./layout";
+
+/**
+ * LAYOUT V2 (Task 2): the app-wide `AreaId` — layout.ts's own `AreaId`
+ * ("ground" | "roof") plus "workstation", the new camera-only area behind
+ * the common room. Defined here (not layout.ts, which stays read-only data
+ * for this pass) because "workstation" isn't a distinct physical `Area` in
+ * `HOUSE.areas` — the workstation's floor space is already part of
+ * `GROUND`'s own `bounds`/`walls`/`furniture` (see layout.ts's LAYOUT V2
+ * comment); only the CAMERA treats it as its own area. Consumers that key
+ * off physical collision (`HOUSE.areas[...]`, `portalAt`, `stationAt`) keep
+ * using layout.ts's narrower `AreaId` and map "workstation" back to
+ * "ground" themselves (see Player.tsx). store.ts/FollowCamera.tsx import
+ * this wider type for UI/camera state.
+ */
+export type AreaId = LayoutAreaId | "workstation";
 
 /**
  * Mutable per-frame game state. Lives outside React/zustand on purpose:
@@ -200,6 +216,143 @@ export function updateVisibleBands(current: RoomBand, x: number): void {
  * array — see its doc for why current + adjacent-near-door is safe. */
 export function isBandVisible(band: RoomBand): boolean {
   return visibleBands[band];
+}
+
+/**
+ * T8 finale (band tests): the genkan strip (GENKAN_ROOM, layout.ts, x8-16)
+ * has no x-based room detection of its own — it isn't one of the three
+ * front-row rooms `nextRoomBand`/`BEDROOM_WORKSPACE_BOUNDARY`/
+ * `WORKSPACE_MUSIC_BOUNDARY` track, since it sits behind the common area on
+ * z, not beside it on x. Its x-span is identical to the common room's own
+ * (band 1), so it rides that same band for BOTH content-visibility purposes
+ * and House's own structural gating: House.tsx mounts `<Genkan/>` under
+ * `bands={[GENKAN_BAND]}`, the exact tag CommonArea's RoomCull uses. This
+ * constant is the single source of truth for that decision — House.tsx
+ * imports it rather than hardcoding `[1]` a second time, so the two can't
+ * silently drift apart, and runtime.test.ts asserts against it directly. */
+export const GENKAN_BAND: RoomBand = 1;
+
+/** LAYOUT V2 (Task 2): forces every ground front-row band to "not visible".
+ * Called instead of `updateVisibleBands` while the camera area is
+ * "workstation" — none of bedroom/workspace/music are on screen from back
+ * there (Scene's `area === "ground"` gate and House's own workstation
+ * early-return already skip their content/structure; this keeps
+ * `visibleBands` itself honest for any other reader). Same single-writer
+ * contract as `updateVisibleBands` — only Scene's RoomBandUpdater calls
+ * this. */
+export function clearVisibleBands(): void {
+  visibleBands[0] = false;
+  visibleBands[1] = false;
+  visibleBands[2] = false;
+}
+
+// ── LAYOUT V2 (Task 2): workstation threshold portal ────────────────────
+// Crossing this z while `x` sits inside the workstation's door gap
+// (WS_DOOR_LO/HI, layout.ts) swaps the camera area, no keypress — walking
+// through the shared wall's gap is the trigger, same idea as the ladder
+// portals but position-triggered instead of E-triggered. Exported so
+// Player.tsx's re-cross hysteresis check measures distance from the same
+// line this function uses, instead of a second hardcoded copy drifting.
+export const AREA_PORTAL_Z = -0.1;
+
+/**
+ * Pure decision function (extracted for unit testing, same idiom as
+ * `selectNeighbourBand`/`nextRoomBand` above): given the player's z last
+ * frame and this frame, plus this frame's x, returns the area just entered
+ * — "workstation" crossing north (z decreasing past AREA_PORTAL_Z), "ground"
+ * crossing south — or `null` if `x` is outside the door gap or the player
+ * didn't cross the line this frame (standing still, or moving parallel to
+ * it). The 0.3m re-cross hysteresis the door gap needs (so idling right on
+ * the threshold can't flap the area back and forth) is the CALLER's job —
+ * this function only answers "did a crossing just happen", not "should we
+ * act on it" (Player.tsx tracks that with its own armed/disarmed state).
+ */
+export function resolveAreaCrossing(
+  prevZ: number,
+  z: number,
+  x: number
+): "ground" | "workstation" | null {
+  if (x <= WS_DOOR_LO || x >= WS_DOOR_HI) return null; // outside the walkable gap
+  const wasGroundSide = prevZ > AREA_PORTAL_Z;
+  const isGroundSide = z > AREA_PORTAL_Z;
+  if (wasGroundSide === isGroundSide) return null; // didn't cross the line this frame
+  return isGroundSide ? "ground" : "workstation";
+}
+
+/** Re-cross hysteresis for the workstation threshold portal: once a
+ * crossing fires, another one can't re-fire until the player has moved
+ * this far past AREA_PORTAL_Z (either direction) — stops idling right on
+ * the threshold from flapping the area back and forth every frame.
+ * Exported (not a Player.tsx-local const) so `stepAreaCross` below and its
+ * caller measure against the same number. */
+export const AREA_CROSS_HYSTERESIS = 0.3;
+
+/** Which physical side of the workstation's shared wall `z` is on, ignoring
+ * the door gap's `x`-extent — used only by `stepAreaCross`'s re-arm
+ * reconciliation below, where the crossing already happened for real (the
+ * player physically got there), so there's nothing left to gate on `x`. */
+function sideOf(z: number): "ground" | "workstation" {
+  return z > AREA_PORTAL_Z ? "ground" : "workstation";
+}
+
+/** `stepAreaCross`'s persisted state: whether it's currently eligible to
+ * fire on a fresh `resolveAreaCrossing` edge. Player.tsx owns one of these
+ * in a ref and feeds it back in each frame. */
+export type AreaCrossArmState = { armed: boolean };
+
+/**
+ * One frame's worth of the workstation threshold portal's state machine —
+ * extracted from Player.tsx (2026-08 review finding) so it's unit-testable
+ * without a mocked frame loop. Combines two things:
+ *
+ * 1. `resolveAreaCrossing`'s edge trigger, gated by `armed` — the ordinary
+ *    "walked through the door" case: fires immediately on the exact z=-0.1
+ *    crossing, then disarms so the SAME crossing (still within
+ *    AREA_CROSS_HYSTERESIS of the line) can't immediately re-fire.
+ * 2. Re-arm RECONCILIATION: once the player clears the hysteresis band
+ *    (from EITHER side), re-arm — but before trusting `currentArea` as
+ *    still correct, check which side `z` actually says the player is on.
+ *    If they disagree, correct it right then.
+ *
+ * Why (2) matters: an ordinary peek-and-reverse at the doorway (cross in,
+ * immediately cross back out, all while still inside the hysteresis band)
+ * fires the FIRST crossing but the second one is dropped by the `armed`
+ * gate — without reconciliation, `currentArea` would stay wrong indefinitely
+ * once the player walks away, since nothing else ever re-checks it. Because
+ * step (2) is a pure re-derivation from the player's ACTUAL z (not a delta
+ * from the dropped event), it self-corrects the moment hysteresis clears,
+ * regardless of how many crossings were missed in between.
+ *
+ * Pure — returns the next arm state and, if the area should change, what to
+ * change it to (`null` = no change this frame). No travel()/store access;
+ * the caller applies the result and must not call this while on the roof
+ * (this portal has no business running outside ground/workstation — see
+ * the 2026-08 review's Finding 2).
+ */
+export function stepAreaCross(
+  state: AreaCrossArmState,
+  currentArea: "ground" | "workstation",
+  prevZ: number,
+  z: number,
+  x: number
+): { armed: boolean; area: "ground" | "workstation" | null } {
+  let armed = state.armed;
+  let area: "ground" | "workstation" | null = null;
+
+  const crossing = resolveAreaCrossing(prevZ, z, x);
+  if (crossing && armed) {
+    area = crossing;
+    armed = false;
+  }
+  if (!armed && Math.abs(z - AREA_PORTAL_Z) > AREA_CROSS_HYSTERESIS) {
+    armed = true;
+    const actual = sideOf(z);
+    if (actual !== (area ?? currentArea)) {
+      area = actual;
+    }
+  }
+
+  return { armed, area };
 }
 
 // Seed visibleBands for the initial band before the first frame runs, so

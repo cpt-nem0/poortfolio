@@ -1,8 +1,15 @@
 import { create } from "zustand";
-import type { AreaId, Portal, RoomId } from "@/threeam/world/layout";
+import type { Portal, RoomId } from "@/threeam/world/layout";
 import { SPAWN } from "@/threeam/world/layout";
-import { playerPosition } from "@/threeam/world/runtime";
+import { playerPosition, type AreaId } from "@/threeam/world/runtime";
 import type { Station, StationId } from "@/threeam/world/stations";
+
+/** Anything `travel` can move the player to: the existing declarative stair
+ * `Portal`s (layout.ts), or the ad-hoc object the workstation's threshold
+ * portal builds (LAYOUT V2 Task 2 — no trigger/label, just where it goes).
+ * A `Portal` structurally satisfies this (its narrower `toArea` type is a
+ * subset of the wider `AreaId` here), so every existing caller is unaffected. */
+type Travelable = { toArea: AreaId; toPosition: { x: number; z: number } };
 
 type ThreeAmState = {
   area: AreaId;
@@ -17,7 +24,7 @@ type ThreeAmState = {
   setFocus: (focus: StationId | null) => void;
   setActiveStation: (activeStation: Station | null) => void;
   /** Use a portal: switch area, teleport the player, clear the prompt. */
-  travel: (portal: Portal) => void;
+  travel: (portal: Travelable) => void;
 };
 
 export const useThreeAm = create<ThreeAmState>((set) => ({

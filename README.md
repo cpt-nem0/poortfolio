@@ -70,6 +70,10 @@ in-app "credits" panel (bottom-left of the HUD).
 - [Ficus Bonsai](https://sketchfab.com/3d-models/ficus-bonsai-f420ea9edb914e1b9b7adebbacecc7d8) by [Zgon](https://sketchfab.com/Z-gon) — [Sketchfab Standard](https://sketchfab.com/licenses)
 - [Bed with Lamp](https://sketchfab.com/3d-models/bed-with-lamp-b9b6f7dce9df4d719acc37b5e05a3ea3) by [GreenG](https://sketchfab.com/AngelNebesniy) — [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/)
 
+Also, via [Poly Pizza](https://poly.pizza):
+
+- [Bean Bag](https://poly.pizza/m/nMZz79A5ru) by [J-Toastie](https://poly.pizza/u/J-Toastie) — [CC-BY-3.0](https://creativecommons.org/licenses/by/3.0/)
+
 Some of these models were modified for this scene — re-rigged, cut down, split into
 separate pieces, and/or geometry-optimized (mesh simplification, texture downscaling) —
 beyond simple resizing or placement.

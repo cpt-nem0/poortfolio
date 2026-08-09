@@ -2603,9 +2603,14 @@ export function Bedroom() {
       {/* ── south floor lamp — collider {2.55,5.25,0.35,0.35}. See the
           SOUTH_LAMP_* const-block comment above for the placement
           arithmetic. Tripod base / pole / open-cone shade, warm pointLight
-          NESTED inside the shade group (rotation-safe by construction,
-          no castShadow — same convention as every other fixture-nested
-          light in this room). ── */}
+          NESTED inside the shade group (rotation-safe by construction).
+          This room has no literal ceiling pendant (every other bedroom
+          light is wall/furniture-mounted or an engawa-deck lantern), so
+          this is the pick for the room's shadow caster — the tallest
+          freestanding fixture over open interior floor (owner override of
+          the old "2 casters, both music nook" rule — discrete-room
+          rendering means only this room's own caster is ever live while
+          occupied). ── */}
       <group position={[SOUTH_LAMP_CENTER.x, 0, SOUTH_LAMP_CENTER.z]}>
         <mesh position={[0, SOUTH_LAMP_BASE_H / 2, 0]}>
           <cylinderGeometry args={[SOUTH_LAMP_BASE_R, SOUTH_LAMP_BASE_R + 0.02, SOUTH_LAMP_BASE_H, 10]} />
@@ -2619,7 +2624,7 @@ export function Bedroom() {
           <cylinderGeometry args={[0.14, 0.19, SOUTH_LAMP_SHADE_H, 10, 1, true]} />
           <meshStandardMaterial color="#ffb35c" emissive="#ffb35c" emissiveIntensity={0.85} side={2} />
         </mesh>
-        <pointLight position={[0, SOUTH_LAMP_SHADE_Y, 0]} color="#ffd9a0" intensity={5} distance={4.5} decay={2} />
+        <pointLight castShadow shadow-mapSize={[256, 256]} shadow-bias={-0.0015} shadow-radius={3} shadow-intensity={0.85} position={[0, SOUTH_LAMP_SHADE_Y, 0]} color="#ffd9a0" intensity={5} distance={4.5} decay={2} />
       </group>
 
       {/* ── single-person sofa / armchair — collider {0.6,0.4,0.95,0.95},

@@ -10,7 +10,7 @@ import { FollowCamera } from "./FollowCamera";
 import { Effects } from "./Effects";
 import { AudioRig } from "./AudioRig";
 import { MusicNook } from "./rooms/MusicNook";
-import { Workspace } from "./rooms/Workspace";
+import { CommonArea } from "./rooms/CommonArea";
 import { Bedroom } from "./rooms/Bedroom";
 import { useThreeAm } from "@/threeam/state/store";
 import {
@@ -18,6 +18,7 @@ import {
   roomBand,
   nextRoomBand,
   updateVisibleBands,
+  clearVisibleBands,
   isBandVisible,
   type RoomBand,
 } from "@/threeam/world/runtime";
@@ -34,11 +35,23 @@ import {
  * stairs) can never disagree about which rooms are visible within a frame.
  * Mounted once, ahead of the RoomCull/House readers, so they never read a
  * stale prior-frame value.
+ *
+ * LAYOUT V2 (Task 2): while the camera area is "workstation", none of the
+ * ground front-row bands (bedroom/workspace/music) are visible — the player
+ * is behind the shared wall, in a different area entirely. `roomBand`
+ * itself keeps tracking `x` as usual (harmless: `x` never leaves the
+ * workstation's own 8-16 range while back there, so it settles back to the
+ * correct band the moment the player returns to ground), but
+ * `visibleBands` is force-cleared instead of recomputed.
  */
 function RoomBandUpdater() {
   useFrame(() => {
     roomBand.current = nextRoomBand(roomBand.current, playerPosition.x);
-    updateVisibleBands(roomBand.current, playerPosition.x);
+    if (useThreeAm.getState().area === "workstation") {
+      clearVisibleBands();
+    } else {
+      updateVisibleBands(roomBand.current, playerPosition.x);
+    }
   });
   return null;
 }
@@ -161,14 +174,23 @@ export default function Scene() {
             <Bedroom />
           </RoomCull>
           <RoomCull band={1}>
-            <Workspace />
+            <CommonArea />
           </RoomCull>
           <RoomCull band={2}>
             <MusicNook />
           </RoomCull>
           {/* forces every loaded material/geometry onto the GPU once, so a
               GLB that resolved while its room was culled doesn't pay its
-              first-frame shader-compile hitch when the room becomes visible */}
+              first-frame shader-compile hitch when the room becomes visible.
+              This only covers what's mounted UNDER THIS Suspense (Bedroom/
+              CommonArea/MusicNook) — House.tsx mounts Workstation/Genkan
+              from a separate Suspense tree entirely (House sits outside
+              this boundary), so each of those carries its OWN local
+              `<Preload all/>` for the same reason (T8 finale — see
+              House.tsx's PRELOAD REGRESSION FIX comments). Safe to have
+              multiple: Preload traverses the whole r3f scene regardless of
+              which Suspense mounted it, and a redundant gl.compile() on an
+              already-compiled program is a cheap no-op. */}
           <Preload all />
         </Suspense>
       )}

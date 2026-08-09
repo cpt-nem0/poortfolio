@@ -4,6 +4,9 @@ import {
   updateVisibleBands,
   visibleBands,
   neighbourSelection,
+  clearVisibleBands,
+  isBandVisible,
+  GENKAN_BAND,
   type NeighbourSelection,
   type RoomBand,
 } from "@/threeam/world/runtime";
@@ -90,5 +93,64 @@ describe("updateVisibleBands (integration: cap at 2 visible bands)", () => {
   it("regression guard: at the old-bug x=12 workspace centre, bedroom and music are not BOTH visible simultaneously", () => {
     updateVisibleBands(1, 12);
     expect(visibleBands[0] && visibleBands[2]).toBe(false);
+  });
+});
+
+// T8 finale: band coverage for the workstation camera-only area + genkan's
+// band-sharing contract (both scoped to House.tsx's carry-forwards from T2/
+// T6/T7 review).
+describe("workstation area band clearing (Scene.tsx's RoomBandUpdater contract)", () => {
+  it("clearVisibleBands zeroes all three ground front-row bands — the workstation area renders none of them (Scene.tsx calls this instead of updateVisibleBands while area === 'workstation', and House.tsx's own workstation branch never reaches the ground front row at all)", () => {
+    updateVisibleBands(1, 11.7); // sanity: something is visible first
+    expect(visibleBands.some(Boolean)).toBe(true);
+    clearVisibleBands();
+    expect(visibleBands).toEqual([false, false, false]);
+  });
+
+  it("re-entering ground (updateVisibleBands after clearVisibleBands) restores the normal ≤2-band nearest-doorway cap, workspace centre included", () => {
+    clearVisibleBands();
+    expect(visibleBands).toEqual([false, false, false]);
+    neighbourSelection.band = null;
+    neighbourSelection.forCurrent = 0; // reset branch fires — no stale prior choice
+    updateVisibleBands(1, 11.7); // workspace centre: two in-margin doorways
+    expect(visibleBands.filter(Boolean).length).toBeLessThanOrEqual(2);
+    expect(visibleBands[1]).toBe(true); // current band always visible
+    expect(visibleBands[0]).toBe(true); // nearer doorway (bedroom, 3.7 < 4.3)
+  });
+
+  it("after clearVisibleBands, a fresh updateVisibleBands away from any doorway shows only the current band (no stale neighbour survives the clear)", () => {
+    updateVisibleBands(1, 11.7); // pick up a neighbour first (bedroom side)
+    expect(visibleBands[0]).toBe(true);
+    clearVisibleBands();
+    expect(visibleBands).toEqual([false, false, false]);
+    updateVisibleBands(0, 0); // deep in bedroom, doorway 8m away — out of DOOR_MARGIN (4.5)
+    expect(visibleBands).toEqual([true, false, false]);
+  });
+});
+
+describe("genkan rides the common room's own band (T6 review carry-forward)", () => {
+  it("GENKAN_BAND is band 1 — the same tag CommonArea's RoomCull uses and House.tsx mounts <Genkan/> under (bands={[GENKAN_BAND]}), the room's ONLY visibility mechanism since it has no x-band of its own", () => {
+    expect(GENKAN_BAND).toBe(1);
+  });
+
+  it("whenever the common band is current, genkan's band reads visible too — across a full walking sweep, isBandVisible(GENKAN_BAND) never diverges from isBandVisible(1) (they're definitionally the same slot, but this guards a future band split from silently orphaning the room)", () => {
+    neighbourSelection.band = null;
+    neighbourSelection.forCurrent = 0;
+    let current: RoomBand = 0;
+    for (let x = -3; x <= 22; x += 0.1) {
+      if (current === 0 && x > 8 + 0.4) current = 1;
+      else if (current === 1 && x < 8 - 0.4) current = 0;
+      else if (current === 1 && x > 16 + 0.4) current = 2;
+      else if (current === 2 && x < 16 - 0.4) current = 1;
+      updateVisibleBands(current, x);
+      expect(isBandVisible(GENKAN_BAND)).toBe(isBandVisible(1));
+    }
+  });
+
+  it("genkan is visible whenever the player stands inside its own x-span (8-16) and the common band is current, same as the common room itself", () => {
+    neighbourSelection.band = null;
+    neighbourSelection.forCurrent = 0;
+    updateVisibleBands(1, 12); // x=12 sits inside GENKAN_ROOM's x8-16 span too
+    expect(isBandVisible(GENKAN_BAND)).toBe(true);
   });
 });

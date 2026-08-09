@@ -323,9 +323,125 @@ const ENGAWA_ZEN_ROCK_RECT: Rect = { x: -1.67, z: 5.62, w: 0.24, d: 0.24 };
 const ENGAWA_TALLPALM_RECT: Rect = { x: -1.85, z: 0.09, w: 0.6, d: 0.6 };
 const ENGAWA_FICUS_RECT: Rect = { x: -0.6, z: 1.55, w: 0.45, d: 0.55 };
 
+// ── LAYOUT V2 (this pass, 2026-08-09 workstation excalidraw + spec
+// Resolutions) — the front row (bedroom/common/music, x0-22 z0-6) stays put;
+// three new spaces attach to the common area (still `RoomId "workspace"`
+// here — Task 4 renames the room/file, not this pass): a WORKSTATION room
+// behind it (negative z), a GENKAN entry strip in front of it (z>6), and
+// (owner feedback wave, later: DELETED — see the "basement stair stub —
+// REMOVED" comment below) a basement-stair stub inside the common area
+// itself. These are pure rect data here — meshes, the workstation's own
+// camera area, and the area-swap logic are later tasks (2-7); this pass
+// only extends `bounds`/`walls`/`furniture` so `isBlocked` is already
+// correct.
+//
+// Since `bounds` is one rect spanning the FULL x-range (-2.9..22), growing
+// its z-band to fit the workstation/genkan would also open unintended
+// walkable voids beside the bedroom (x<8) and music room (x>16), which
+// have no rooms at those new z's — WS_VOID_*/GK_VOID_* below seal those
+// off (same "void backstop" idiom the old, now-deleted, ENGAWA_WALL_BLOCK_N/S
+// used before the deck grew to fill its own void).
+
+// workstation room (interior x8-16, z-6.2..-0.2 — same width as the common
+// area it sits behind). Its shared wall with the common area sits at
+// z-0.2..0, split by a 1.3m door gap (WS_DOOR_LO/HI, matches the engawa's
+// walk-through width). OWNER FEEDBACK WAVE (this pass): recentered to the
+// middle of the common room's own north wall (was 13.2-14.5, off-center
+// toward the music side) — 11.35-12.65, centered on x=12 (the common area
+// spans x8-16, so its true midpoint). WS_WALL_LO/HI below re-derive from
+// these two consts, so the shared-wall split follows automatically.
+export const WORKSTATION_ROOM: Rect = { x: 8, z: -6.2, w: 8, d: 6 };
+export const WS_DOOR_LO = 11.35;
+export const WS_DOOR_HI = 12.65;
+const WS_WALL_LO: Rect = { x: 8, z: -0.2, w: WS_DOOR_LO - 8, d: 0.2 }; // wall west of the door
+const WS_WALL_HI: Rect = { x: WS_DOOR_HI, z: -0.2, w: 16 - WS_DOOR_HI, d: 0.2 }; // wall east of the door
+
+// genkan entry strip (interior x8-16, z6.2..8.1, depth 1.9). Its shared
+// wall with the common area sits at z6..6.2, split by a 1.3m inner doorway
+// (GENKAN_DOOR_LO/HI). Its own south wall (z8.1..8.3) is the front door:
+// FRONT_DOOR_LO/HI mark where the door leaf sits (for Task 6's mesh), but
+// the wall stays fully solid — no walkable gap — since the street beyond
+// is a future plan; collision-wise it's one continuous locked door.
+export const GENKAN_ROOM: Rect = { x: 8, z: 6.2, w: 8, d: 1.9 };
+export const GENKAN_DOOR_LO = 11.4;
+export const GENKAN_DOOR_HI = 12.7;
+export const FRONT_DOOR_LO = 11.5;
+export const FRONT_DOOR_HI = 12.6;
+const GK_WALL_LO: Rect = { x: 8, z: 6, w: GENKAN_DOOR_LO - 8, d: 0.2 }; // wall west of the inner doorway
+const GK_WALL_HI: Rect = { x: GENKAN_DOOR_HI, z: 6, w: 16 - GENKAN_DOOR_HI, d: 0.2 }; // wall east of the inner doorway
+const GK_FRONT_WALL: Rect = { x: 8, z: 8.1, w: 8, d: 0.2 }; // solid, no gap — front door blocked
+
+// void backstops — see the LAYOUT V2 comment above for why these exist:
+// x8-16 is the only real room at these new z-bands, so the flanks (bedroom/
+// engawa's x<8, music's x>16) need an explicit block once `bounds` grows
+// to include them.
+const WS_VOID_W: Rect = { x: -2.9, z: -6.2, w: 10.9, d: 6.2 }; // west of the workstation (bedroom/engawa side)
+const WS_VOID_E: Rect = { x: 16, z: -6.2, w: 6, d: 6.2 }; // east of the workstation (music side)
+const GK_VOID_W: Rect = { x: -2.9, z: 6, w: 10.9, d: 2.3 }; // west of the genkan (bedroom/engawa side)
+const GK_VOID_E: Rect = { x: 16, z: 6, w: 6, d: 2.3 }; // east of the genkan (music side)
+
+// basement stair stub — REMOVED (owner feedback wave, this pass: "the blue
+// box enclosure looks bad", killed outright). Used to reserve a footprint
+// beside the up-stairs (steps + side rails + a construction barrier); the
+// basement entrance returns properly in the basement plan later — nothing
+// reserved here in the meantime.
+
+// roof stair-room (Task 7). T1's placeholder ({x:12.4,z:0,w:3.6,d:1.5},
+// flush against the roof's north/east edges — see prior comment, now
+// stale) never actually contained the stairs-up portal's real arrival
+// point: `toPosition: {x:12, z:2}` (below, in HOUSE.portals) sits 0.4m west
+// and 0.5m south of that rect — the T1 guess was aimed at "the corner the
+// stair flight occupies" (the flight's own footprint, x14.65-15.75), not
+// at the actual portal arrival, which lands well clear of the flight to
+// its west. Recentered here on the real toPosition instead, same
+// ~3.6x1.5 footprint (interior), kept clear of the stair flight (its
+// x-min 14.65 vs this room's x-max 14.0 — 0.65m gap) and the roof's own
+// bounds (x8-16, z0-6) with margin on every side.
+export const STAIR_ROOM: Rect = { x: 10.2, z: 1.25, w: 3.6, d: 1.5 };
+// door gap out to the terrace, centered on the room's own x-midpoint (12,
+// same x as the arrival point) in the south wall — the side that opens
+// onto the rooftop's larger open span (z 2.75-6, vs. only 1.25m of
+// clearance to the north edge).
+export const STAIR_ROOM_DOOR_LO = 11.4;
+export const STAIR_ROOM_DOOR_HI = 12.6;
+const SR_WALL_N: Rect = {
+  x: STAIR_ROOM.x - WALL_T,
+  z: STAIR_ROOM.z - WALL_T,
+  w: STAIR_ROOM.w + 2 * WALL_T,
+  d: WALL_T,
+};
+const SR_WALL_W: Rect = {
+  x: STAIR_ROOM.x - WALL_T,
+  z: STAIR_ROOM.z,
+  w: WALL_T,
+  d: STAIR_ROOM.d,
+};
+const SR_WALL_E: Rect = {
+  x: STAIR_ROOM.x + STAIR_ROOM.w,
+  z: STAIR_ROOM.z,
+  w: WALL_T,
+  d: STAIR_ROOM.d,
+};
+// south wall, split by the door gap (west/east segments)
+const SR_WALL_S_LO: Rect = {
+  x: STAIR_ROOM.x,
+  z: STAIR_ROOM.z + STAIR_ROOM.d,
+  w: STAIR_ROOM_DOOR_LO - STAIR_ROOM.x,
+  d: WALL_T,
+};
+const SR_WALL_S_HI: Rect = {
+  x: STAIR_ROOM_DOOR_HI,
+  z: STAIR_ROOM.z + STAIR_ROOM.d,
+  w: STAIR_ROOM.x + STAIR_ROOM.w - STAIR_ROOM_DOOR_HI,
+  d: WALL_T,
+};
+
 const GROUND: Area = {
   id: "ground",
-  bounds: { x: -2.9, z: 0, w: 24.9, d: 6 },
+  // LAYOUT V2: z-band grows from {0,6} to {-6.2,14.5} to fit the
+  // workstation (north) and genkan (south) — see the LAYOUT V2 comment
+  // block above for the void-backstop rects this requires.
+  bounds: { x: -2.9, z: -6.2, w: 24.9, d: 14.5 },
   walls: [
     ...dividerWithDoor(8, 6),
     ...dividerWithDoor(16, 6),
@@ -337,6 +453,19 @@ const GROUND: Area = {
     // no more void west of this wall to backstop.
     ENGAWA_WALL_N,
     ENGAWA_WALL_S,
+    // LAYOUT V2: workstation perimeter (shared wall split by its door gap;
+    // the void backstops double as its west/east perimeter)
+    WS_WALL_LO,
+    WS_WALL_HI,
+    WS_VOID_W,
+    WS_VOID_E,
+    // LAYOUT V2: genkan perimeter (inner-doorway wall + solid front door +
+    // void backstops)
+    GK_WALL_LO,
+    GK_WALL_HI,
+    GK_FRONT_WALL,
+    GK_VOID_W,
+    GK_VOID_E,
   ],
   furniture: [
     // bedroom — FURNISHING WAVE (owner's final bedroom design sketch,
@@ -431,24 +560,143 @@ const GROUND: Area = {
     { x: 18.1, z: 4.8, w: 1.8, d: 0.8 }, // sofa (sweet spot, facing the console)
     { x: 17.15, z: 4.9, w: 0.6, d: 0.6 }, // coffee table w/ lamp (sofa's left)
     { x: 20.9, z: 4.85, w: 0.6, d: 0.6 }, // guitar corner (cutaway acoustic + electric)
-    // workspace
-    { x: 9.7, z: 0.3, w: 2.6, d: 0.9 }, // desk
-    { x: 10.4, z: 1.5, w: 0.8, d: 0.8 }, // desk chair (shifted west so the desk front reads clear)
-    { x: 8.8, z: 5.15, w: 0.65, d: 0.7 }, // EVA-01 shrine (SW corner) — figure + plinth; widened wave F round 2 (1.8m figure's forward-leaning footprint measures ~8.80-9.41 x, 5.20-5.82 z in-browser)
-    // PLANT PASS: a real potted-tree GLB (see scene/models/Plants.tsx) in
-    // the open south-wall gap between the shrine (x max 9.45) and the
-    // coffee counter (x min 11.3) — softens the corner, clear of both with
-    // room to spare (0.52m/0.67m gaps).
-    { x: 9.97, z: 5.32, w: 0.66, d: 0.66 }, // potted tree (south wall, between the EVA shrine and the coffee counter)
-    { x: 11.3, z: 5.54, w: 1.4, d: 0.44 }, // coffee counter (south wall, center) — machine + mug rack + lamp on top
-    { x: 13.55, z: 5.3, w: 0.5, d: 0.5 }, // paper-lantern floor lamp (south wall, right of the coffee counter — same rect as the old tripod it replaced)
-    { x: 15.45, z: 3.85, w: 0.44, d: 2.1 }, // full-wall bookshelf (east divider, workspace face, south of doorway — SE corner)
+    // common area (formerly "workspace" — LAYOUT V2 migrates the desk,
+    // EVA shrine, and coffee corner out to the new WORKSTATION_ROOM below;
+    // this pass keeps the up-stairs and plants here, per the Geometry
+    // Reference's "common area keeps" list. The bookshelf, originally kept
+    // here (SE corner, east divider), MOVED to the workstation's west-wall
+    // TBD slot — owner feedback wave, T8 finale item 10 — see the
+    // workstation furniture block below.)
+    { x: 9.97, z: 5.32, w: 0.66, d: 0.66 }, // potted tree (south wall) — PLANT PASS; its old neighbors (EVA shrine, coffee counter) migrated out to the workstation
     // staircase to the roof — full flight footprint (shallow 10-step run
     // along the east divider). Depth is capped so the expanded blocking
     // (d + player radius = 2.91) stays clear of the music doorway band
     // (z 2.2–3.8 at x≈16) AND of the stairs-up portal trigger below
     // (furniture.test.ts asserts both).
     { x: 14.65, z: 0, w: 1.1, d: 2.56 },
+
+    // ── LAYOUT V2: workstation room (behind the common area, through the
+    // WS_DOOR_LO/HI gap) — desk rig, EVA shrine, and coffee bar, migrated
+    // verbatim from the Geometry Reference. Corkboard, polaroid wall, and
+    // the neon sign are wall-mounted decor with no floor footprint (same
+    // "no collider" convention the corkboard/polaroids they replace used) —
+    // no rects for them here.
+    // Desk rect widened east 2.2→2.4 (owner: "i can walk in the work
+    // table" — the desktop MESH is 2.6m wide centered x11.6, x10.3..12.9,
+    // but this rect's x-max was 12.7, so the capsule sank 0.2m into the
+    // slab's visual east overhang, which is exactly where the owner hit
+    // it). The WEST overhang (x10.3..10.5) is deliberately NOT covered:
+    // the projects station trigger (stations.ts, x9.6..10.45) reaches
+    // x10.45, and extending this rect west would overlap it / block its
+    // center probe — a 0.2m visual graze inside the station-focus zone is
+    // the lesser evil vs. moving the trigger's documented camera math.
+    // Depth 0.9→1.1 (owner round 2: "the table wall is still not fixed" —
+    // this time the SOUTH face: the collider matched the desktop's visual
+    // z-extent exactly, but the fixed camera's elevation projects the
+    // capsule's head ~0.5m of depth over any surface it stands 0.35m from,
+    // so matching the visual isn't enough on the camera-facing side. The
+    // extra 0.2m stand-off keeps the head off the slab. Overlaps the
+    // chair rect by a 0.1m sliver (-5.0..-4.9) — physically the chair
+    // tucks under the desk edge, colliders union anyway.)
+    { x: 10.5, z: -6.0, w: 2.4, d: 1.1 }, // desk (motorized rig), north wall center
+    // Chair z-min trimmed -5.0→-4.9: the desk's south stand-off (see
+    // above) covers that 0.1m sliver now — the blocked UNION is unchanged
+    // and the no-overlap sweep stays clean.
+    { x: 11.0, z: -4.9, w: 0.8, d: 0.7 }, // desk chair, center (11.4,-4.55) — same footprint as the old chair
+    { x: 8.3, z: -1.7, w: 1.5, d: 1.2 }, // EVA-01 shrine + crossfire cans, SW corner
+    { x: 15.1, z: -6.15, w: 0.85, d: 1.8 }, // coffee bar (counter + machine + paper lantern, merged into one rect), east wall
+    // T8 finale item 13 (owner feedback wave, 2nd bookshelf move — item 10's
+    // west-wall slot didn't stick): SE corner, EAST wall, z-1.8..-0.5 —
+    // owner's exact numbers. The shelf's own visual footprint is ~2.06m
+    // deep (its carcass panels sit at local z ±1.03); a 1.3m collider band
+    // would either clip the wall or leave the mesh floating past its own
+    // collider, so Workstation.tsx's mount wraps the whole assembly in a
+    // z-only scale (0.6311 = 1.3/2.06) that compresses it to EXACTLY this
+    // band — collider matches the rendered footprint, not a truncation of
+    // it. w=0.44 (thickness, x-axis) is unchanged by the z-only scale.
+    { x: 15.46, z: -1.8, w: 0.44, d: 1.3 }, // full-wall bookshelf, east wall (SE corner)
+    // T8 finale item 15 (owner feedback wave): project-building table,
+    // west wall, replacing the polaroid wall's old footprint (was wall-
+    // mounted decor, no collider — this is real floor furniture). ~1.0m
+    // deep (x) × 2.2m long (z), flush against the wall (0.05m clearance
+    // from the room's own north wall at z-6.2, matching the desk's own
+    // convention above) and well clear of the EVA shrine (z-1.7..-0.5,
+    // 1.8m gap) and the desk itself (x10.5-12.7, no x-overlap).
+    { x: 8, z: -6.1, w: 1.0, d: 2.2 }, // project building table, west wall
+
+    // W7 polish pass (owner-approved floor wave) + W7 FIX ROUND (owner
+    // review of the shipped pass, this pass): mushroom rug under the
+    // ceiling pendant (x12,z-2.6, Workstation.tsx) + a beanbag/pile at its
+    // SE rim + a waste bin beside the desk. The rug itself is visual-only
+    // floor dressing (no collider, same convention as every other rug in
+    // the house) — only the beanbag (real furniture you can visibly bump —
+    // the genkan phase-through precedent above: visible floor furniture
+    // with no collider lets the player walk straight through it) and the
+    // waste bin get real colliders here.
+    //
+    // Beanbag — FIX ROUND (owner: "reads as the poop emoji" — the old
+    // stacked-spheres profile). Redesigned twice in Workstation.tsx: a
+    // hand-built single flattened-sphere primitive first, then swapped for
+    // a real CC-BY-3.0 low-poly GLB (BeanbagModel, owner-requested model
+    // hunt). Owner then sized it up live ("make it a bit bigger it looks
+    // perfect"): ~1.0m dia × ~0.48m tall, so this rect is 1.0×1.0 with
+    // the growth pushed EAST/SOUTH (center 13.1,-2.1 → 13.2,-2.1) so the
+    // x-min stays pinned at 12.7 — preserving the door↔desk lane
+    // clearance invariant (door x11.35-12.65, 0.05m clear; the lane's
+    // own walk probe sits at x12.2, 0.5m further west). Still clear of
+    // every other workstation rect (nearest is the coffee bar, x-min
+    // 15.1, 1.45m east) and the door↔worktable lane (worktable x8-9,
+    // well west). Also clear of the "experience" station trigger
+    // (stations.ts, x13.0-14.9,z-5.6..-4.1 — beanbag's whole z-range,
+    // -2.6..-1.6, sits south of the trigger's z-max -4.1).
+    { x: 12.7, z: -2.6, w: 1.0, d: 1.0 }, // beanbag, rug's SE rim
+    // Waste bin — FIX ROUND (owner: bin was invisible from the room's
+    // fixed camera — the desk's own DESKTOP mesh visually overhangs the
+    // collider it had at the time (x-max 12.7 vs the 2.6m-wide desktop
+    // box centered on the desk group's x11.6, visually x10.3-12.9; the
+    // desk rect has SINCE been widened to match the visual, see its own
+    // comment above — this bin placement predates that and still works;
+    // depth 0.9 centered on z-5.55 spans z-6.0..-5.1 — matches this exact
+    // z-range the old bin sat in). Moved south, OUT of that z-band
+    // entirely (new z-min -4.9, a clean 0.2m south of the desktop's own
+    // z-max -5.1) so nothing overhangs it — verified live via screenshot,
+    // not just the rect math (the ask's own instruction, since the
+    // invisibility bug was never a collision bug in the first place). Kept
+    // the same x (12.7, the desk collider's own x-max) so it's still
+    // clearly "beside the desk", and — because x never crosses 13.0 — it
+    // stays clear of the "experience" station trigger (x-min 13.0,
+    // touches at the boundary, no overlap, same convention as the old
+    // bin's x-max touch) regardless of z. Also clear of the desk collider
+    // itself (x touches at 12.7, z-min -4.9 vs desk z-max -5.1, a real
+    // 0.2m gap — no boundary-touch ambiguity there) and of the chair
+    // (x11.0-11.8, no x-overlap with the bin's own x12.7-13.0 at all).
+    { x: 12.7, z: -4.9, w: 0.3, d: 0.3 }, // waste bin, south of the desk's overhang
+
+    // Sunset floor lamp (owner ask: "a huge sunset lamp at the floor which
+    // lights up the akira poster" — replaced the wall picture-light above
+    // the poster). Sits at the poster's base against the west wall,
+    // centered on the poster's own z-2.65. Real floor furniture → real
+    // collider (genkan precedent). Clear of the worktable (z-6.1..-3.9,
+    // 1.0m south... i.e. lamp z-max -2.42 vs table z-min -3.9 — 1.48m
+    // gap), the EVA shrine (z-1.7..-0.5, 0.73m north of the lamp's
+    // z-max), and the door↔worktable lane (which runs well east of the
+    // west wall's x8.6 band).
+    { x: 8.12, z: -2.88, w: 0.46, d: 0.46 }, // sunset lamp, below the akira poster
+
+    // T8 finale item 17 (owner-reported, walk-through genkan furniture):
+    // T6 shipped the shoe rack + umbrella stand decor-only ("no layout.ts
+    // colliders — that file is off-limits this task", Genkan.tsx's own
+    // comment) since layout.ts wasn't in that task's file set. Rects below
+    // match Genkan.tsx's actual rendered footprints exactly (hugging their
+    // own walls, same as every other piece of dressing in this house):
+    // shoe rack — shelf mesh {x:8.8,z:6.55,w:1.0,d:0.35} (boxGeometry
+    // [1.0,0.06,0.35]) → x8.3-9.3, z6.375-6.725. Umbrella stand — pot
+    // cylinder {x:14.6,z:7.5,r:0.14-0.15} → a ~0.3x0.3 square around it.
+    // Both sit well clear of the inner-doorway↔front-door walking lane
+    // (x11.4-12.7) and the doormat stays uncollidered (a floor decal, not
+    // furniture) — layout-v2.test.ts's live sweep re-verifies both.
+    { x: 8.3, z: 6.375, w: 1.0, d: 0.35 }, // genkan shoe rack, NW corner
+    { x: 14.45, z: 7.35, w: 0.3, d: 0.3 }, // genkan umbrella stand, SE corner
   ],
   rooms: [
     { id: "bedroom", rect: { x: 0, z: 0, w: 8, d: 6 } },
@@ -460,7 +708,18 @@ const GROUND: Area = {
 const ROOF: Area = {
   id: "roof",
   bounds: { x: 8, z: 0, w: 8, d: 6 },
-  walls: [],
+  walls: [
+    // stair-room enclosure (Task 7) — 3 solid sides + the south wall split
+    // by the door gap. Rendered generically by House.tsx's existing
+    // `a.walls.map` loop (full height, same as every other interior
+    // divider) — no roof/ceiling rect anywhere here, top stays open so the
+    // roof's own top-down camera looks straight down into it.
+    SR_WALL_N,
+    SR_WALL_W,
+    SR_WALL_E,
+    SR_WALL_S_LO,
+    SR_WALL_S_HI,
+  ],
   furniture: [
     // the same staircase flight emerges here — same footprint as on ground
     { x: 14.65, z: 0, w: 1.1, d: 2.56 },

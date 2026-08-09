@@ -823,6 +823,517 @@ function stoneSlab(x, y) {
   return c;
 }
 
+/* blueprint paper v2, 64×44 (W3 polish pass, project building table's
+   drafting board — REPLACES the v1 placeholder sketch outright, same JOBS
+   slot/filename so nothing else needs touching): THE HOUSE'S OWN v2 FLOOR
+   PLAN. Deep blue ground (own local const, same "one-off hue for one
+   texture" idiom wall-teal/wall-plum/etc use above), a lighter grid every
+   5px, white linework tracing the house's actual room rects — bedroom,
+   common, workstation, genkan, music — with real door gaps cut into the
+   shared walls. Border kept 1px dark for a page edge, same convention
+   posterMountainRidge/posterSpacePlanet use.
+
+   Room rects + door gaps below are a deterministic SNAPSHOT of
+   src/threeam/world/layout.ts's real consts as of this pass (this script
+   has no import of layout.ts — it's pure JS/pixel generation, no
+   three.js, no app code) — bedroom {0,0,8,6}, common (still RoomId
+   "workspace") {8,0,8,6}, workstation (WORKSTATION_ROOM) {8,-6.2,8,6},
+   genkan (GENKAN_ROOM) {8,6.2,8,1.9}, music {16,0,6,6}; doors at x=8
+   (DOOR_LO/HI 2.2-3.8), x=16 (DOOR_LO/HI 2.2-3.8), z≈0 (WS_DOOR_LO/HI
+   11.35-12.65), z≈6 (GENKAN_DOOR_LO/HI 11.4-12.7). Orientation: world x
+   maps left-to-right (bedroom west → music east); world z maps top-to-
+   bottom (workstation's north edge at the top, genkan's south/entry strip
+   at the bottom) — a plausible architect's-plan read, not a literal
+   top-down camera match. The genkan's own south wall (the locked front
+   door) stays solid, no gap — matches FRONT_DOOR being collision-locked
+   in layout.ts. */
+const BLUEPRINT = "#1e4d8c";
+const BP_W = 64, BP_H = 44;
+const BP_ROOMS = [
+  { x: 0, z: 0, w: 8, d: 6 }, // bedroom
+  { x: 8, z: 0, w: 8, d: 6 }, // common
+  { x: 8, z: -6.2, w: 8, d: 6 }, // workstation
+  { x: 8, z: 6.2, w: 8, d: 1.9 }, // genkan
+  { x: 16, z: 0, w: 6, d: 6 }, // music
+];
+// [axis ('v' = wall runs along z at fixed world x, 'h' = wall runs along x
+// at fixed world z), fixed coordinate, gap lo, gap hi] — mirrors
+// DOOR_LO/HI, WS_DOOR_LO/HI, GENKAN_DOOR_LO/HI in layout.ts. The 0.3
+// tolerance in inDoorGap (below) absorbs the real ~0.2m wall-thickness gap
+// between e.g. the workstation's own south edge (z-0.2) and the common
+// area's north edge (z0) — both edges get the same door cut.
+const BP_DOORS = [
+  ["v", 8, 2.2, 3.8], // bedroom <-> common
+  ["v", 16, 2.2, 3.8], // common <-> music
+  ["h", 0, 11.35, 12.65], // workstation <-> common
+  ["h", 6, 11.4, 12.7], // common <-> genkan
+];
+const BP_SCALE = 2.5;
+const BP_OX = 4, BP_OZ = 4; // pixel margin
+const BP_X0 = 0, BP_Z0 = -6.2; // world origin (workstation's north edge)
+function bpx(wx) { return Math.round(BP_OX + (wx - BP_X0) * BP_SCALE); }
+function bpz(wz) { return Math.round(BP_OZ + (wz - BP_Z0) * BP_SCALE); }
+function inDoorGap(axis, fixedWorld, alongWorld) {
+  return BP_DOORS.some(
+    ([a, at, lo, hi]) => a === axis && Math.abs(at - fixedWorld) < 0.3 && alongWorld >= lo && alongWorld <= hi
+  );
+}
+function blueprintPaper(x, y) {
+  if (x === 0 || x === BP_W - 1 || y === 0 || y === BP_H - 1) return shade(BLUEPRINT, 0.65);
+  let c = shade(BLUEPRINT, 0.92 + hash2(x, y, 601) * 0.1); // paper grain
+  if (x % 5 === 0 || y % 5 === 0) c = shade(BLUEPRINT, 1.18); // lighter grid rules
+  for (const r of BP_ROOMS) {
+    const px0 = bpx(r.x), px1 = bpx(r.x + r.w);
+    const pz0 = bpz(r.z), pz1 = bpz(r.z + r.d);
+    if ((x === px0 || x === px1) && y >= pz0 && y <= pz1) {
+      const wx = x === px0 ? r.x : r.x + r.w;
+      const wz = BP_Z0 + (y - BP_OZ) / BP_SCALE;
+      if (!inDoorGap("v", wx, wz)) c = shade(PALETTE.cream100, 1.0); // sketched room outline
+    }
+    if ((y === pz0 || y === pz1) && x >= px0 && x <= px1) {
+      const wz = y === pz0 ? r.z : r.z + r.d;
+      const wx = BP_X0 + (x - BP_OX) / BP_SCALE;
+      if (!inDoorGap("h", wz, wx)) c = shade(PALETTE.cream100, 1.0); // sketched room outline
+    }
+  }
+  return c;
+}
+
+/* pegboard 40×24 (W3 polish pass, workstation west wall behind/above the
+   project table): pale hardboard, a regular grid of dark perforation
+   dots, faint horizontal grain streaks. Tool silhouettes (hammer, wrench,
+   wire coil, clamp) are hand-built 3D clutter in Workstation.tsx, not
+   baked into this texture — same "texture for the material surface, real
+   geometry for the objects" convention the corkboard/pinned-notes pair
+   uses. */
+const PEGBOARD_BASE = "#c9b088";
+function pegboard(x, y) {
+  if (x === 0 || x === 39 || y === 0 || y === 23) return shade(PEGBOARD_BASE, 0.6);
+  let c = shade(PEGBOARD_BASE, 0.94 + hash2(x, y, 691) * 0.08);
+  if (y % 7 === 3) c = shade(PEGBOARD_BASE, 0.88); // faint horizontal grain streak
+  if (x % 4 === 2 && y % 4 === 2) c = shade(PALETTE.wood900, 0.85); // perforation dot
+  return c;
+}
+
+/* door glow 8×32 (T8 finale item 16, workstation doorway visibility):
+   vertical amber gradient, dim/transparent at the top (y=0), bright/opaque
+   at the bottom (y=31) — mapped onto a quad recessed in the door gap so
+   the opening reads as "light spilling from the room beyond" without a
+   real light (sanctioned painted-light pattern, same idiom as the neon
+   signs' meshBasicMaterial glow). */
+function doorGlow(x, y) {
+  const h = 32;
+  const t = y / (h - 1); // 0 top .. 1 bottom
+  const alpha = Math.round(30 + t * 170);
+  return [...shade(PALETTE.amber500, 0.7 + t * 0.5), alpha];
+}
+
+/* floor spill 32×32 (T8 finale item 16): radially-symmetric soft warm
+   glow blob — deliberately has no directional axis (unlike a vertical
+   gradient) so the mesh's own rotation/orientation on the floor can't get
+   it backwards. Centered, falls off to fully transparent by the tile
+   edge. */
+function floorSpill(x, y) {
+  const cx = 15.5, cy = 15.5, R = 15;
+  const d = Math.hypot(x - cx, y - cy);
+  const t = Math.max(0, 1 - d / R);
+  const alpha = Math.round(t * t * 150);
+  return [...shade(PALETTE.amber500, 0.85 + t * 0.3), alpha];
+}
+
+/* ---- workstation wall posters (W4 polish pass): four NEW original 64×96
+   (2:3) art prints for the workstation's own north wall — deliberately a
+   different FAMILY from the bedroom's movie-poster gallery (no dramatic
+   central image + title band; these are flat art-print/schematic/chart
+   designs), so the two rooms don't read as reusing the same wall set.
+   Wholly invented, house palette only, no real product/brand/film/game
+   references. Same 1px night900 border convention as every other poster
+   above. ---- */
+const WSP_W = 64, WSP_H = 96;
+
+/* 1. retro computer ad — cream ad-paper stock, a chunky beige CRT monitor
+   on a low desk, soft green screen glow, an illegible tagline scribble
+   band at the bottom (never real lettering, same idiom as posterCredits). */
+function posterRetroAd(x, y) {
+  if (x === 0 || x === WSP_W - 1 || y === 0 || y === WSP_H - 1) return shade(PALETTE.wood900, 1.3);
+  const mx = x - 32;
+  if (y >= 68 && y < 86) {
+    if (y === 68) return shade(PALETTE.wood900, 1.15);
+    return shade(PALETTE.wood500, 0.72 + ((y - 68) / 18) * 0.18 + hash2(x, y, 653) * 0.05); // desk surface
+  }
+  if (y >= 86) {
+    if (y <= 92) {
+      const on = hash2(Math.floor(x / 2), (y - 86) * 13, 654) > 0.5;
+      return shade(PALETTE.wood900, on ? 1.3 : 0.7); // illegible ad tagline
+    }
+    return shade(PALETTE.plaster300, 0.85);
+  }
+  if (y >= 58 && y < 68 && Math.abs(mx) < (y < 64 ? 8 : 14)) {
+    return shade(PALETTE.wood700, y < 64 ? 1.05 : 0.9); // monitor neck + base
+  }
+  if (y > 22 && y < 58 && Math.abs(mx) < 20) {
+    if (y > 29 && y < 53 && Math.abs(mx) < 15) {
+      const d = Math.hypot(mx, (y - 41) * 1.1);
+      const glow = Math.max(0, 1 - d / 16);
+      const scan = y % 2 === 0 ? 1.0 : 0.92;
+      return shade(PALETTE.green500, (0.42 + glow * 0.55) * scan); // screen glow + scanlines
+    }
+    return shade(PALETTE.wood700, 0.82 + hash2(x, y, 652) * 0.1); // bezel
+  }
+  let c = shade(PALETTE.plaster300, 0.9 + hash2(x, y, 651) * 0.08); // ad paper
+  if (y % 9 === 0) c = shade(PALETTE.plaster500, 0.85); // faint print-stock lines
+  return c;
+}
+
+/* 2. circuit-schematic art print — dark PCB-silkscreen field: a regular
+   teal trace grid, mint via-dots at intersections, three purple "chip"
+   blocks with pin marks, one striped resistor-style component. */
+const CIRCUIT_BG = PALETTE.night900;
+const CIRCUIT_TRACE = PALETTE.teal500;
+const CIRCUIT_CHIPS = [
+  { x0: 14, x1: 26, y0: 20, y1: 34 },
+  { x0: 36, x1: 52, y0: 44, y1: 58 },
+  { x0: 10, x1: 24, y0: 66, y1: 78 },
+];
+const CIRCUIT_RESISTOR = { x0: 44, x1: 58, y0: 8, y1: 14 };
+function posterCircuit(x, y) {
+  if (x === 0 || x === WSP_W - 1 || y === 0 || y === WSP_H - 1) return shade(PALETTE.night900, 1.4);
+  let c = shade(CIRCUIT_BG, 0.95 + hash2(x, y, 661) * 0.06);
+  const onH = (y - 6) % 10 === 0 && y > 4 && y < 92;
+  const onV = (x - 6) % 10 === 0 && x > 4 && x < 60;
+  if (onH || onV) c = shade(CIRCUIT_TRACE, 0.55);
+  if (onH && onV) c = shade(PALETTE.mint400, 0.85); // via dot
+  const R0 = CIRCUIT_RESISTOR;
+  if (x >= R0.x0 && x <= R0.x1 && y >= R0.y0 && y <= R0.y1) {
+    const stripe = (x - R0.x0 + (y - R0.y0) * 2) % 5 < 2;
+    return stripe ? shade(PALETTE.amber500, 0.9) : shade(PALETTE.cream100, 0.85);
+  }
+  for (const ch of CIRCUIT_CHIPS) {
+    if (x >= ch.x0 && x <= ch.x1 && y >= ch.y0 && y <= ch.y1) {
+      c = shade(PALETTE.purple700, 0.85 + hash2(x, y, 662) * 0.1);
+      if ((x === ch.x0 || x === ch.x1) && (y - ch.y0) % 3 === 1) c = shade(PALETTE.mint400, 0.9); // pin marks
+    }
+  }
+  return c;
+}
+
+/* 3. synthwave grid-sun — banded purple-to-amber sky, a scan-barred sun
+   disc low on the horizon, a converging perspective grid on the dark
+   ground below (lines spread WIDER near the bottom — closer to the
+   "viewer" — same as real perspective). */
+const SYN_BANDS = [PALETTE.purple700, PALETTE.purple500, "#8a4a72", PALETTE.red500, PALETTE.amber500];
+function posterSynthwave(x, y) {
+  if (x === 0 || x === WSP_W - 1 || y === 0 || y === WSP_H - 1) return shade(PALETTE.night900, 1.4);
+  const HORIZON = 52;
+  if (y < HORIZON) {
+    const t = y / HORIZON;
+    const bandIdx = Math.min(SYN_BANDS.length - 1, Math.floor(t * SYN_BANDS.length));
+    const cx = 32, cy = HORIZON - 4, r = 22;
+    const dx = x - cx, dy = y - cy;
+    const rr = Math.sqrt(dx * dx + dy * dy);
+    if (rr < r) {
+      const bar = (y - (cy - r)) % 4 < 1;
+      return bar ? shade(SYN_BANDS[bandIdx], 0.8) : shade(PALETTE.amber500, 0.75 + ((r - rr) / r) * 0.35);
+    }
+    if (t < 0.4 && hash2(x, y, 672) > 0.98) return shade(PALETTE.cream100, 0.8); // stars, upper sky only
+    return shade(SYN_BANDS[bandIdx], 0.75 + t * 0.25 + hash2(x, y, 671) * 0.04);
+  }
+  const gy = y - HORIZON; // 0 at horizon .. 43 at the bottom
+  const lineSpacing = Math.max(2, Math.round(2 + gy * 0.35));
+  if (gy % lineSpacing < 1) return shade(PALETTE.red500, 0.6 + (gy / 43) * 0.3); // horizontal grid line
+  const spread = 1 + gy * 0.9;
+  for (let i = -6; i <= 6; i++) {
+    if (x === Math.round(32 + i * spread * 0.5)) return shade(PALETTE.red500, 0.55 + (gy / 43) * 0.3); // converging vertical
+  }
+  return shade(PALETTE.night900, 1.0 + hash2(x, y, 673) * 0.06);
+}
+
+/* 4. star chart — dark navy field, concentric chart rings + 15°-spaced
+   tick marks around the outer ring, scattered deterministic stars, one
+   glowing "hero" moon in the upper-left, a small hand-drawn constellation
+   line connecting five fixed points. */
+const STARCHART_BG = PALETTE.night700;
+const STARCHART_PTS = [
+  [14, 60], [26, 54], [22, 68], [38, 62], [46, 50],
+];
+function posterStarChart(x, y) {
+  if (x === 0 || x === WSP_W - 1 || y === 0 || y === WSP_H - 1) return shade(PALETTE.night900, 1.4);
+  const cx = 32, cy = 46;
+  const dx = x - cx, dy = y - cy;
+  const rr = Math.hypot(dx, dy);
+  const hx = 20, hy = 22, hr = 5;
+  const hd = Math.hypot(x - hx, y - hy);
+  if (hd < hr) return shade(PALETTE.cream100, 0.9 + ((hr - hd) / hr) * 0.15); // hero moon
+  if (hd < hr + 4) return shade(PALETTE.amber300, 0.5 * (1 - (hd - hr) / 4)); // moon glow
+  for (let i = 0; i < STARCHART_PTS.length - 1; i++) {
+    const [ax, ay] = STARCHART_PTS[i], [bx, by] = STARCHART_PTS[i + 1];
+    const segLen2 = (bx - ax) * (bx - ax) + (by - ay) * (by - ay);
+    const t = ((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / segLen2;
+    if (t >= 0 && t <= 1) {
+      const px = ax + t * (bx - ax), py = ay + t * (by - ay);
+      if (Math.hypot(x - px, y - py) < 0.6) return shade(PALETTE.teal500, 0.55); // constellation line
+    }
+  }
+  for (const [px, py] of STARCHART_PTS) {
+    if (Math.hypot(x - px, y - py) < 1.2) return shade(PALETTE.cream100, 0.85); // constellation star
+  }
+  for (const ring of [16, 28, 40]) {
+    if (Math.abs(rr - ring) < 0.6) return shade(PALETTE.amber300, 0.45); // concentric chart ring
+  }
+  if (Math.abs(rr - 40) < 1.2) {
+    const deg = ((Math.atan2(dy, dx) + Math.PI) / (Math.PI * 2)) * 360;
+    if (deg % 15 < 2) return shade(PALETTE.amber300, 0.7); // outer-ring tick marks
+  }
+  const s = hash2(x, y, 682);
+  if (s > 0.985) return shade(PALETTE.cream100, 0.95);
+  if (s > 0.975) return shade(PALETTE.cream100, 0.6);
+  return shade(STARCHART_BG, 0.9 + hash2(x, y, 681) * 0.08);
+}
+
+
+/* ---- rug: classic pixel SUPER MUSHROOM (W7 fix round — owner-directed IP
+   homage, replacing the arcade-confetti rug the owner said "reads cheap".
+   Owner supplied a photo reference of a fan-tufted mushroom rug: red cap,
+   3 big white spots, beige/cream face band with two dark rectangular eyes,
+   thick black outline, irregular pixel-stepped ROUND silhouette. 64×64
+   WITH ALPHA — writePng keeps a 4th component when colorAt returns one, so
+   pixels outside the silhouette come back fully transparent ([0,0,0,0]).
+   Deterministic, no hash needed — pure geometry off one center point
+   (32,32): the outer edge is quantized to a 4px step grid BEFORE the
+   distance test, which is what gives the "chunky pixel-stepped round"
+   silhouette (a smooth circle would read as a plain disc, not fan-tufted
+   pixel art) — same "no Math.random" rule as every other job in this file,
+   just satisfied by arithmetic instead of hash2 since nothing here needs
+   per-pixel randomness. ---- */
+const MUSH_CENTER = 32;
+const MUSH_STEP = 4; // chunky pixel-step quantization for the outer silhouette
+const MUSH_R = 28; // outer radius (post-quantization) — 4px margin to the 64px canvas edge
+const MUSH_BORDER = 4; // thick black outline band width
+const MUSH_CAP_BOTTOM = 38; // cap zone: y 4..38, the upper ~60% of the 56px vertical span (4..60)
+const MUSH_SEP_BOTTOM = 41; // 3px black cap/face separation line, y 38..41
+const MUSH_BLACK = [...hexToRgb(PALETTE.vinyl900), 255];
+const MUSH_RED = [...shade(PALETTE.red500, 1.12), 255];
+const MUSH_CREAM = [...hexToRgb(PALETTE.cream100), 255];
+const MUSH_BEIGE = [...hexToRgb(PALETTE.plaster300), 255];
+function mushStepCoord(v) {
+  return Math.floor(v / MUSH_STEP) * MUSH_STEP + MUSH_STEP / 2;
+}
+function mushSpotHit(x, y, cx, cy, r) {
+  const dx = x - cx, dy = y - cy;
+  return dx * dx + dy * dy < r * r;
+}
+function rugMushroom(x, y) {
+  const bx = mushStepCoord(x);
+  const by = mushStepCoord(y);
+  const dist = Math.hypot(bx - MUSH_CENTER, by - MUSH_CENTER);
+  if (dist > MUSH_R) return [0, 0, 0, 0]; // outside the silhouette — fully transparent
+
+  if (dist > MUSH_R - MUSH_BORDER) return MUSH_BLACK; // thick outer outline
+
+  if (y < MUSH_CAP_BOTTOM) {
+    // cap zone (upper ~60%) — red field, 3 big white spots: one center,
+    // two sides pushed close enough to the rim that the outline above
+    // clips them, per the reference photo.
+    if (
+      mushSpotHit(x, y, MUSH_CENTER, 15, 8) ||
+      mushSpotHit(x, y, MUSH_CENTER - 20, 21, 7) ||
+      mushSpotHit(x, y, MUSH_CENTER + 20, 21, 7)
+    ) {
+      return MUSH_CREAM;
+    }
+    return MUSH_RED;
+  }
+  if (y < MUSH_SEP_BOTTOM) return MUSH_BLACK; // cap/face separation line
+
+  // face band — beige/cream, two dark vertical rectangular eyes
+  if (Math.abs(x - MUSH_CENTER) > 6 && Math.abs(x - MUSH_CENTER) < 12 && y > 44 && y < 54) {
+    return MUSH_BLACK;
+  }
+  return MUSH_BEIGE;
+}
+
+/* ---- workstation corkboard rework (W9 polish pass, owner ask: "put the
+   logos of the companies i've worked with there alongwith some high
+   designation papers there instead of the white with lines"). W9c
+   (owner, verbatim): "i dont want to show company cards there just show
+   something normal i dont want the company name on the card, make some
+   generic stuff to put on it" — the three company wordmark cards (and
+   their dedicated pixel wordmark font, below) are GONE; replaced with
+   three generic pinned items (a to-do checklist, a ticket stub, a small
+   scenic postcard) that carry no legible proper nouns, same "illegible
+   print" idiom the certificate/offer-letter below already use. The
+   certificate, offer-letter, and polaroid are UNCHANGED (owner liked
+   those). ---- */
+
+/* to-do checklist note: ruled lines, a red margin rule, a small checkbox
+   per line (checked = filled + tick stroke), one line struck through.
+   "Text" is an abstract ink bar per line — never real glyphs. */
+const TODO_W = 44, TODO_H = 56;
+const TODO_PAPER = PALETTE.cream100;
+const TODO_INK = PALETTE.wood900;
+const TODO_ROWS = [
+  { y: 12, checked: true, crossed: false },
+  { y: 21, checked: true, crossed: false },
+  { y: 30, checked: false, crossed: true },
+  { y: 39, checked: true, crossed: false },
+  { y: 48, checked: false, crossed: false },
+];
+function todoChecklist(x, y) {
+  if (x === 0 || x === TODO_W - 1 || y === 0 || y === TODO_H - 1) return shade(TODO_INK, 0.75); // page edge
+  if (x === 7) return shade(PALETTE.red500, 0.8 + hash2(x, y, 881) * 0.1); // ruled-paper margin rule
+  let c = shade(TODO_PAPER, 0.95 + hash2(x, y, 882) * 0.05); // paper grain
+  for (const row of TODO_ROWS) {
+    if (y === row.y + 3 && x > 10 && x < TODO_W - 4) c = shade(TODO_INK, 0.35); // faint rule line
+    const boxSize = 5;
+    const bx0 = 11, by0 = row.y - boxSize;
+    const inBox = x >= bx0 && x < bx0 + boxSize && y >= by0 && y < by0 + boxSize;
+    if (inBox) {
+      const onEdge = x === bx0 || x === bx0 + boxSize - 1 || y === by0 || y === by0 + boxSize - 1;
+      if (onEdge) c = shade(TODO_INK, 0.8);
+      else if (row.checked) {
+        // simple tick: two short diagonal strokes
+        const lx = x - bx0, ly = y - by0;
+        c = lx + ly === 4 || Math.abs(lx - ly) <= 1 ? shade(TODO_INK, 0.9) : c;
+      }
+    }
+    const textW = 6 + Math.floor(hash2(0, row.y, 883) * 14); // deterministic per-row bar length
+    const inText = x >= 19 && x < 19 + textW && y >= row.y - 4 && y < row.y - 1;
+    if (inText) c = shade(TODO_INK, 0.55 + hash2(x, y, 884) * 0.1); // abstract text bar, never real glyphs
+    if (row.crossed && x >= 17 && x < 40 && y === row.y - 2) c = shade(PALETTE.red500, 0.75); // strike-through
+  }
+  return c;
+}
+
+/* ticket stub: dark header band, a couple of abstract text bars, a
+   dashed perforation line separating a small stub with its own punched
+   hole, pinned at a jaunty angle in the JSX below. */
+const TICKET_W = 76, TICKET_H = 30;
+const TICKET_PAPER = PALETTE.plaster300;
+const TICKET_INK = PALETTE.night900;
+const TICKET_PERF_X = 58;
+function ticketStub(x, y) {
+  if (x === 0 || x === TICKET_W - 1 || y === 0 || y === TICKET_H - 1) return shade(TICKET_INK, 0.85); // page edge
+  if (y > 1 && y < 8) return shade(TICKET_INK, 0.9 + hash2(x, y, 891) * 0.08); // dark header band
+  if (x === TICKET_PERF_X && y % 3 !== 0) return shade(TICKET_INK, 0.55); // dashed perforation (tear edge)
+  const stub = x > TICKET_PERF_X; // small stub past the perforation, faint tint difference
+  let c = shade(TICKET_PAPER, (stub ? 0.9 : 0.96) + hash2(x, y, 892) * 0.05);
+  if (y > 12 && y < 15 && x > 5 && x < TICKET_PERF_X - 4) c = shade(TICKET_INK, 0.6 + hash2(x, y, 893) * 0.1); // text bar 1
+  if (y > 18 && y < 21 && x > 5 && x < TICKET_PERF_X - 10) c = shade(TICKET_INK, 0.55 + hash2(x, y, 894) * 0.1); // text bar 2
+  const hx = TICKET_PERF_X + (TICKET_W - TICKET_PERF_X) / 2, hy = TICKET_H / 2, hr = 3;
+  const dh = Math.hypot(x - hx, y - hy);
+  if (stub && dh < hr) c = shade(TICKET_INK, dh < hr - 1.2 ? 1.3 : 0.6); // punched hole (dark negative-space fake)
+  return c;
+}
+
+/* small scenic postcard: thin white border, a toy horizon/hills/moon
+   print (reuses the house's own dusk-vignette motif at postcard scale,
+   same as the pinned photo below), a stamp square in one corner. */
+const POSTCARD_W = 64, POSTCARD_H = 44;
+const POSTCARD_BORDER = 3;
+function postcardScenic(x, y) {
+  const inBorder = x < POSTCARD_BORDER || x >= POSTCARD_W - POSTCARD_BORDER || y < POSTCARD_BORDER || y >= POSTCARD_H - POSTCARD_BORDER;
+  if (inBorder) return shade(PALETTE.cream100, 0.97 + hash2(x, y, 901) * 0.04); // thin white border
+  const y0 = POSTCARD_BORDER, y1 = POSTCARD_H - POSTCARD_BORDER;
+  const t = (y - y0) / (y1 - y0);
+  let c = shade(PALETTE.purple700, 0.6 + (1 - t) * 0.45); // dusk sky gradient
+  const horizon = y0 + Math.round((y1 - y0) * 0.6);
+  if (y >= horizon) {
+    const ridgeY = horizon + Math.round(Math.sin((x - POSTCARD_BORDER) / 5.2) * 2.4);
+    c = y >= ridgeY ? shade(PALETTE.night700, 1.05 + hash2(x, y, 902) * 0.05) : shade(PALETTE.amber500, 0.5); // simple hills / sky sliver
+  }
+  const mx = POSTCARD_W * 0.32, my = horizon - 6, mr = 3.5;
+  if (Math.hypot(x - mx, y - my) < mr) c = shade(PALETTE.cream100, 0.92); // moon disc
+  // stamp square, top-right corner of the scenic print, serrated edge look
+  const sx0 = POSTCARD_W - POSTCARD_BORDER - 13, sy0 = POSTCARD_BORDER + 1, ss = 11;
+  if (x >= sx0 && x < sx0 + ss && y >= sy0 && y < sy0 + ss) {
+    const lx = x - sx0, ly = y - sy0;
+    const edge = lx === 0 || lx === ss - 1 || ly === 0 || ly === ss - 1;
+    if (edge && (lx + ly) % 2 === 0) c = shade(PALETTE.cream100, 0.95); // serrated dashes
+    else if (edge) c = shade(PALETTE.teal500, 0.7);
+    else c = shade(PALETTE.teal500, 0.75 + hash2(x, y, 903) * 0.15); // stamp ink block
+  }
+  return c;
+}
+
+/* ---- "high designation" documents: two official-looking prints, distinct
+   from the plain note stock above. Neither carries real lettering (same
+   "illegible print" idiom posterCredits/the ad tagline use elsewhere in
+   this file) — they read as important paper from shape/border/seal
+   alone, which is the whole ask. Same 56×72 footprint so they pin
+   together cleanly. ---- */
+const DOC_W = 56, DOC_H = 72;
+
+/* certificate/award: parchment stock, ornate double border, a gold seal
+   w/ ribbon tails low-center, a bold centered title band + two shorter
+   body lines up top. */
+const CERT_PAPER = PALETTE.cream100;
+const CERT_INK = PALETTE.wood900;
+const CERT_GOLD = PALETTE.amber500;
+function certificatePaper(x, y) {
+  const b = Math.min(x, DOC_W - 1 - x, y, DOC_H - 1 - y);
+  if (b === 0) return shade(CERT_INK, 0.8); // outer border
+  if (b === 2 || b === 3) return shade(CERT_GOLD, 0.88 + hash2(x, y, 851) * 0.1); // inner gold rule
+  let c = shade(CERT_PAPER, 0.95 + hash2(x, y, 852) * 0.05); // paper grain
+  if (y > 9 && y < 15 && y % 3 < 2 && x > 10 && x < DOC_W - 10 - ((y * 5) % 6)) c = shade(CERT_INK, 1.15); // title band
+  if (y > 20 && y < 24 && x > 14 && x < DOC_W - 14) c = shade(CERT_INK, 0.55); // body line 1
+  if (y > 27 && y < 31 && x > 16 && x < DOC_W - 16) c = shade(CERT_INK, 0.5); // body line 2
+  const cx = DOC_W / 2, cy = 52, r = 10;
+  const dx = x - cx, dy = y - cy;
+  const rr = Math.hypot(dx, dy);
+  if (rr < r) {
+    c = shade(CERT_GOLD, Math.floor(rr) % 3 === 0 ? 0.72 : 1.05); // seal
+    if (rr < 3.5) c = shade(CERT_INK, 0.9); // center medallion
+  } else if (y > cy + r - 3 && y < DOC_H - 3) {
+    const t = y - (cy + r - 3);
+    if (Math.abs(x - (cx - 3 - t * 0.3)) < 1.6 || Math.abs(x - (cx + 3 + t * 0.3)) < 1.6) {
+      c = shade(PALETTE.red500, 0.85 + hash2(x, y, 853) * 0.1); // ribbon tails
+    }
+  }
+  return c;
+}
+
+/* offer-letter / spec-sheet: plain stock, a solid letterhead bar, dense
+   tightly-packed illegible body lines, a looser signature squiggle near
+   the bottom — laid out denser than the certificate above so the two
+   read as different document types. */
+const OFFER_PAPER = PALETTE.plaster300;
+const OFFER_INK = PALETTE.night900;
+function offerLetterPaper(x, y) {
+  if (x === 0 || x === DOC_W - 1 || y === 0 || y === DOC_H - 1) return shade(OFFER_INK, 0.7); // page edge
+  if (y > 2 && y < 9) return shade(OFFER_INK, 0.92 + hash2(x, y, 861) * 0.06); // letterhead bar
+  if (y === 10) return shade(OFFER_INK, 0.6); // rule under the letterhead
+  let c = shade(OFFER_PAPER, 0.95 + hash2(x, y, 862) * 0.05); // paper grain
+  if (y > 14 && y < 52 && y % 3 === 0 && x > 6 && x < DOC_W - 6 - ((y * 7) % 14)) {
+    c = shade(OFFER_INK, 0.55 + hash2(x, y, 863) * 0.1); // dense body text
+  }
+  const wob = Math.sin((x - 10) / 3) * 2 + Math.sin((x - 10) / 1.3) * 0.8;
+  if (x > 10 && x < DOC_W - 14 && Math.abs(y - (60 + wob)) < 1.4) c = shade(OFFER_INK, 0.85); // signature squiggle
+  return c;
+}
+
+/* ---- pinned photo (personal item, corkboard rework): a small polaroid —
+   white card stock, a tiny invented dusk/mountain vignette (reuses the
+   house's own sunset-bars/mountain-ridge motif at toy scale, not a new
+   subject) in the photo window, a blank caption strip at the bottom like
+   a real polaroid. ---- */
+const POLA_W = 44, POLA_H = 52;
+const POLA_CAP_H = 12; // blank caption strip at the bottom
+function pinnedPhoto(x, y) {
+  const inPhoto = x >= 3 && x < POLA_W - 3 && y >= 3 && y < POLA_H - POLA_CAP_H;
+  if (!inPhoto) return shade(PALETTE.cream100, 0.96 + hash2(x, y, 871) * 0.05); // white polaroid card
+  const y0 = 3, y1 = POLA_H - POLA_CAP_H;
+  const t = (y - y0) / (y1 - y0);
+  let c = shade(PALETTE.purple700, 0.55 + (1 - t) * 0.5); // dusk sky gradient
+  const horizon = y0 + Math.round((y1 - y0) * 0.62);
+  if (y >= horizon) {
+    const ridgeY = horizon + Math.round(Math.sin((x - 3) / 3.4) * 2);
+    c = y >= ridgeY ? shade(PALETTE.night900, 1.05) : shade(PALETTE.amber500, 0.55); // ground / sky sliver
+  }
+  const cx = (3 + POLA_W - 3) / 2, cy = horizon - 4;
+  if (Math.hypot(x - cx, y - cy) < 4) c = shade(PALETTE.amber300, 0.9); // small sun disc
+  return c;
+}
+
 /* Only textures referenced by src/ belong here — a JOBS entry for a deleted
    PNG silently resurrects it on the next generator run. Prune both together.
    (Variant fns for rejected style-gate options are kept below for reference.) */
@@ -861,6 +1372,21 @@ const JOBS = [
   ["zen-gravel", 64, 64, zenGravel],
   ["zen-moss", 32, 32, zenMoss],
   ["stone-slab", 32, 32, stoneSlab],
+  ["blueprint-paper", BP_W, BP_H, blueprintPaper],
+  ["door-glow", 8, 32, doorGlow],
+  ["floor-spill", 32, 32, floorSpill],
+  ["pegboard", 40, 24, pegboard],
+  ["poster-retro-ad", WSP_W, WSP_H, posterRetroAd],
+  ["poster-circuit", WSP_W, WSP_H, posterCircuit],
+  ["poster-synthwave", WSP_W, WSP_H, posterSynthwave],
+  ["poster-star-chart", WSP_W, WSP_H, posterStarChart],
+  ["rug-mushroom", 64, 64, rugMushroom],
+  ["corkboard-item-todo", TODO_W, TODO_H, todoChecklist],
+  ["corkboard-item-ticket", TICKET_W, TICKET_H, ticketStub],
+  ["corkboard-item-postcard", POSTCARD_W, POSTCARD_H, postcardScenic],
+  ["corkboard-doc-certificate", DOC_W, DOC_H, certificatePaper],
+  ["corkboard-doc-offer-letter", DOC_W, DOC_H, offerLetterPaper],
+  ["corkboard-photo-polaroid", POLA_W, POLA_H, pinnedPhoto],
 ];
 
 for (const [name, w, h, fn] of JOBS) {

@@ -43,6 +43,14 @@ describe("house layout", () => {
     expect(b.x).toBeCloseTo(-2.9);
     expect(b.w).toBeCloseTo(24.9);
     expect(b.x + b.w).toBeCloseTo(22);
-    expect(b.d).toBe(6);
+  });
+
+  it("ground bounds extend north/south to cover the workstation and genkan (LAYOUT V2)", () => {
+    // z grows from {0,6} to {-6.2,14.5}: -6.2 is the workstation's north
+    // wall, 8.3 (-6.2+14.5) is the genkan's front-door south wall.
+    const b = HOUSE.areas.ground.bounds;
+    expect(b.z).toBeCloseTo(-6.2);
+    expect(b.d).toBeCloseTo(14.5);
+    expect(b.z + b.d).toBeCloseTo(8.3);
   });
 });
