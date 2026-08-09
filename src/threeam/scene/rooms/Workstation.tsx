@@ -186,7 +186,7 @@ const WS_CORK_PHOTO_Z = 0.042; // 17mm proud — topmost, own pin at +0.01 local
 // The `Polaroid` component + the projects-station 3D polaroid wall it
 // backed are GONE (T8 finale item 15 — the west wall's project corner is
 // now a project-building table, see the group below). The public/3am/
-// projects/* pixelated images stay on disk untouched — /boring and the
+// projects/* pixelated images stay on disk untouched — /9am and the
 // projects station's own 2D content panel (StationPanel.tsx, which reads
 // `site.projects` independently of this 3D room) both still use them.
 
