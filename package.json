@@ -11,7 +11,8 @@
     "gen:textures": "node scripts/pixelart/gen-textures.mjs",
     "gen:albums": "node scripts/pixelart/gen-albums.mjs",
     "gen:projects": "node scripts/pixelart/gen-projects.mjs",
-    "gen:workspace": "node scripts/pixelart/gen-workspace.mjs"
+    "gen:workspace": "node scripts/pixelart/gen-workspace.mjs",
+    "gen:clouds": "node scripts/pixelart/gen-clouds.mjs"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",

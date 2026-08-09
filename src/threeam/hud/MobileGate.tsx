@@ -8,13 +8,13 @@ export function MobileGate() {
       <div className="max-w-sm text-center">
         <p className="text-base text-[#c9bfef]">it&apos;s 3am in here.</p>
         <p className="mt-2">
-          the house needs a keyboard — here&apos;s the boring version instead.
+          the house needs a keyboard — here&apos;s the 9am version instead.
         </p>
         <Link
-          href="/boring"
+          href="/9am"
           className="mt-6 inline-block rounded border border-[#9d8fd8]/40 bg-[#9d8fd8]/10 px-5 py-3 text-base text-[#c9bfef] transition-colors hover:border-[#c9bfef] hover:bg-[#9d8fd8]/20"
         >
-          → the boring version
+          → the 9am version
         </Link>
       </div>
     </div>

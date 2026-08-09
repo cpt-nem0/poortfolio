@@ -85,7 +85,6 @@ body {
   --ink: #f4f2ec; --label: #8f8fa3; --dim: #6d6d80;
   --amber: #ffb35c; --door-pink: #ff5c7a; --lyric: #e8c98a;
   --presence: #7fd88f; --lime: #c8f542; --heat: #ef9f27;
-  --cloud: rgba(52,52,84,.55); --cloud-lit: rgba(90,90,130,.5);
   --star: #cfd6ff;
 }
 [data-theme="day"] {
@@ -94,7 +93,6 @@ body {
   --ink: #1c1a24; --label: #6b6577; --dim: #8a8496;
   --amber: #d98324; --door-pink: #ff5c7a; --lyric: #b0842f;
   --presence: #3d9e52; --lime: #6d8a12; --heat: #a35c00;
-  --cloud: rgba(255,255,255,.75); --cloud-lit: rgba(255,255,255,.95);
   --star: #cfd6ff;
 }
 
@@ -129,6 +127,15 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .bento-cloud, .bento-star, .bento-celestial-drift, .bento-sun-breathe { animation: none !important; }
 }
+/* Cloud sprite crossfade: all three theme variants live in the DOM per
+   layer, [data-theme]/[data-eclipse] pick which is visible — same pattern
+   as the moon/bloodmoon sprite crossfade above. */
+.bento-cloud-sprite { opacity: 0; transition: opacity 1s ease; }
+[data-theme="night"] .bento-cloud-sprite-night { opacity: 1; }
+[data-theme="day"] .bento-cloud-sprite-day { opacity: 1; }
+[data-eclipse] .bento-cloud-sprite-night,
+[data-eclipse] .bento-cloud-sprite-day { opacity: 0; }
+[data-eclipse] .bento-cloud-sprite-bloodmoon { opacity: 1; }
 
 /* ── bento tile animations (idle budget: these three only) ── */
 @keyframes bento-verse-wipe {

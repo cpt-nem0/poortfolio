@@ -7,7 +7,9 @@ const SPANS: Record<string, string> = {
 };
 
 export function Tile({ label, span = "1x1", className, children }: {
-  label: string; span?: keyof typeof SPANS; className?: string; children: ReactNode;
+  // ReactNode, not string — a label can emphasise part of itself (the
+  // identity tile brightens the name inside its own label).
+  label: ReactNode; span?: keyof typeof SPANS; className?: string; children: ReactNode;
 }) {
   return (
     <section className={clsx(

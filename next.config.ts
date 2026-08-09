@@ -9,6 +9,13 @@ const nextConfig: NextConfig = {
         destination: "/",
         permanent: true,
       },
+      {
+        // `/boring` was this page's original name — it's been shared publicly,
+        // so the old URL keeps working.
+        source: "/boring",
+        destination: "/9am",
+        permanent: true,
+      },
     ];
   },
 };
