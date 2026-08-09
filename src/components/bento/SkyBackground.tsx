@@ -1,55 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { THEME_STORAGE_KEY, type ThemeName } from "./theme";
 
-/* Cloud sprite: layered radial-gradients, no blur filters (GPU cost).
- * Reserved for the /3am entry cinematic: a future `dive` prop will
- * accelerate/scale these layers — do not implement now (spec §4). */
-
-type CloudVariant = 1 | 2 | 3;
-type Ellipse = readonly [cx: number, cy: number, rx: number, ry: number];
-
-/* Three distinct cumulus silhouettes, viewBox 0 0 240 80: wide/flat,
- * puffy/tall, small/wispy. Two fill layers (body + top-lit highlight). */
-const CLOUD_VARIANTS: Record<CloudVariant, { body: readonly Ellipse[]; lit: readonly Ellipse[] }> = {
-  1: {
-    body: [[30, 52, 26, 14], [65, 46, 32, 18], [105, 48, 36, 17], [145, 50, 34, 16], [180, 54, 28, 14], [205, 57, 20, 11]],
-    lit: [[70, 32, 20, 10], [110, 28, 24, 11], [150, 34, 18, 9]],
-  },
-  2: {
-    body: [[50, 58, 26, 14], [90, 42, 30, 24], [125, 32, 28, 26], [155, 40, 26, 22], [185, 52, 22, 16], [115, 60, 50, 16]],
-    lit: [[100, 22, 18, 11], [135, 18, 17, 10], [80, 28, 14, 9]],
-  },
-  3: {
-    body: [[20, 44, 16, 7], [50, 40, 20, 8], [85, 46, 18, 6], [115, 42, 22, 7], [150, 47, 17, 6], [180, 43, 15, 6], [205, 46, 12, 5]],
-    lit: [[60, 35, 10, 4], [125, 34, 12, 4], [170, 36, 9, 4]],
-  },
-};
-
-function CloudSprite({ variant }: { variant: CloudVariant }) {
-  const uid = useId();
-  const filterId = `cloud-blur-${uid}`;
-  const { body, lit } = CLOUD_VARIANTS[variant];
-  return (
-    <svg viewBox="0 0 240 80" aria-hidden focusable="false" className="block h-full w-full">
-      <defs>
-        {/* Small filter region — cheap one-time raster of an 240x80 sprite, not a viewport blur. */}
-        <filter id={filterId} x="-15%" y="-30%" width="130%" height="160%">
-          <feGaussianBlur stdDeviation="2.5" />
-        </filter>
-      </defs>
-      <g filter={`url(#${filterId})`}>
-        {body.map((e, i) => (
-          <ellipse key={`b${i}`} cx={e[0]} cy={e[1]} rx={e[2]} ry={e[3]} fill="var(--cloud)" />
-        ))}
-        {lit.map((e, i) => (
-          <ellipse key={`l${i}`} cx={e[0]} cy={e[1]} rx={e[2]} ry={e[3]} fill="var(--cloud-lit)" />
-        ))}
-      </g>
-    </svg>
-  );
-}
+/* Cloud layer: drifting box, contents are pixel-art sprites (see
+ * PIXELATED sprites below). Reserved for the /3am entry cinematic: a
+ * future `dive` prop will accelerate/scale these layers — do not
+ * implement now (spec §4). */
 
 const CLOUD_LAYERS = [
   { variant: 1, top: "6%", scale: 1.3, duration: 150, delay: -20, opacity: 0.45 },
@@ -86,9 +43,12 @@ const STARS = Array.from({ length: STAR_COUNT }, (_, i) => {
 });
 
 /* Pixel-art sprites (owner-approved, Stitch-generated), extracted by
- * scripts/pixelart/gen-celestial.mjs into true-alpha 32x32 PNGs. Plain
+ * scripts/pixelart/gen-celestial.mjs (moon/sun/bloodmoon) and
+ * scripts/pixelart/gen-clouds.mjs (clouds) into true-alpha PNGs. Plain
  * <img>, not next/image — tiny local pixel art, next/image blurs it. */
 const PIXELATED = { imageRendering: "pixelated" } as const;
+
+const CLOUD_THEMES = ["night", "day", "bloodmoon"] as const;
 
 function readTheme(): ThemeName {
   return document.documentElement.getAttribute("data-theme") === "day" ? "day" : "night";
@@ -131,7 +91,15 @@ export function SkyBackground() {
                  animation: `bento-drift ${c.duration}s linear infinite`,
                  animationDelay: `${c.delay}s`,
                }}>
-            <CloudSprite variant={c.variant} />
+            {/* All three theme variants live in the DOM; [data-theme]/
+                [data-eclipse] attribute selectors crossfade them, same
+                pattern as the celestial sprites below. */}
+            {CLOUD_THEMES.map((cloudTheme) => (
+              // eslint-disable-next-line @next/next/no-img-element -- tiny local pixel art, next/image blurs it
+              <img key={cloudTheme} src={`/9am/clouds/${cloudTheme}-${c.variant}.png`} alt=""
+                   className={`bento-cloud-sprite bento-cloud-sprite-${cloudTheme} absolute inset-0 h-full w-full object-contain`}
+                   style={PIXELATED} />
+            ))}
           </div>
         ))}
       </div>

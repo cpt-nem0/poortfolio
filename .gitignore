@@ -49,3 +49,6 @@ scripts/pixelart/.favicon-preview/
 
 # celestial sprite extraction preview PNGs (scripts/pixelart/gen-celestial.mjs)
 scripts/pixelart/.celestial-preview/
+
+# cloud sprite extraction preview PNGs (scripts/pixelart/gen-clouds.mjs)
+scripts/pixelart/.clouds-preview/
