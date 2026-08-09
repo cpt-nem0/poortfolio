@@ -1152,6 +1152,127 @@ function rugMushroom(x, y) {
   return MUSH_BEIGE;
 }
 
+/* ---- rug-blob (W10 polish pass, bedroom rug swap — owner supplied a photo
+   reference of a designer rug: an irregular organic "blob"/amoeba puddle
+   silhouette, near-black field, cream sinuous channels winding through it
+   like rivers, splitting the black into rounded islands. Two colors, high
+   contrast, no straight edges anywhere.
+
+   SILHOUETTE: six overlapping Wyvill soft-object metaball sources (bounded
+   support, unlike a plain inverse-square field — keeps distant sources
+   from raising a baseline everywhere and makes the merge/pinch behavior
+   between neighbors controllable) at fixed, unevenly-sized offsets,
+   thresholded. That's what gives the lobed puddle edge with concave waist
+   pinches instead of a smooth oval — sources are deliberately asymmetric
+   (varied radii, off-center placement) since a symmetric blob reads wrong
+   per the reference. 112x80 = the bedroom rug mesh's 2.4:1.7 aspect,
+   112/80 = 1.4 vs 2.4/1.7 = 1.412, close enough not to stretch visibly.
+
+   CHANNELS: a domain-warped sum-of-sines scalar field (each axis term's
+   phase is itself pushed by a sin/cos of the other axis, so the level
+   curves wind non-repeatingly instead of reading as straight diagonal
+   stripes). A FIRST pass picked channels by thresholding a fixed VALUE
+   band around a level (|field - level| < w) — that reads fine as ASCII
+   but renders wrong: near the field's local extrema the gradient goes to
+   ~0, so a fixed value-band balloons into a wide round patch there
+   (nowhere near "narrow river" — two of those patches next to the
+   silhouette's own rounded lobes read as cow-print/panda spots, not a
+   Matisse cutout — this is what the owner flagged as "completely wrong"
+   live in the actual bedroom). Fixed by normalizing the band width by the
+   LOCAL GRADIENT MAGNITUDE (central-difference estimate) instead of using
+   a fixed value-band: half-width-in-field-units = pxHalf * |grad(field)|,
+   so the rendered channel stays a genuinely constant ~pxHalf*2 px wide
+   everywhere and pinches to a point (never balloons) at extrema — the
+   standard analytic-derivative trick for constant-screen-width implicit
+   contour lines. Four bands at different levels/widths are painted cream,
+   masked to the silhouette so channels never bleed past the edge — four
+   distinct meandering strands, ~22% of the rug's area, a minority accent
+   breaking up the near-black field rather than a 50/50 split.
+
+   Both the silhouette's outer rim and each channel's edge get a ~1px
+   darken band (silhouette: distance-to-threshold in field-value space;
+   channel: distance-to-band-edge in the same normalized px units as the
+   channel width itself) so the shapes read crisply at the fixed camera
+   distance, same idea as rug-mushroom's thick outline. Same alpha-cutout
+   convention as rug-mushroom: writePng keeps a 4th component, [0,0,0,0]
+   outside the silhouette. Colors are the house palette's near-black
+   (vinyl900, same tone rug-mushroom's outline uses) and cream (cream100)
+   rather than pure #000/#fff, with the same hash2 per-pixel shading every
+   other rug in this file uses so it doesn't read as flat vector art.
+   Deterministic — pure geometry + hash2 (the gradient estimate is a
+   central difference of the same deterministic riverField, not a random
+   perturbation), no Math.random, no Date. ---- */
+const BLOB_SOURCES = [
+  [31.43, 40, 28.35],
+  [60.73, 18.27, 23.63],
+  [88.13, 36.22, 25.51],
+  [69.23, 61.74, 24.57],
+  [33.32, 63.63, 21.74],
+  [96.64, 57.96, 15.12],
+];
+const BLOB_THRESH = 0.46; // metaball field threshold — the silhouette boundary
+const BLOB_EDGE_BAND = 0.035; // field-value band just past threshold — the darkened outer rim
+const BLOB_RIVER_BANDS = [
+  { level: -2.4, pxHalf: 1.6 },
+  { level: -0.9, pxHalf: 2.0 },
+  { level: 0.5, pxHalf: 1.8 },
+  { level: 1.7, pxHalf: 1.4 },
+];
+const BLOB_RIVER_GRAD_EPS = 0.75; // central-difference step for the gradient estimate
+const BLOB_RIVER_MIN_GRAD = 0.03; // floor so a near-zero gradient can't blow the band up
+function blobBump(d, r) {
+  // Wyvill soft-object falloff: 0 outside its own radius, so sources only
+  // influence their local neighborhood (unlike 1/d^2, which never reaches 0).
+  if (d >= r) return 0;
+  const t = d / r;
+  const u = 1 - t * t;
+  return u * u;
+}
+function blobField(x, y) {
+  let s = 0;
+  for (const [cx, cy, r] of BLOB_SOURCES) s += blobBump(Math.hypot(x - cx, y - cy), r);
+  return s;
+}
+function blobRiverField(x, y) {
+  return (
+    Math.sin(x * 0.075 + Math.sin(y * 0.05) * 2.1 + 0.3) +
+    Math.sin(y * 0.06 - Math.cos(x * 0.045) * 1.7 + 1.1) +
+    Math.sin((x + y) * 0.035 + 2.4) +
+    Math.sin((x - y) * 0.05 - 0.7)
+  );
+}
+function blobRiverGrad(x, y) {
+  const eps = BLOB_RIVER_GRAD_EPS;
+  const dfdx = (blobRiverField(x + eps, y) - blobRiverField(x - eps, y)) / (2 * eps);
+  const dfdy = (blobRiverField(x, y + eps) - blobRiverField(x, y - eps)) / (2 * eps);
+  return Math.hypot(dfdx, dfdy);
+}
+// > 0 (and how far past 0) = inside a channel, in roughly constant px units;
+// <= 0 = outside every channel. One shared helper for both the fill test
+// and the edge-rim test below.
+function blobRiverInsideAmount(x, y) {
+  const v = blobRiverField(x, y);
+  const g = Math.max(blobRiverGrad(x, y), BLOB_RIVER_MIN_GRAD);
+  let best = -Infinity;
+  for (const b of BLOB_RIVER_BANDS) {
+    const amount = b.pxHalf - Math.abs(v - b.level) / g;
+    if (amount > best) best = amount;
+  }
+  return best;
+}
+function rugBlob(x, y) {
+  const field = blobField(x, y);
+  if (field <= BLOB_THRESH) return [0, 0, 0, 0]; // outside the silhouette — fully transparent
+  const onSilhouetteEdge = field - BLOB_THRESH < BLOB_EDGE_BAND;
+  const riverInside = blobRiverInsideAmount(x, y);
+  const river = riverInside > 0;
+  const onRiverEdge = !onSilhouetteEdge && river && riverInside < 1; // outer ~1px shell of the channel
+  const base = river ? PALETTE.cream100 : PALETTE.vinyl900;
+  let f = 0.94 + hash2(x, y, 751) * 0.1; // per-pixel shading so it doesn't read as flat vector art
+  if (onSilhouetteEdge || onRiverEdge) f *= 0.82; // 1px darkened edge — crisp read at camera distance
+  return [...shade(base, f), 255];
+}
+
 /* ---- workstation corkboard rework (W9 polish pass, owner ask: "put the
    logos of the companies i've worked with there alongwith some high
    designation papers there instead of the white with lines"). W9c
@@ -1381,6 +1502,7 @@ const JOBS = [
   ["poster-synthwave", WSP_W, WSP_H, posterSynthwave],
   ["poster-star-chart", WSP_W, WSP_H, posterStarChart],
   ["rug-mushroom", 64, 64, rugMushroom],
+  ["rug-blob", 112, 80, rugBlob],
   ["corkboard-item-todo", TODO_W, TODO_H, todoChecklist],
   ["corkboard-item-ticket", TICKET_W, TICKET_H, ticketStub],
   ["corkboard-item-postcard", POSTCARD_W, POSTCARD_H, postcardScenic],

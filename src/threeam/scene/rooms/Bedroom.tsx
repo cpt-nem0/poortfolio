@@ -1532,14 +1532,19 @@ export function Bedroom() {
   // its scripts/pixelart/gen-variants.mjs JOBS entry in place (HANDOFF §6:
   // deleting one without the other lets the generator silently resurrect
   // it) since it may return on a throw blanket.
-  // rug — LOCKED (owner pick, this pass): rug-moroccan, replacing
-  // rug-bedroom. Same repeat(1,1) + transparent convention as MusicNook's
-  // rugKilim (moroccan is a tiled diamond-lattice pattern, not an
-  // alpha-cutout oval like rug-bedroom was, so it now fills the plane as a
-  // rectangle — expected given the source texture, not a bug). The other
-  // four rug PNGs generated alongside it stay on disk, unreferenced, in
-  // case the owner revisits.
-  const rugTex = usePixelTexture("/3am/tex/rug-moroccan.png", 1, 1);
+  // rug — SWAPPED (W10 polish pass, owner supplied a photo reference of a
+  // designer rug: irregular organic "blob"/amoeba puddle silhouette,
+  // near-black field, cream sinuous channels winding through it like
+  // rivers). rug-blob replaces rug-moroccan; see gen-variants.mjs's rugBlob
+  // job for the metaball-silhouette + sum-of-sines-channel construction.
+  // Same repeat(1,1) + transparent convention as rug-moroccan before it —
+  // rug-blob is an alpha-cutout PNG (like rug-mushroom), not a tiled
+  // pattern, so alphaTest is now needed too (see the mesh's material
+  // below) to avoid depth-sort artifacts on the cutout, same fix
+  // rug-mushroom already uses. rug-moroccan.png and its JOBS entry stay on
+  // disk, unreferenced, per the owner's standing "keep rejected variants"
+  // rule (see the linen-quilt comment above for the same pattern).
+  const rugTex = usePixelTexture("/3am/tex/rug-blob.png", 1, 1);
   // deck floor — same floor-oak family as the room. Cut into 4 pieces
   // around the zen garden (ZEN_DECK_NORTH/SOUTH/WEST/EAST above) instead
   // of one continuous plane — see the const-block comment for why (the
@@ -2546,7 +2551,7 @@ export function Bedroom() {
           movement either way). ── */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[RUG_X, 0.035, RUG_Z]}>
         <planeGeometry args={[RUG_W, RUG_D]} />
-        <meshStandardMaterial map={rugTex} transparent />
+        <meshStandardMaterial map={rugTex} transparent alphaTest={0.5} />
       </mesh>
 
       {/* ── PLANT PASS — the two hand-built corner plants (pot cylinder +
