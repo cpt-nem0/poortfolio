@@ -12,7 +12,7 @@ import { MoreTile } from "./tiles/MoreTile";
 
 export function BentoGrid() {
   return (
-    <div className="relative min-h-dvh md:flex md:h-dvh md:flex-col">
+    <div className="relative min-h-dvh max-md:overflow-x-clip md:flex md:h-dvh md:flex-col">
       <SkyBackground />
       <EasterEggs />
       <main className="mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-3.5 px-4 pb-6 pt-16 md:min-h-0 md:flex-1 md:auto-rows-[minmax(150px,1fr)] md:grid-cols-3 md:overflow-y-auto lg:px-8 2xl:max-w-[1680px]">

@@ -13,9 +13,9 @@ export function JobsTile() {
       <ul className="mt-2">
         {site.experience.map((e) => (
           <li key={e.company} className="border-t border-[var(--tile-border)] first:border-t-0">
-            <a href={e.href} target="_blank" rel="noreferrer" className="group flex items-baseline justify-between gap-4 py-1.5">
+            <a href={e.href} target="_blank" rel="noreferrer" className="group flex flex-col items-start gap-0.5 py-1.5 md:flex-row md:items-baseline md:justify-between md:gap-4">
               <span className="font-mono text-xs font-semibold text-[var(--ink)] group-hover:text-[var(--amber)]">{e.company.toLowerCase()}</span>
-              <span className="truncate font-mono text-[10px] text-[var(--dim)]">{(ONE_LINERS[e.company] ?? e.role.toLowerCase())} · {e.period.toLowerCase()}</span>
+              <span className="font-mono text-[10px] text-[var(--dim)] md:truncate">{(ONE_LINERS[e.company] ?? e.role.toLowerCase())} · {e.period.toLowerCase()}</span>
             </a>
           </li>
         ))}

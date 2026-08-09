@@ -28,9 +28,9 @@ export function VerseTile() {
   }, [reduced]);
 
   return (
-    <Tile label="verse — lyrics in a pill">
+    <Tile label="verse — lyrics in a pill" className="max-md:min-h-[150px]">
       <a href={verse?.href} target="_blank" rel="noreferrer" className="absolute inset-0" aria-label="Verse — open site" />
-      <div className="pointer-events-none relative mt-5 flex justify-center">
+      <div className="pointer-events-none relative mt-5 flex justify-center max-md:mb-6">
         {/* the pill stays dark-glass in both themes — product-accurate, not theme-driven, like the door tile.
             Its own <a> (sibling of the full-tile overlay link) so the pill navigates instead of dead-clicking,
             while keeping the hover tease; aria-hidden + tabIndex={-1} since the overlay link already covers
@@ -84,7 +84,7 @@ export function VerseTile() {
           )}
         </a>
       </div>
-      <p className="pointer-events-none absolute bottom-3 font-mono text-[9px] text-[var(--dim)]">swift · macos ↗</p>
+      <p className="pointer-events-none font-mono text-[9px] text-[var(--dim)] max-md:static max-md:mt-2 md:absolute md:bottom-3">swift · macos ↗</p>
     </Tile>
   );
 }

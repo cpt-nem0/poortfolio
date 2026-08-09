@@ -19,7 +19,7 @@ export function PlateTile() {
   const label = heat > 0.85 ? "on fire" : heat > 0.5 ? "getting warm" : "comfortable";
   const deg = Math.round(heat * 360);
   return (
-    <Tile label="plate — nothing slips">
+    <Tile label="plate — nothing slips" className="max-md:min-h-[140px]">
       <a href={plate?.href} target="_blank" rel="noreferrer" className="absolute inset-0" aria-label="Plate — open site" />
       <div className="mt-4 flex items-center gap-3.5">
         <span aria-hidden className="bento-ring pointer-events-none relative block h-[52px] w-[52px] rounded-full"
@@ -28,7 +28,7 @@ export function PlateTile() {
         </span>
         <p className="font-mono text-[11px] text-[var(--dim)]">deadline heat:<br /><span className="text-[var(--heat)]">{label}</span></p>
       </div>
-      <p className="pointer-events-none absolute bottom-3 font-mono text-[9px] text-[var(--dim)]">swift · on-device llm ↗</p>
+      <p className="pointer-events-none font-mono text-[9px] text-[var(--dim)] max-md:static max-md:mt-4 md:absolute md:bottom-3">swift · on-device llm ↗</p>
     </Tile>
   );
 }

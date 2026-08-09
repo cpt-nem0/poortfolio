@@ -85,28 +85,10 @@ const STARS = Array.from({ length: STAR_COUNT }, (_, i) => {
   };
 });
 
-/* Single disc used for both moon and sun (and the eclipse egg) — every
- * color comes from CSS vars, so theme/eclipse switching needs zero JS. */
-function CelestialDisc() {
-  const uid = useId();
-  const gradId = `celestial-shade-${uid}`;
-  return (
-    <svg viewBox="0 0 40 40" aria-hidden focusable="false" className="block h-full w-full">
-      <defs>
-        <radialGradient id={gradId} cx="65%" cy="35%" r="80%">
-          <stop offset="55%" style={{ stopColor: "var(--celestial-core)" }} />
-          <stop offset="100%" style={{ stopColor: "var(--celestial-detail)" }} />
-        </radialGradient>
-      </defs>
-      <circle cx="20" cy="20" r="19" fill={`url(#${gradId})`} />
-      <ellipse cx="14" cy="15" rx="3.4" ry="2.6" fill="var(--celestial-detail)" opacity="0.5" />
-      <ellipse cx="25" cy="11" rx="2.4" ry="2" fill="var(--celestial-detail)" opacity="0.45" />
-      <ellipse cx="27" cy="23" rx="3.8" ry="3.1" fill="var(--celestial-detail)" opacity="0.45" />
-      <ellipse cx="15" cy="27" rx="2.3" ry="1.8" fill="var(--celestial-detail)" opacity="0.4" />
-      <ellipse cx="22" cy="19" rx="1.6" ry="1.3" fill="var(--celestial-detail)" opacity="0.35" />
-    </svg>
-  );
-}
+/* Pixel-art sprites (owner-approved, Stitch-generated), extracted by
+ * scripts/pixelart/gen-celestial.mjs into true-alpha 32x32 PNGs. Plain
+ * <img>, not next/image — tiny local pixel art, next/image blurs it. */
+const PIXELATED = { imageRendering: "pixelated" } as const;
 
 function readTheme(): ThemeName {
   return document.documentElement.getAttribute("data-theme") === "day" ? "day" : "night";
@@ -153,24 +135,29 @@ export function SkyBackground() {
           </div>
         ))}
       </div>
-      <div aria-hidden className="bento-celestial-rays pointer-events-none fixed right-4 top-4 z-10 h-9 w-9 rounded-full"
-           style={{
-             scale: "2.2",
-             animation: "bento-ray-spin 120s linear infinite",
-             background:
-               "conic-gradient(from 0deg, var(--ray) 0deg 12deg, transparent 12deg 45deg, " +
-               "var(--ray) 45deg 57deg, transparent 57deg 90deg, " +
-               "var(--ray) 90deg 102deg, transparent 102deg 135deg, " +
-               "var(--ray) 135deg 147deg, transparent 147deg 180deg, " +
-               "var(--ray) 180deg 192deg, transparent 192deg 225deg, " +
-               "var(--ray) 225deg 237deg, transparent 237deg 270deg, " +
-               "var(--ray) 270deg 282deg, transparent 282deg 315deg, " +
-               "var(--ray) 315deg 327deg, transparent 327deg 360deg)",
-           }} />
+      {/* Button box sized to the larger sprite (sun); the smaller moon sprite
+          is centered inside it. */}
       <button type="button" onClick={toggle}
               aria-label={night ? "switch to day" : "switch to night"}
-              className="bento-celestial fixed right-4 top-4 z-20 h-9 w-9 cursor-pointer rounded-full border-0 p-0 transition-all duration-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--amber)]">
-        <CelestialDisc />
+              className="bento-celestial absolute right-4 top-4 z-20 h-16 w-16 cursor-pointer rounded-full border-0 p-0 transition-all duration-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--amber)] md:fixed">
+        {/* Both bodies live in the DOM; the "eclipse pass" transition between
+            them is driven purely by the [data-theme] attribute selector. */}
+        <span aria-hidden className="bento-celestial-slot bento-moon-slot absolute inset-0">
+          <span className="bento-celestial-drift relative block h-full w-full">
+            {/* eslint-disable-next-line @next/next/no-img-element -- tiny local pixel art, next/image blurs it */}
+            <img src="/boring/celestial/moon.png" alt="" className="bento-moon-sprite absolute left-1/2 top-1/2 h-[52px] w-[52px] -translate-x-1/2 -translate-y-1/2" style={PIXELATED} />
+            {/* eslint-disable-next-line @next/next/no-img-element -- tiny local pixel art, next/image blurs it */}
+            <img src="/boring/celestial/bloodmoon.png" alt="" className="bento-bloodmoon-sprite absolute left-1/2 top-1/2 h-[52px] w-[52px] -translate-x-1/2 -translate-y-1/2" style={PIXELATED} />
+          </span>
+        </span>
+        <span aria-hidden className="bento-celestial-slot bento-sun-slot absolute inset-0">
+          <span className="bento-celestial-drift block h-full w-full">
+            <span className="bento-sun-breathe block h-full w-full">
+              {/* eslint-disable-next-line @next/next/no-img-element -- tiny local pixel art, next/image blurs it */}
+              <img src="/boring/celestial/sun.png" alt="" className="block h-full w-full" style={PIXELATED} />
+            </span>
+          </span>
+        </span>
       </button>
     </>
   );

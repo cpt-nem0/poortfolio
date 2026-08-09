@@ -24,7 +24,7 @@ export function ClickbaitTile() {
   const cb = site.projects.find((p) => p.title === "clickbait");
   const size = 22;
   return (
-    <Tile label="clickbait — reaction game">
+    <Tile label="clickbait — reaction game" className="max-md:min-h-[170px]">
       <div ref={ref} className="absolute inset-0"
            onMouseMove={(e) => {
              const el = ref.current; if (!el) return;
@@ -41,7 +41,7 @@ export function ClickbaitTile() {
                 style={{ left: pos ? pos.x : undefined, top: pos ? pos.y : undefined, right: pos ? undefined : 16, bottom: pos ? undefined : 16, background: hits >= 3 ? "var(--door-pink)" : "var(--lime)" }}>
           {hits >= 3 ? "🎉" : ""}
         </button>
-        <p className="pointer-events-none absolute bottom-3 left-4 font-mono text-[9px] text-[var(--dim)]">ts · postgres ↗</p>
+        <p className="pointer-events-none font-mono text-[9px] text-[var(--dim)] max-md:static max-md:mt-3 max-md:px-4 md:absolute md:bottom-3 md:left-4">ts · postgres ↗</p>
       </div>
     </Tile>
   );

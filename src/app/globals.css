@@ -86,8 +86,7 @@ body {
   --amber: #ffb35c; --door-pink: #ff5c7a; --lyric: #e8c98a;
   --presence: #7fd88f; --lime: #c8f542; --heat: #ef9f27;
   --cloud: rgba(52,52,84,.55); --cloud-lit: rgba(90,90,130,.5);
-  --celestial-core: #e8e4d2; --celestial-detail: #c9c4ae;
-  --star: #cfd6ff; --ray: rgba(255,205,110,.42);
+  --star: #cfd6ff;
 }
 [data-theme="day"] {
   --sky-from: #7db4e0; --sky-2: #a8cdec; --sky-3: #cfe4f5; --sky-to: #f2e8d8;
@@ -96,28 +95,39 @@ body {
   --amber: #d98324; --door-pink: #ff5c7a; --lyric: #b0842f;
   --presence: #3d9e52; --lime: #6d8a12; --heat: #a35c00;
   --cloud: rgba(255,255,255,.75); --cloud-lit: rgba(255,255,255,.95);
-  --celestial-core: #ffd75e; --celestial-detail: #ffb838;
-  --star: #cfd6ff; --ray: rgba(255,205,110,.42);
+  --star: #cfd6ff;
 }
 
 /* ── bento sky ── */
 @keyframes bento-drift { from { transform: translateX(-18vw); } to { transform: translateX(118vw); } }
 @keyframes bento-twinkle-soft { 0%, 100% { opacity: 0.85; } 50% { opacity: 0.55; } }
-@keyframes bento-ray-spin { to { transform: rotate(360deg); } }
-.bento-celestial {
-  box-shadow: 0 0 10px 3px rgba(232, 228, 210, .4), 0 0 34px 14px rgba(232, 228, 210, .18);
-  animation: bento-twinkle-soft 6s ease-in-out infinite;
+@keyframes bento-idle-drift { 0%, 100% { transform: translateY(-3px); } 50% { transform: translateY(3px); } }
+@keyframes bento-sun-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+/* Both celestial bodies (pixel-art sprites) exist in the DOM; a plain
+   attribute-selector swap drives the "eclipse pass" — incoming body
+   transitions to rest + top z-index, outgoing reverts to its parked (off,
+   above-left, small) state. Purely transform/opacity transitions, so the
+   global reduced-motion block (transition-duration: 0.01ms) already makes
+   this an instant swap. */
+.bento-celestial-slot {
+  transition: transform 800ms cubic-bezier(.22,.9,.32,1), opacity 800ms ease;
+  transform: translate(-14px, -10px) scale(0.82);
+  opacity: 0;
+  z-index: 1;
 }
-[data-theme="day"] .bento-celestial {
-  box-shadow: 0 0 14px 4px rgba(255, 215, 94, .55), 0 0 44px 18px rgba(255, 215, 94, .28);
-  animation: none;
-}
-.bento-celestial-rays { opacity: 0; transition: opacity 500ms ease; }
-[data-theme="day"] .bento-celestial-rays { opacity: 1; }
+[data-theme="night"] .bento-moon-slot { transform: translate(0, 0) scale(1); opacity: 1; z-index: 2; }
+[data-theme="day"] .bento-sun-slot { transform: translate(0, 0) scale(1); opacity: 1; z-index: 2; }
+.bento-celestial-drift { animation: bento-idle-drift 12s ease-in-out infinite; }
+.bento-sun-breathe { animation: bento-sun-breathe 5s ease-in-out infinite; }
+/* Moon/bloodmoon sprite crossfade, driven by [data-eclipse] alone. */
+.bento-bloodmoon-sprite { opacity: 0; transition: opacity 1s ease; }
+[data-eclipse] .bento-bloodmoon-sprite { opacity: 1; }
+.bento-moon-sprite { transition: opacity 1s ease; }
+[data-eclipse] .bento-moon-sprite { opacity: 0; }
 .bento-stars { opacity: 0; transition: opacity 500ms ease; }
 [data-theme="night"] .bento-stars { opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
-  .bento-cloud, .bento-celestial, .bento-celestial-rays, .bento-star { animation: none !important; }
+  .bento-cloud, .bento-star, .bento-celestial-drift, .bento-sun-breathe { animation: none !important; }
 }
 
 /* ── bento tile animations (idle budget: these three only) ── */
@@ -204,18 +214,20 @@ body {
 /* ── berserk eclipse egg ── */
 [data-eclipse] {
   --sky-from: #0d0508; --sky-2: #1a0a10; --sky-3: #2a0d12; --sky-to: #451015;
-  --celestial-core: #8a0f1e; --celestial-detail: #5c0a14; --star: #e8a0a0;
+  --star: #e8a0a0;
 }
 [data-eclipse][data-theme="day"] {
   --sky-from: #0d0508; --sky-2: #1a0a10; --sky-3: #2a0d12; --sky-to: #451015;
-  --celestial-core: #8a0f1e; --celestial-detail: #5c0a14; --star: #e8a0a0;
+  --star: #e8a0a0;
 }
-[data-eclipse] .bento-celestial {
-  box-shadow: 0 0 16px 5px rgba(220, 40, 50, .6), 0 0 54px 20px rgba(220, 40, 50, .32);
-  transform: scale(1.35);
-  transition: transform 1.2s ease, box-shadow 1.2s ease;
-  animation: none;
+/* Eclipse always shows the red body via the moon slot, regardless of
+   theme — there's no "bloodsun" sprite, so it overrides the sun slot too.
+   Bare bloodmoon sprite, no extra scale/glow. */
+[data-eclipse] .bento-moon-slot,
+[data-eclipse][data-theme="day"] .bento-moon-slot {
+  transform: translate(0, 0) scale(1); opacity: 1; z-index: 3;
 }
+[data-eclipse] .bento-sun-slot,
+[data-eclipse][data-theme="day"] .bento-sun-slot { opacity: 0; z-index: 1; }
 [data-eclipse] .bento-stars { opacity: 1; }
 [data-eclipse][data-theme="day"] .bento-stars { opacity: 1; }
-[data-eclipse][data-theme="day"] .bento-celestial-rays { opacity: 0; }

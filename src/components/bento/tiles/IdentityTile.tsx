@@ -78,7 +78,7 @@ export function IdentityTile() {
   ];
   return (
     <Tile label={`rohan yadav · earth-616 · ${clock}`} span="2x2">
-      <h1 className="relative mt-5 h-[5.4em] overflow-hidden font-sans text-5xl font-extrabold leading-[1.04] tracking-tight text-[var(--ink)] md:h-[3.25em] lg:text-6xl xl:h-[2.2em]">
+      <h1 className="relative mt-5 h-[3.2em] overflow-hidden font-sans text-4xl font-extrabold leading-[1.04] tracking-tight text-[var(--ink)] md:h-[3.25em] md:text-5xl lg:text-6xl xl:h-[2.2em]">
         {prevIdx !== null && (
           <span key={`out-${prevIdx}`} className={clsx("absolute inset-0 top-0", !reduced && "bento-quote-out")}>
             {renderQuote(HERO_QUOTES[prevIdx])}
