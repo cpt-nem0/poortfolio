@@ -173,39 +173,104 @@ body {
   .bento-quote-out, .bento-quote-in { animation: none !important; }
 }
 
-/* ── sekiro egg: "the slash" ── */
-[data-slash] body > * { animation: bento-jolt 400ms cubic-bezier(.36,.07,.19,.97) both; }
-@keyframes bento-jolt {
-  0% { transform: translate(0, 0) rotate(0deg); }
-  25% { transform: translate(4px, -3px) rotate(0.35deg); }
-  50% { transform: translate(-2px, 1.5px) rotate(-0.15deg); }
-  75% { transform: translate(1px, -0.5px) rotate(0.05deg); }
-  100% { transform: translate(0, 0) rotate(0deg); }
+/* ── sekiro egg: "死" ──
+   The page dies behind a TRANSLUCENT black sheet — the bento stays faintly
+   visible underneath, the way the game dims the world instead of replacing it.
+
+   The halo is not a glow: every element is rendered twice, a solid base plus a
+   larger translucent ghost laid exactly over it (see eggs.tsx). The ghost
+   shrinks onto the base and fades out while the base clears from 0.24 to full
+   — a cross-dissolve, which is why the halo hugs the brush strokes.
+
+   Values are the owner's, dialled in on a live tuner. The cross-dissolve runs
+   2450ms of the 3400ms total (DEATH_MS in eggs.tsx); the rest is the hold and
+   the sheet's exit. Percentages below are of that 3400ms. */
+.bento-death-sheet {
+  background: rgba(0, 0, 0, .88);
+  animation: bento-death-sheet 3400ms ease-out forwards;
 }
-.bento-slash-line {
-  transform: translate(-50%, -50%) rotate(-32deg) scaleX(0);
-  transform-origin: center;
-  background: linear-gradient(90deg, transparent 0%, #d98324 12%, #f4f2ec 50%, #d98324 88%, transparent 100%);
-  box-shadow: 0 0 18px 3px rgba(244, 242, 236, .55);
-  animation: bento-slash-sweep 260ms ease-out forwards;
+@keyframes bento-death-sheet {
+  0% { opacity: 0; }
+  7% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { opacity: 0; }
 }
-@keyframes bento-slash-sweep {
-  0% { transform: translate(-50%, -50%) rotate(-32deg) scaleX(0); opacity: 0; }
-  15% { opacity: 1; }
-  55% { transform: translate(-50%, -50%) rotate(-32deg) scaleX(1); opacity: 1; }
-  100% { transform: translate(-50%, -50%) rotate(-32deg) scaleX(1); opacity: 0; }
+
+/* The wrap is sized by the base copy; the ghost sits at inset 0 / width 100%
+   so it needs no offset maths and scales about its own centre regardless of
+   the letter-spacing the word carries. */
+.bento-death-wrap { position: relative; display: inline-block; }
+.bento-death-word-wrap { margin-top: .5em; }
+
+.bento-death-base {
+  display: block;
+  width: 42vh;
+  height: auto;
+  opacity: .24;
+  animation: bento-death-base 3400ms ease-out forwards;
 }
-.bento-slash-flash { background: #f4f2ec; opacity: .25; animation: bento-slash-flash 200ms ease-out forwards; }
-@keyframes bento-slash-flash { from { opacity: .25; } to { opacity: 0; } }
-.bento-spark {
-  position: absolute; height: 4px; width: 4px; border-radius: 1px;
-  background: var(--amber); box-shadow: 0 0 6px 1px var(--amber);
-  opacity: 0; animation: bento-spark-fly 320ms ease-out forwards;
+@keyframes bento-death-base {
+  0% { opacity: .24; }
+  72% { opacity: 1; }   /* 2450ms */
+  100% { opacity: 1; }
 }
-@keyframes bento-spark-fly {
-  0% { transform: translate(0, 0) scale(1); opacity: 1; }
-  100% { transform: translate(var(--tx), var(--ty)) scale(.3); opacity: 0; }
+
+.bento-death-ghost {
+  position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+  object-fit: contain;
+  transform-origin: center center;
+  filter: blur(8px);
+  opacity: .76;
+  transform: scale(1.22);
+  animation: bento-death-ghost 3400ms ease-out forwards;
 }
+@keyframes bento-death-ghost {
+  0% { opacity: .76; transform: scale(1.22); }
+  72% { opacity: 0; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+.bento-death-word {
+  color: #b5251b;
+  font-family: var(--font-serif, ui-serif, Georgia, "Times New Roman", serif);
+  font-size: 2.6vh;
+  letter-spacing: .62em;
+  text-indent: .62em; /* letter-spacing pads the right edge — recentre it */
+  white-space: nowrap;
+}
+.bento-death-word-base {
+  display: block;
+  opacity: .24;
+  animation: bento-death-base 3400ms ease-out forwards;
+}
+/* The word is wide, so the kanji's 1.22 would fling its outer letters far too
+   far — it gets its own, much gentler scale. */
+.bento-death-word-ghost {
+  position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+  transform-origin: center center;
+  filter: blur(4px);
+  opacity: .76;
+  transform: scale(1.06);
+  animation: bento-death-word-ghost 3400ms ease-out forwards;
+}
+@keyframes bento-death-word-ghost {
+  0% { opacity: .76; transform: scale(1.06); }
+  72% { opacity: 0; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
+}
+
+/* reduced motion: the resolved image only — no ghost is rendered at all
+   (eggs.tsx omits it), so this is a straight fade in and out. */
+.bento-death-sheet-reduced {
+  background: rgba(0, 0, 0, .88);
+  animation: bento-death-sheet 1600ms ease-out forwards;
+}
+.bento-death-sheet-reduced .bento-death-base,
+.bento-death-sheet-reduced .bento-death-word-base {
+  opacity: 1;
+  animation: none;
+}
+
 
 /* ── konami egg: synced light-show ── */
 .konami-lit {
