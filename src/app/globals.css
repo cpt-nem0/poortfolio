@@ -173,38 +173,75 @@ body {
   .bento-quote-out, .bento-quote-in { animation: none !important; }
 }
 
-/* ── sekiro egg: "the slash" ── */
-[data-slash] body > * { animation: bento-jolt 400ms cubic-bezier(.36,.07,.19,.97) both; }
-@keyframes bento-jolt {
-  0% { transform: translate(0, 0) rotate(0deg); }
-  25% { transform: translate(4px, -3px) rotate(0.35deg); }
-  50% { transform: translate(-2px, 1.5px) rotate(-0.15deg); }
-  75% { transform: translate(1px, -0.5px) rotate(0.05deg); }
-  100% { transform: translate(0, 0) rotate(0deg); }
+/* ── sekiro egg: "死" ──
+   The page dies. A black sheet swallows everything, the kanji burns in with a
+   red bloom, DEATH letter-spaces open beneath it, then the whole thing fades.
+   Timings must stay inside DEATH_MS / DEATH_MS_REDUCED in eggs.tsx, or React
+   unmounts the overlay mid-fade. */
+.bento-death-sheet { animation: bento-death-sheet 3000ms ease-out forwards; }
+@keyframes bento-death-sheet {
+  0% { opacity: 0; }
+  10% { opacity: 1; }   /* ~300ms to full black */
+  82% { opacity: 1; }
+  100% { opacity: 0; }
 }
-.bento-slash-line {
-  transform: translate(-50%, -50%) rotate(-32deg) scaleX(0);
-  transform-origin: center;
-  background: linear-gradient(90deg, transparent 0%, #d98324 12%, #f4f2ec 50%, #d98324 88%, transparent 100%);
-  box-shadow: 0 0 18px 3px rgba(244, 242, 236, .55);
-  animation: bento-slash-sweep 260ms ease-out forwards;
+.bento-death-kanji {
+  color: #b3161d;
+  font-size: clamp(7rem, 26vh, 15rem);
+  line-height: 1;
+  /* layered bloom — a tight hot core out to a wide dull haze, which is what
+     sells it as burning rather than as flat red text */
+  text-shadow: 0 0 10px rgba(200, 30, 30, .95), 0 0 34px rgba(180, 20, 20, .75),
+               0 0 90px rgba(140, 10, 10, .55), 0 0 170px rgba(110, 0, 0, .4);
+  opacity: 0;
+  transform: scale(1.22);
+  animation: bento-death-kanji 3000ms cubic-bezier(.16, .8, .3, 1) forwards;
 }
-@keyframes bento-slash-sweep {
-  0% { transform: translate(-50%, -50%) rotate(-32deg) scaleX(0); opacity: 0; }
-  15% { opacity: 1; }
-  55% { transform: translate(-50%, -50%) rotate(-32deg) scaleX(1); opacity: 1; }
-  100% { transform: translate(-50%, -50%) rotate(-32deg) scaleX(1); opacity: 0; }
+@keyframes bento-death-kanji {
+  0%, 8% { opacity: 0; transform: scale(1.22); }
+  30% { opacity: 1; transform: scale(1); }
+  80% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
 }
-.bento-slash-flash { background: #f4f2ec; opacity: .25; animation: bento-slash-flash 200ms ease-out forwards; }
-@keyframes bento-slash-flash { from { opacity: .25; } to { opacity: 0; } }
-.bento-spark {
-  position: absolute; height: 4px; width: 4px; border-radius: 1px;
-  background: var(--amber); box-shadow: 0 0 6px 1px var(--amber);
-  opacity: 0; animation: bento-spark-fly 320ms ease-out forwards;
+.bento-death-word {
+  margin-top: .35em;
+  color: #8e1218;
+  font-family: var(--font-serif, ui-serif, Georgia, "Times New Roman", serif);
+  font-size: clamp(1rem, 3.2vh, 1.9rem);
+  letter-spacing: .62em;
+  text-indent: .62em; /* letter-spacing pads the right edge — recentre it */
+  opacity: 0;
+  animation: bento-death-word 3000ms ease-out forwards;
 }
-@keyframes bento-spark-fly {
-  0% { transform: translate(0, 0) scale(1); opacity: 1; }
-  100% { transform: translate(var(--tx), var(--ty)) scale(.3); opacity: 0; }
+@keyframes bento-death-word {
+  0%, 28% { opacity: 0; letter-spacing: .3em; }
+  48% { opacity: 1; letter-spacing: .62em; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+/* reduced motion: same image, no scale/letter-spacing movement, shorter hold */
+.bento-death-sheet-reduced { animation: bento-death-sheet 1600ms ease-out forwards; }
+.bento-death-kanji-reduced {
+  color: #b3161d;
+  font-size: clamp(7rem, 26vh, 15rem);
+  line-height: 1;
+  text-shadow: 0 0 10px rgba(200, 30, 30, .95), 0 0 34px rgba(180, 20, 20, .75),
+               0 0 90px rgba(140, 10, 10, .55);
+  animation: bento-death-fade 1600ms ease-out forwards;
+}
+.bento-death-word-reduced {
+  margin-top: .35em;
+  color: #8e1218;
+  font-family: var(--font-serif, ui-serif, Georgia, "Times New Roman", serif);
+  font-size: clamp(1rem, 3.2vh, 1.9rem);
+  letter-spacing: .62em;
+  text-indent: .62em;
+  animation: bento-death-fade 1600ms ease-out forwards;
+}
+@keyframes bento-death-fade {
+  0%, 12% { opacity: 0; }
+  30%, 78% { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 /* ── konami egg: synced light-show ── */

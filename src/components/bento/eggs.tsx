@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { CSSProperties } from "react";
 import { playFanfare } from "./konamiFanfare";
-import { playSlash } from "./slashSound";
+import { playDeath } from "./deathSound";
 
 export const KONAMI = ["ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight", "b", "a"];
 export const SEKIRO = ["s", "e", "k", "i", "r", "o"];
@@ -14,18 +13,10 @@ export function matchSequence(buffer: string[], sequence: string[]): boolean {
   return sequence.every((k, i) => tail[i] === k);
 }
 
-/** Fixed spark positions along the slash line's diagonal (bottom-left to
- *  top-right), each with its own fling direction and stagger delay. */
-const SPARKS = [
-  { left: "14%", top: "86%", tx: "-22px", ty: "18px", delay: "0ms" },
-  { left: "24%", top: "76%", tx: "18px", ty: "-26px", delay: "18ms" },
-  { left: "36%", top: "64%", tx: "-26px", ty: "-14px", delay: "34ms" },
-  { left: "48%", top: "52%", tx: "22px", ty: "20px", delay: "50ms" },
-  { left: "58%", top: "42%", tx: "-18px", ty: "-24px", delay: "66ms" },
-  { left: "68%", top: "32%", tx: "24px", ty: "16px", delay: "82ms" },
-  { left: "78%", top: "22%", tx: "-20px", ty: "-18px", delay: "98ms" },
-  { left: "86%", top: "14%", tx: "20px", ty: "-20px", delay: "114ms" },
-] as const;
+/** How long the 死 overlay stays up, start to finish. Must outlast the CSS
+ *  keyframes in globals.css (bento-death-*) or it unmounts mid-fade. */
+const DEATH_MS = 3000;
+const DEATH_MS_REDUCED = 1600;
 
 function prefersReducedMotion(): boolean {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -59,20 +50,16 @@ function lightTiles(tiles: HTMLElement[], noteIndex: number) {
 }
 
 /** Payoffs (reversible, self-cleaning):
- *  sekiro = a diagonal slash sweeps the viewport, the page takes a jolt, sparks fly;
+ *  sekiro = the screen dies — everything drops to black and the red 死 burns in;
  *  konami = an original chiptune fanfare with a synced tile light-show. */
 export function EasterEggs() {
-  const [slash, setSlash] = useState<{ reduced: boolean } | null>(null);
+  const [death, setDeath] = useState<{ reduced: boolean } | null>(null);
 
-  function triggerSlash() {
+  function triggerDeath() {
     const reduced = prefersReducedMotion();
-    setSlash({ reduced });
-    playSlash(); // fired at impact — same tick as the data-slash jolt below
-    window.setTimeout(() => setSlash(null), reduced ? 220 : 600);
-    if (!reduced) {
-      document.documentElement.setAttribute("data-slash", "");
-      window.setTimeout(() => document.documentElement.removeAttribute("data-slash"), 450);
-    }
+    setDeath({ reduced });
+    playDeath(); // struck on the same tick the black starts falling
+    window.setTimeout(() => setDeath(null), reduced ? DEATH_MS_REDUCED : DEATH_MS);
   }
 
   function triggerKonami() {
@@ -105,30 +92,28 @@ export function EasterEggs() {
     const on = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       buf = [...buf.slice(-19), e.key];
-      if (matchSequence(buf, SEKIRO)) { triggerSlash(); buf = []; }
+      if (matchSequence(buf, SEKIRO)) { triggerDeath(); buf = []; }
       else if (matchSequence(buf, KONAMI)) { triggerKonami(); buf = []; }
     };
     window.addEventListener("keydown", on);
     return () => window.removeEventListener("keydown", on);
   }, []);
 
-  if (!slash) return null;
+  if (!death) return null;
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 z-[70]">
-      <div className="absolute inset-0 bento-slash-flash" />
-      {!slash.reduced && (
-        <>
-          <div className="absolute left-1/2 top-1/2 h-[3px] w-[160vmax] bento-slash-line" />
-          {SPARKS.map((s, i) => (
-            <span
-              key={i}
-              aria-hidden
-              className="bento-spark"
-              style={{ left: s.left, top: s.top, animationDelay: s.delay, "--tx": s.tx, "--ty": s.ty } as CSSProperties}
-            />
-          ))}
-        </>
-      )}
+    // The whole page dies: an opaque black sheet swallows the bento, then the
+    // 死 burns in over it. 死 is a plain Unicode glyph — no image asset, so it
+    // stays razor-sharp at any viewport size.
+    <div
+      aria-hidden
+      className={`pointer-events-none fixed inset-0 z-[70] grid place-items-center bg-black ${
+        death.reduced ? "bento-death-sheet-reduced" : "bento-death-sheet"
+      }`}
+    >
+      <div className="flex flex-col items-center">
+        <span className={death.reduced ? "bento-death-kanji-reduced" : "bento-death-kanji"}>死</span>
+        <span className={death.reduced ? "bento-death-word-reduced" : "bento-death-word"}>DEATH</span>
+      </div>
     </div>
   );
 }
