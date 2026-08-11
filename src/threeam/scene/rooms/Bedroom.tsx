@@ -1525,14 +1525,18 @@ export function Bedroom() {
   // its scripts/pixelart/gen-variants.mjs JOBS entry in place (HANDOFF §6:
   // deleting one without the other lets the generator silently resurrect
   // it) since it may return on a throw blanket.
-  // rug — the movie-ticket rug the owner asked for (W12), recreating a
-  // reference he supplied: a red cinema stub with notched ends, a cream
-  // tufted border, black linework and gold stars. Alpha-cutout PNG, so
-  // alphaTest is needed on the material (same as rug-mushroom/rug-blob).
-  // rug-flower, rug-blob, rug-moroccan and the rugOption* designs all stay
-  // on disk unreferenced, per the standing "keep rejected variants" rule
-  // (see the linen-quilt comment above for the same pattern).
-  const rugTex = usePixelTexture("/3am/tex/rug-ticket.png", 1, 1);
+  // rug — midcentury, chosen by cycling every candidate live in this room's
+  // own warm night lighting rather than judging them off a flat contact
+  // sheet (which had produced three wrong answers). It wins here because the
+  // floor is dark and visually heavy, so a light-ground rug lifts it; it's
+  // composed rather than a repeating pattern; and its teal/mustard/rust sits
+  // with the sage walls without matching them. Every rejected candidate
+  // (ticket, flower, blob, mushroom, moroccan, the rugOption* set…) stays on
+  // disk unreferenced per the standing "keep rejected variants" rule — see
+  // the linen-quilt comment above for the same pattern.
+  // alphaTest stays on the material: harmless for this opaque texture, and
+  // required if a cutout rug is ever swapped back in.
+  const rugTex = usePixelTexture("/3am/tex/rug-midcentury.png", 1, 1);
   // deck floor — same floor-oak family as the room. Cut into 4 pieces
   // around the zen garden (ZEN_DECK_NORTH/SOUTH/WEST/EAST above) instead
   // of one continuous plane — see the const-block comment for why (the
