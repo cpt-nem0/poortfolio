@@ -14,8 +14,9 @@ export function matchSequence(buffer: string[], sequence: string[]): boolean {
 }
 
 /** How long the 死 overlay stays up, start to finish. Must outlast the CSS
- *  keyframes in globals.css (bento-death-*) or it unmounts mid-fade. */
-const DEATH_MS = 3000;
+ *  keyframes in globals.css (bento-death-*) or it unmounts mid-fade: the
+ *  cross-dissolve alone runs 2450ms, then it holds and fades the sheet out. */
+const DEATH_MS = 3400;
 const DEATH_MS_REDUCED = 1600;
 
 function prefersReducedMotion(): boolean {
@@ -101,18 +102,42 @@ export function EasterEggs() {
 
   if (!death) return null;
   return (
-    // The whole page dies: an opaque black sheet swallows the bento, then the
-    // 死 burns in over it. 死 is a plain Unicode glyph — no image asset, so it
-    // stays razor-sharp at any viewport size.
+    // The page dies behind a translucent black sheet — the bento stays faintly
+    // visible underneath, the way the game dims the world rather than replacing
+    // it. The glyph is a PNG keyed out of the owner's own reference
+    // (scripts/pixelart/gen-death-kanji.mjs), not a font character: it has to
+    // carry real brush strokes and a calligraphic CJK font is megabytes for one
+    // glyph.
+    //
+    // The halo is NOT a glow. Each element is rendered TWICE — a solid base
+    // (the final state) and a larger translucent ghost laid exactly over it.
+    // The ghost shrinks onto the base and fades out while the base clears up
+    // from 0.24 to full: a cross-dissolve. That's why the halo follows the
+    // brush strokes, which no blur could do.
     <div
       aria-hidden
-      className={`pointer-events-none fixed inset-0 z-[70] grid place-items-center bg-black ${
+      className={`pointer-events-none fixed inset-0 z-[70] grid place-items-center ${
         death.reduced ? "bento-death-sheet-reduced" : "bento-death-sheet"
       }`}
     >
       <div className="flex flex-col items-center">
-        <span className={death.reduced ? "bento-death-kanji-reduced" : "bento-death-kanji"}>死</span>
-        <span className={death.reduced ? "bento-death-word-reduced" : "bento-death-word"}>DEATH</span>
+        <span className="bento-death-wrap">
+          {/* eslint-disable-next-line @next/next/no-img-element -- local pixel-exact
+              asset; next/image would wrap it in its own sized container and
+              break the ghost's absolute overlay */}
+          <img src="/9am/death-kanji.png" alt="" className="bento-death-base" />
+          {!death.reduced && (
+            /* eslint-disable-next-line @next/next/no-img-element -- same asset,
+               second exposure */
+            <img src="/9am/death-kanji.png" alt="" className="bento-death-ghost" />
+          )}
+        </span>
+        <span className="bento-death-wrap bento-death-word-wrap">
+          <span className="bento-death-word bento-death-word-base">DEATH</span>
+          {!death.reduced && (
+            <span className="bento-death-word bento-death-word-ghost">DEATH</span>
+          )}
+        </span>
       </div>
     </div>
   );

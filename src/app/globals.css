@@ -174,75 +174,103 @@ body {
 }
 
 /* ── sekiro egg: "死" ──
-   The page dies. A black sheet swallows everything, the kanji burns in with a
-   red bloom, DEATH letter-spaces open beneath it, then the whole thing fades.
-   Timings must stay inside DEATH_MS / DEATH_MS_REDUCED in eggs.tsx, or React
-   unmounts the overlay mid-fade. */
-.bento-death-sheet { animation: bento-death-sheet 3000ms ease-out forwards; }
+   The page dies behind a TRANSLUCENT black sheet — the bento stays faintly
+   visible underneath, the way the game dims the world instead of replacing it.
+
+   The halo is not a glow: every element is rendered twice, a solid base plus a
+   larger translucent ghost laid exactly over it (see eggs.tsx). The ghost
+   shrinks onto the base and fades out while the base clears from 0.24 to full
+   — a cross-dissolve, which is why the halo hugs the brush strokes.
+
+   Values are the owner's, dialled in on a live tuner. The cross-dissolve runs
+   2450ms of the 3400ms total (DEATH_MS in eggs.tsx); the rest is the hold and
+   the sheet's exit. Percentages below are of that 3400ms. */
+.bento-death-sheet {
+  background: rgba(0, 0, 0, .88);
+  animation: bento-death-sheet 3400ms ease-out forwards;
+}
 @keyframes bento-death-sheet {
   0% { opacity: 0; }
-  10% { opacity: 1; }   /* ~300ms to full black */
-  82% { opacity: 1; }
+  7% { opacity: 1; }
+  88% { opacity: 1; }
   100% { opacity: 0; }
 }
-.bento-death-kanji {
-  color: #b3161d;
-  font-size: clamp(7rem, 26vh, 15rem);
-  line-height: 1;
-  /* layered bloom — a tight hot core out to a wide dull haze, which is what
-     sells it as burning rather than as flat red text */
-  text-shadow: 0 0 10px rgba(200, 30, 30, .95), 0 0 34px rgba(180, 20, 20, .75),
-               0 0 90px rgba(140, 10, 10, .55), 0 0 170px rgba(110, 0, 0, .4);
-  opacity: 0;
-  transform: scale(1.22);
-  animation: bento-death-kanji 3000ms cubic-bezier(.16, .8, .3, 1) forwards;
+
+/* The wrap is sized by the base copy; the ghost sits at inset 0 / width 100%
+   so it needs no offset maths and scales about its own centre regardless of
+   the letter-spacing the word carries. */
+.bento-death-wrap { position: relative; display: inline-block; }
+.bento-death-word-wrap { margin-top: .5em; }
+
+.bento-death-base {
+  display: block;
+  width: 42vh;
+  height: auto;
+  opacity: .24;
+  animation: bento-death-base 3400ms ease-out forwards;
 }
-@keyframes bento-death-kanji {
-  0%, 8% { opacity: 0; transform: scale(1.22); }
-  30% { opacity: 1; transform: scale(1); }
-  80% { opacity: 1; transform: scale(1); }
+@keyframes bento-death-base {
+  0% { opacity: .24; }
+  72% { opacity: 1; }   /* 2450ms */
+  100% { opacity: 1; }
+}
+
+.bento-death-ghost {
+  position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+  object-fit: contain;
+  transform-origin: center center;
+  filter: blur(8px);
+  opacity: .76;
+  transform: scale(1.22);
+  animation: bento-death-ghost 3400ms ease-out forwards;
+}
+@keyframes bento-death-ghost {
+  0% { opacity: .76; transform: scale(1.22); }
+  72% { opacity: 0; transform: scale(1); }
   100% { opacity: 0; transform: scale(1); }
 }
+
 .bento-death-word {
-  margin-top: .35em;
-  color: #8e1218;
+  color: #b5251b;
   font-family: var(--font-serif, ui-serif, Georgia, "Times New Roman", serif);
-  font-size: clamp(1rem, 3.2vh, 1.9rem);
+  font-size: 2.6vh;
   letter-spacing: .62em;
   text-indent: .62em; /* letter-spacing pads the right edge — recentre it */
-  opacity: 0;
-  animation: bento-death-word 3000ms ease-out forwards;
+  white-space: nowrap;
 }
-@keyframes bento-death-word {
-  0%, 28% { opacity: 0; letter-spacing: .3em; }
-  48% { opacity: 1; letter-spacing: .62em; }
-  80% { opacity: 1; }
-  100% { opacity: 0; }
+.bento-death-word-base {
+  display: block;
+  opacity: .24;
+  animation: bento-death-base 3400ms ease-out forwards;
 }
-/* reduced motion: same image, no scale/letter-spacing movement, shorter hold */
-.bento-death-sheet-reduced { animation: bento-death-sheet 1600ms ease-out forwards; }
-.bento-death-kanji-reduced {
-  color: #b3161d;
-  font-size: clamp(7rem, 26vh, 15rem);
-  line-height: 1;
-  text-shadow: 0 0 10px rgba(200, 30, 30, .95), 0 0 34px rgba(180, 20, 20, .75),
-               0 0 90px rgba(140, 10, 10, .55);
-  animation: bento-death-fade 1600ms ease-out forwards;
+/* The word is wide, so the kanji's 1.22 would fling its outer letters far too
+   far — it gets its own, much gentler scale. */
+.bento-death-word-ghost {
+  position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+  transform-origin: center center;
+  filter: blur(4px);
+  opacity: .76;
+  transform: scale(1.06);
+  animation: bento-death-word-ghost 3400ms ease-out forwards;
 }
-.bento-death-word-reduced {
-  margin-top: .35em;
-  color: #8e1218;
-  font-family: var(--font-serif, ui-serif, Georgia, "Times New Roman", serif);
-  font-size: clamp(1rem, 3.2vh, 1.9rem);
-  letter-spacing: .62em;
-  text-indent: .62em;
-  animation: bento-death-fade 1600ms ease-out forwards;
+@keyframes bento-death-word-ghost {
+  0% { opacity: .76; transform: scale(1.06); }
+  72% { opacity: 0; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1); }
 }
-@keyframes bento-death-fade {
-  0%, 12% { opacity: 0; }
-  30%, 78% { opacity: 1; }
-  100% { opacity: 0; }
+
+/* reduced motion: the resolved image only — no ghost is rendered at all
+   (eggs.tsx omits it), so this is a straight fade in and out. */
+.bento-death-sheet-reduced {
+  background: rgba(0, 0, 0, .88);
+  animation: bento-death-sheet 1600ms ease-out forwards;
 }
+.bento-death-sheet-reduced .bento-death-base,
+.bento-death-sheet-reduced .bento-death-word-base {
+  opacity: 1;
+  animation: none;
+}
+
 
 /* ── konami egg: synced light-show ── */
 .konami-lit {
