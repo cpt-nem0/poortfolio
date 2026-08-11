@@ -1273,6 +1273,348 @@ function rugBlob(x, y) {
   return [...shade(base, f), 255];
 }
 
+/* ---- rug-flower (W11 polish pass, bedroom rug swap — rug-blob replaced by
+   a SECOND owner photo reference: a tufted black-and-white daisy/flower
+   rug. Colour roles are INVERTED from rug-blob: cream field, near-black
+   shapes. rug-blob and rugBlob() above stay on disk unreferenced, same
+   "keep rejected variants" rule that already protects rug-moroccan/
+   linen-quilt (see the rug-blob comment above and the Bedroom.tsx rugTex
+   comment). 112×80, same 2.4:1.7 mesh aspect as rug-blob.
+
+   GEOMETRY: two six-petal daisies (flower A upper-left-of-centre, smaller;
+   flower B lower-centre-right, larger), each petal an ellipse whose own
+   centre sits offset `off` px out from the flower centre along angle
+   k·60°+rotDeg (k=0..5; the two flowers use different rotDeg so they don't
+   look like stamped copies of each other), long axis (rx) aligned radially,
+   short axis (ry) tangential — that anisotropy plus the offset placement is
+   what reads as a lobe fanning out from the centre rather than a plain
+   dot. A small axis-aligned ellipse at each flower's own centre is the
+   black centre dot. For any shape, f = hypot(du/rx, dv/ry) in the shape's
+   own rotated frame is 1 on its boundary; (f-1)*min(rx,ry) approximates a
+   signed distance in px, small near the boundary regardless of the shape's
+   size, which is what lets ONE border width (FLOWER_BORDER) read as
+   uniform across differently-sized petals and dots. d = min of that
+   approx-distance over every petal + both centre dots in the whole
+   texture: d<0 → black, d<FLOWER_BORDER → cream, else fully transparent
+   (alpha-cutout, like rug-blob/rug-mushroom) — one rule that produces the
+   black shapes, the uniform cream border AND the scalloped silhouette
+   together, since the border is just the shape boundary dilated outward by
+   a constant width. The offset/radius pair (off vs prx) is tuned so each
+   petal's inner tip sits just outside its flower's own centre dot (a few
+   px of clear gap, well under 2×FLOWER_BORDER) — the border bands of the
+   dot and the petal then merge across that gap into one continuous ring
+   instead of leaving a stray transparent hole, which is what reads as
+   "petals separated from the centre dot by a clean cream ring" rather than
+   "petals touching the dot" or "a floating dot with a moat around it".
+   Flower B sits low enough that its southmost petal tips run a couple px
+   past the 80px canvas bottom, cropping that petal into a partial one —
+   one of several sources of the irregular, non-mechanically-repeated
+   silhouette the reference photo shows (no separate "partial petal" case
+   needed, just the same canvas-bounds clip every job in this file gets).
+   The bigger source is the two flowers' differing rotDeg: their petal
+   reach overlaps by a few px in the middle, and because the flowers are
+   NOT mirror images of each other, that overlap boundary itself is
+   irregular rather than a clean lens shape — matching the reference's
+   "slightly overlapping, not fused, not symmetric" pair.
+
+   SHADING: same hash2 per-pixel shading idiom as every other rug in this
+   file (so it doesn't read as flat vector art), plus a 1px darker-cream
+   line on the cream side immediately adjacent to every black edge (0 <= d
+   < 1), which is the "barely-darker cream inner shadow line" the
+   reference's tufted pile shows where black meets cream. Deterministic —
+   pure geometry, no Math.random, no Date; running the generator twice
+   produces byte-identical output. ---- */
+const FLOWER_BORDER = 2.2; // uniform cream border width (px) around every black shape
+const FLOWER_BLACK = PALETTE.vinyl900; // same near-black every other rug's ink uses
+const FLOWER_CREAM = PALETTE.cream100;
+const FLOWERS = [
+  // cx, cy: flower centre. off: petal-centre offset from cx,cy. prx/pry:
+  // petal ellipse radii (radial/tangential). rotDeg: angular offset so the
+  // two flowers' petals don't line up. dotRx/dotRy: centre-dot ellipse.
+  { cx: 34, cy: 24, off: 14, prx: 9, pry: 3.0, rotDeg: 12, dotRx: 3.4, dotRy: 2.8 }, // upper-left, smaller
+  { cx: 74, cy: 54, off: 17, prx: 11, pry: 3.7, rotDeg: 40, dotRx: 4, dotRy: 3.2 }, // lower-centre-right, larger
+];
+function flowerEllipseDist(x, y, cx, cy, rx, ry, angleRad) {
+  const dx = x - cx, dy = y - cy;
+  const ux = Math.cos(angleRad), uy = Math.sin(angleRad); // radial (long) axis
+  const vx = -Math.sin(angleRad), vy = Math.cos(angleRad); // tangential (short) axis
+  const du = dx * ux + dy * uy;
+  const dv = dx * vx + dy * vy;
+  const f = Math.hypot(du / rx, dv / ry); // 1 on the ellipse boundary
+  return (f - 1) * Math.min(rx, ry); // ~signed distance in px near the boundary
+}
+function flowerFieldDist(x, y) {
+  let best = Infinity;
+  for (const fl of FLOWERS) {
+    const dDot = flowerEllipseDist(x, y, fl.cx, fl.cy, fl.dotRx, fl.dotRy, 0);
+    if (dDot < best) best = dDot;
+    for (let k = 0; k < 6; k++) {
+      const ang = ((k * 60 + fl.rotDeg) * Math.PI) / 180;
+      const pcx = fl.cx + fl.off * Math.cos(ang);
+      const pcy = fl.cy + fl.off * Math.sin(ang);
+      const d = flowerEllipseDist(x, y, pcx, pcy, fl.prx, fl.pry, ang);
+      if (d < best) best = d;
+    }
+  }
+  return best;
+}
+function rugFlower(x, y) {
+  const d = flowerFieldDist(x, y);
+  if (d >= FLOWER_BORDER) return [0, 0, 0, 0]; // outside every shape's border — fully transparent
+  const black = d < 0;
+  let f = 0.94 + hash2(x, y, 761) * 0.1; // per-pixel shading so it doesn't read as flat vector art
+  if (!black && d < 1) f *= 0.85; // 1px darker-cream line just inside the black edge
+  return [...shade(black ? FLOWER_BLACK : FLOWER_CREAM, f), 255];
+}
+
+/* ---- rug-ticket (W12 polish pass, bedroom rug swap — a THIRD owner photo
+   reference superseded rug-flower: a tufted movie-ticket-stub rug, a big
+   red cinema admission ticket lying on the floor. rug-flower/rugFlower()
+   and rug-blob/rugBlob() above both stay on disk unreferenced, same "keep
+   rejected variants" rule that already protects rug-moroccan (now three
+   rejected/superseded bedroom rugs on record: moroccan → blob → flower →
+   ticket). 176×124 — bigger than the previous rugs' 112×80 on purpose (the
+   owner's own resolution call): this job carries actual lettering
+   ("FLIXXX" / "AND CHILL"), and 112×80 doesn't have enough pixels for
+   legible block capitals at the mesh's fixed 2.4×1.7m size and the room's
+   fixed dollhouse camera distance. 176/124 = 1.419 vs the mesh's 2.4/1.7 =
+   1.412 — close enough not to stretch visibly, same tolerance every rug in
+   this file uses.
+
+   SILHOUETTE: same "combine primitive signed-distance shapes, then dilate
+   by a border width" trick rug-flower used, just with different
+   primitives — a box (the ticket body) with two circles subtracted (the
+   classic concave semicircular notches bitten out of the left/right
+   edges) and a row of small boxes subtracted along the top/bottom edges
+   (the perforated-stub teeth). CSG subtraction on signed distance fields
+   is `max(d_A, -d_B)` for "A minus B" (outside the result if you're
+   either outside A or inside B) — chained across every notch/tooth via
+   repeated `Math.max` gives one combined distance field for the whole
+   toothed/notched outline. `ticketBodyDist < 0` is the ticket's own body
+   (red field); `0 <= ticketBodyDist < RT_BORDER` is the cream border,
+   which automatically follows every notch and tooth for free since it's
+   just that same distance field's own contour, dilated outward — no
+   separate notch-by-notch border case needed, identical reasoning to
+   rug-flower's petal borders. Past RT_BORDER: fully transparent
+   (alpha-cutout, same writePng convention every rug in this file uses).
+
+   INTERIOR: a thin black band just inside the body boundary
+   (RT_INNER_OUTLINE px of interior depth) traces the same combined
+   distance field, so it also automatically follows every notch/tooth —
+   the "black outline running just inside the cream border, following the
+   ticket shape" from the reference. A straight vertical band ~1/5 of the
+   body's own width in from its left edge is the stub divider (tested only
+   once a pixel already clears the outline band, so the divider and the
+   top/bottom outline merge into one continuous line rather than doubling
+   up). Everything else inside is the red field.
+
+   TEXT: no real font — GLYPHS below is a hand-built 5-wide×7-tall block
+   capital bitmap font (only the 9 letters FLIXXX/AND CHILL actually use:
+   F L I X A N D C H), rendered by textPixel() at an integer pixel scale
+   (3x for "FLIXXX", 2x for "AND CHILL" — dominant vs. secondary per the
+   owner's ask) with a same-direction-offset shadow copy of the same glyph
+   lookup drawn first in black, then the real glyph on top in white, which
+   is what gives the hard drop-shadow without a second bitmap. Both text
+   blocks are centered in the main panel (right of the stub divider).
+   Stars are a fixed small 7×7 pixel-art sparkle bitmap (STAR_GLYPH, not a
+   parametric 5-point-star distance field — at 7px across a hand-drawn
+   bitmap reads more clearly than a tiny analytic star would) placed at
+   fixed centres: a diagonal row of 5 between the two text lines, plus 2
+   more in the stub panel, clear of the notch circles.
+
+   Same hash2 per-pixel shading idiom as every other rug in this file, on
+   every fill (border, field, outline, divider, text, stars alike) so nothing
+   reads as flat vector art. Deterministic — pure geometry + a hand-built
+   font table + hash2, no Math.random, no Date. ---- */
+const RT_W = 176, RT_H = 124;
+const RT_CX = 88, RT_CY = 62; // body centre
+const RT_HX = 82, RT_HY = 56; // body half-extents (box spans x 6..170, y 6..118)
+const RT_BORDER = 3; // cream border width
+const RT_INNER_OUTLINE = 2.5; // black inner-outline band depth
+const RT_NOTCH_R = 16; // left/right concave notch radius
+const RT_TOOTH_W = 5, RT_TOOTH_D = 4, RT_TOOTH_PERIOD = 12; // perforation teeth
+const RT_TOOTH_X0 = 24, RT_TOOTH_X1 = 152; // kept clear of the notch circles
+const RT_DIVIDER_X = RT_CX - RT_HX + (RT_HX * 2) / 5; // ~1/5 in from the left edge
+const RT_DIVIDER_HALF = 1;
+const RT_RED = "#c23b2b"; // warm brick/orange-red field
+const RT_CREAM = PALETTE.cream100;
+const RT_BLACK = PALETTE.vinyl900;
+const RT_WHITE = "#ffffff";
+const RT_GOLD = "#f2c14e";
+function sdBox(x, y, cx, cy, hx, hy) {
+  const qx = Math.abs(x - cx) - hx, qy = Math.abs(y - cy) - hy;
+  const ox = Math.max(qx, 0), oy = Math.max(qy, 0);
+  return Math.hypot(ox, oy) + Math.min(Math.max(qx, qy), 0);
+}
+function sdCircle(x, y, cx, cy, r) {
+  return Math.hypot(x - cx, y - cy) - r;
+}
+function ticketBodyDist(x, y) {
+  let d = sdBox(x, y, RT_CX, RT_CY, RT_HX, RT_HY);
+  d = Math.max(d, -sdCircle(x, y, RT_CX - RT_HX, RT_CY, RT_NOTCH_R)); // left notch
+  d = Math.max(d, -sdCircle(x, y, RT_CX + RT_HX, RT_CY, RT_NOTCH_R)); // right notch
+  for (let tx = RT_TOOTH_X0; tx <= RT_TOOTH_X1; tx += RT_TOOTH_PERIOD) {
+    d = Math.max(d, -sdBox(x, y, tx, RT_CY - RT_HY, RT_TOOTH_W / 2, RT_TOOTH_D / 2)); // top tooth
+    d = Math.max(d, -sdBox(x, y, tx, RT_CY + RT_HY, RT_TOOTH_W / 2, RT_TOOTH_D / 2)); // bottom tooth
+  }
+  return d;
+}
+// 5-wide x 7-tall block capitals — only the letters FLIXXX/AND CHILL need.
+const GLYPHS = {
+  F: ["#####", "#....", "#....", "####.", "#....", "#....", "#...."],
+  L: ["#....", "#....", "#....", "#....", "#....", "#....", "#####"],
+  I: ["#####", "..#..", "..#..", "..#..", "..#..", "..#..", "#####"],
+  X: ["#...#", ".#.#.", "..#..", "..#..", "..#..", ".#.#.", "#...#"],
+  A: [".###.", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"],
+  N: ["#...#", "##..#", "#.#.#", "#.#.#", "#..##", "#...#", "#...#"],
+  D: ["####.", "#...#", "#...#", "#...#", "#...#", "#...#", "####."],
+  C: [".####", "#....", "#....", "#....", "#....", "#....", ".####"],
+  H: ["#...#", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"],
+};
+function glyphWidth(ch) {
+  return GLYPHS[ch] ? 5 : 3; // space (or any unmapped char) is a 3-unit blank
+}
+// Is (x,y) ink for `str` rendered at `scale` px/unit, top-left at (originX, originY)?
+function textPixel(x, y, str, originX, originY, scale) {
+  const ly = y - originY;
+  if (ly < 0 || ly >= 7 * scale) return false;
+  const rowIdx = Math.floor(ly / scale);
+  let cursor = 0; // in font units
+  for (const ch of str) {
+    const glyph = GLYPHS[ch];
+    const w = glyphWidth(ch);
+    const localX = x - (originX + cursor * scale);
+    if (localX >= 0 && localX < w * scale) {
+      if (!glyph) return false;
+      const colIdx = Math.floor(localX / scale);
+      return glyph[rowIdx][colIdx] === "#";
+    }
+    cursor += w + 1; // + 1 unit gap between characters
+  }
+  return false;
+}
+// Fixed small pixel-art sparkle (stands in for a 5-point star — a
+// parametric star distance field doesn't read as "star" at 7px across;
+// a hand-drawn bitmap does) — cross + diagonal ticks.
+const STAR_GLYPH = ["...#...", "...#...", ".#.#.#.", "..###..", "#######", "..###..", ".#.#.#."];
+const RT_STARS = [
+  // main-panel diagonal row, between the two text lines
+  [56, 51], [80, 53], [104, 55], [128, 57], [148, 59],
+  // stub panel, clear of the left notch circle (notch reaches to x~22)
+  [24, 26], [24, 96],
+];
+function starHit(x, y, cx, cy) {
+  const lx = Math.floor(x - (cx - 3));
+  const ly = Math.floor(y - (cy - 3));
+  if (lx < 0 || lx >= 7 || ly < 0 || ly >= 7) return false;
+  return STAR_GLYPH[ly][lx] === "#";
+}
+function rugTicket(x, y) {
+  const d = ticketBodyDist(x, y);
+  if (d >= RT_BORDER) return [0, 0, 0, 0]; // outside the border — fully transparent
+  let f = 0.94 + hash2(x, y, 771) * 0.1; // per-pixel shading so it doesn't read as flat vector art
+
+  if (d >= 0) return [...shade(RT_CREAM, f), 255]; // border band, follows every notch/tooth
+
+  const innerDepth = -d;
+  if (innerDepth < RT_INNER_OUTLINE) return [...shade(RT_BLACK, f), 255]; // inner outline band
+
+  if (Math.abs(x - RT_DIVIDER_X) < RT_DIVIDER_HALF) return [...shade(RT_BLACK, f), 255]; // stub divider
+
+  // FLIXXX — dominant, scale 3, shadow offset (2,2)
+  if (textPixel(x, y, "FLIXXX", 52, 26, 3)) return [...shade(RT_WHITE, f), 255];
+  if (textPixel(x - 2, y - 2, "FLIXXX", 52, 26, 3)) return [...shade(RT_BLACK, f), 255];
+  // AND CHILL — secondary, scale 2, shadow offset (1,1)
+  if (textPixel(x, y, "AND CHILL", 53, 64, 2)) return [...shade(RT_WHITE, f), 255];
+  if (textPixel(x - 1, y - 1, "AND CHILL", 53, 64, 2)) return [...shade(RT_BLACK, f), 255];
+
+  for (const [scx, scy] of RT_STARS) {
+    if (starHit(x, y, scx, scy)) return [...shade(RT_GOLD, f), 255];
+  }
+
+  return [...shade(RT_RED, f), 255]; // field
+}
+
+/* ---- rug option set (W13 polish pass — rug-ticket read badly live and the
+   owner called a stop on chasing further photo-reference rewrites; asked
+   instead for a few ORIGINAL designs, not modeled on any supplied photo,
+   to choose from). None of these three is wired into Bedroom.tsx — that's
+   the owner's pick to make. All three share one canvas size (120×85,
+   120/85 = 1.412 vs. the rug mesh's 2.4/1.7 = 1.412 — matches to 3
+   decimal places) and the same alpha-cutout/hash2-shading conventions
+   every rug in this file uses, so whichever one gets picked drops straight
+   onto the existing mesh with no aspect stretch. rug-ticket.png/
+   rug-flower.png/rug-blob.png/rug-moroccan.png all stay on disk per the
+   "keep rejected variants" rule. ---- */
+const OPT_W = 120, OPT_H = 85;
+const OPT_CX = 60, OPT_CY = 42.5;
+const OPT_HX = 54, OPT_HY = 36; // rounded-rect body half-extents (stripe/diamond)
+const OPT_CORNER = 8;
+const OPT_BORDER = 3;
+function sdRoundBox(x, y, cx, cy, hx, hy, r) {
+  return sdBox(x, y, cx, cy, hx - r, hy - r) - r;
+}
+function sdEllipse(x, y, cx, cy, rx, ry) {
+  // same "(f-1)*min(rx,ry) approximates px distance near the boundary"
+  // trick rug-flower's petals use.
+  const f = Math.hypot((x - cx) / rx, (y - cy) / ry);
+  return (f - 1) * Math.min(rx, ry);
+}
+
+/* rug-option-stripe: plain rounded-rect silhouette, cream field, even
+   45°-diagonal cream/teal stripes with a thin ink pinstripe at each color
+   change — the simplest, calmest of the three. */
+function rugOptionStripe(x, y) {
+  const d = sdRoundBox(x, y, OPT_CX, OPT_CY, OPT_HX, OPT_HY, OPT_CORNER);
+  if (d >= OPT_BORDER) return [0, 0, 0, 0];
+  let f = 0.94 + hash2(x, y, 811) * 0.1;
+  if (d >= 0) return [...shade(PALETTE.cream100, f), 255];
+  const band = Math.floor((x + y) / 9); // 45° diagonal period-9 bands
+  const onLine = ((x + y) % 9 === 0 || (x + y) % 9 === 8) && -d > 1.5; // pinstripe, not on the outer rim
+  if (onLine) return [...shade(PALETTE.night900, f), 255];
+  const c = band % 2 === 0 ? PALETTE.cream100 : PALETTE.teal500;
+  return [...shade(c, f), 255];
+}
+
+/* rug-option-diamond: plain rounded-rect silhouette, argyle/lattice
+   diamond grid (plum + cream), thin lattice line at every cell edge —
+   busier, cozier "grandma-chic" read. */
+const OPT_DIAMOND_SIZE = 12;
+function rugOptionDiamond(x, y) {
+  const d = sdRoundBox(x, y, OPT_CX, OPT_CY, OPT_HX, OPT_HY, OPT_CORNER);
+  if (d >= OPT_BORDER) return [0, 0, 0, 0];
+  let f = 0.94 + hash2(x, y, 821) * 0.1;
+  if (d >= 0) return [...shade(PALETTE.cream100, f), 255];
+  const u = x + y, v = x - y;
+  const um = ((u % OPT_DIAMOND_SIZE) + OPT_DIAMOND_SIZE) % OPT_DIAMOND_SIZE;
+  const vm = ((v % OPT_DIAMOND_SIZE) + OPT_DIAMOND_SIZE) % OPT_DIAMOND_SIZE;
+  const onLattice = um < 1.2 || vm < 1.2;
+  if (onLattice && -d > 1.5) return [...shade(PALETTE.purple500, f), 255];
+  const cellU = Math.floor(u / OPT_DIAMOND_SIZE), cellV = Math.floor(v / OPT_DIAMOND_SIZE);
+  const c = (cellU + cellV) % 2 === 0 ? PALETTE.cream100 : PALETTE.purple700;
+  return [...shade(c, f), 255];
+}
+
+/* rug-option-ring: OVAL silhouette (not a rectangle, unlike the other two
+   — a different shape option, not just a different pattern), concentric
+   alternating warm rings standing in for a classic braided round rug.
+   Slight per-ring-band angular hash2 variation on top of the base per-
+   pixel shading, so the rings read as woven cord rather than flat paint
+   bands. */
+const OPT_RING_RX = 54, OPT_RING_RY = 36;
+const OPT_RING_BAND = 6.5;
+const OPT_RING_COLORS = [PALETTE.wood700, PALETTE.amber500, PALETTE.cream100, PALETTE.wood300];
+function rugOptionRing(x, y) {
+  const d = sdEllipse(x, y, OPT_CX, OPT_CY, OPT_RING_RX, OPT_RING_RY);
+  if (d >= OPT_BORDER) return [0, 0, 0, 0];
+  let f = 0.93 + hash2(x, y, 831) * 0.1;
+  if (d >= 0) return [...shade(PALETTE.cream100, f), 255];
+  const radial = Math.hypot((x - OPT_CX) / OPT_RING_RX, (y - OPT_CY) / OPT_RING_RY) * OPT_RING_RX; // px-ish radius
+  const ring = Math.floor(radial / OPT_RING_BAND) % OPT_RING_COLORS.length;
+  f *= 0.96 + hash2(Math.floor(radial), Math.round(Math.atan2(y - OPT_CY, x - OPT_CX) * 6), 832) * 0.08; // braided-cord texture
+  return [...shade(OPT_RING_COLORS[ring], f), 255];
+}
+
 /* ---- workstation corkboard rework (W9 polish pass, owner ask: "put the
    logos of the companies i've worked with there alongwith some high
    designation papers there instead of the white with lines"). W9c
@@ -1503,6 +1845,11 @@ const JOBS = [
   ["poster-star-chart", WSP_W, WSP_H, posterStarChart],
   ["rug-mushroom", 64, 64, rugMushroom],
   ["rug-blob", 112, 80, rugBlob],
+  ["rug-flower", 112, 80, rugFlower],
+  ["rug-ticket", RT_W, RT_H, rugTicket],
+  ["rug-option-stripe", OPT_W, OPT_H, rugOptionStripe],
+  ["rug-option-diamond", OPT_W, OPT_H, rugOptionDiamond],
+  ["rug-option-ring", OPT_W, OPT_H, rugOptionRing],
   ["corkboard-item-todo", TODO_W, TODO_H, todoChecklist],
   ["corkboard-item-ticket", TICKET_W, TICKET_H, ticketStub],
   ["corkboard-item-postcard", POSTCARD_W, POSTCARD_H, postcardScenic],

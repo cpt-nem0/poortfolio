@@ -47,16 +47,9 @@ const BEDROOM_POTTEDTREE_RECT = { x: 1.55, z: 5.0, w: 0.66, d: 0.66 };
 // (never hand-guessed, same rule as every other mesh in this section).
 const SCONCE_X = BED_RECT.x + BED_RECT.w / 2; // 4.0
 
-// rug — RE-CENTRED (this pass, owner ask: "moroccan, and move it at the
-// center along the bed"). Same centerline derivation as SCONCE_X
-// (BED_RECT.x + BED_RECT.w/2 = 4.0) — never hand-guessed. Size (2.4x1.7)
-// stays unchanged (still reads proportionate at the new position: 2.4m
-// wide vs. the bed's own 2.2m, a 0.1m overhang each side, the normal
-// "rug wider than the bed" look). RUG_TUCK slides the rug's own north
-// edge slightly under the bed's foot (BED_RECT.z + BED_RECT.d = 2.83),
-// the same natural "peeking out from under the bed" relationship the old
-// hardcoded position happened to have (see the JSX comment's old STALE
-// flag) — deliberate here instead of incidental.
+// rug — derived from the bed so it never has to be hand-guessed: centered
+// on BED_RECT's centerline, north edge tucked 0.15m under the bed's foot,
+// south edge clear of the wardrobe/plants zone.
 const RUG_W = 2.4;
 const RUG_D = 1.7;
 const RUG_TUCK = 0.15;
@@ -1532,19 +1525,14 @@ export function Bedroom() {
   // its scripts/pixelart/gen-variants.mjs JOBS entry in place (HANDOFF §6:
   // deleting one without the other lets the generator silently resurrect
   // it) since it may return on a throw blanket.
-  // rug — SWAPPED (W10 polish pass, owner supplied a photo reference of a
-  // designer rug: irregular organic "blob"/amoeba puddle silhouette,
-  // near-black field, cream sinuous channels winding through it like
-  // rivers). rug-blob replaces rug-moroccan; see gen-variants.mjs's rugBlob
-  // job for the metaball-silhouette + sum-of-sines-channel construction.
-  // Same repeat(1,1) + transparent convention as rug-moroccan before it —
-  // rug-blob is an alpha-cutout PNG (like rug-mushroom), not a tiled
-  // pattern, so alphaTest is now needed too (see the mesh's material
-  // below) to avoid depth-sort artifacts on the cutout, same fix
-  // rug-mushroom already uses. rug-moroccan.png and its JOBS entry stay on
-  // disk, unreferenced, per the owner's standing "keep rejected variants"
-  // rule (see the linen-quilt comment above for the same pattern).
-  const rugTex = usePixelTexture("/3am/tex/rug-blob.png", 1, 1);
+  // rug — the movie-ticket rug the owner asked for (W12), recreating a
+  // reference he supplied: a red cinema stub with notched ends, a cream
+  // tufted border, black linework and gold stars. Alpha-cutout PNG, so
+  // alphaTest is needed on the material (same as rug-mushroom/rug-blob).
+  // rug-flower, rug-blob, rug-moroccan and the rugOption* designs all stay
+  // on disk unreferenced, per the standing "keep rejected variants" rule
+  // (see the linen-quilt comment above for the same pattern).
+  const rugTex = usePixelTexture("/3am/tex/rug-ticket.png", 1, 1);
   // deck floor — same floor-oak family as the room. Cut into 4 pieces
   // around the zen garden (ZEN_DECK_NORTH/SOUTH/WEST/EAST above) instead
   // of one continuous plane — see the const-block comment for why (the
@@ -2536,19 +2524,9 @@ export function Bedroom() {
         <pointLight color="#ffcf8f" intensity={5} distance={3.6} decay={2} />
       </group>
 
-      {/* ── rug (no collider — visual only, walkable) — RE-CENTRED this
-          pass (owner: "moroccan, and move it at the center along the
-          bed"). See the RUG_* const-block comment above (near SCONCE_X)
-          for the centerline/tuck derivation: x-range 2.8–5.2 (centered on
-          BED_RECT's own centerline, 4.0, a 0.1m overhang past the bed's
-          2.9–5.1 span each side), z-range 2.68–4.38 (north edge tucks
-          0.15m under the bed's foot at 2.83, south edge sits well clear of
-          the wardrobe/plants zone, z-min 5.0). Same y=0.035 offset as
-          before — no z-fight with the floor. Checked clear of the cat bed
-          (x-range 6.72–7.6, no x overlap), the plants (z-min 5.0, 0.62m
-          clear of the rug's own south edge), and every walkway probe (no
-          collider, so purely a visual check — nothing here blocks
-          movement either way). ── */}
+      {/* ── rug — the movie-ticket rug (W12). Position/size derivation and
+          the clearance checks against the bed, cat bed and plants live in
+          the RUG_* comment block above. ── */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[RUG_X, 0.035, RUG_Z]}>
         <planeGeometry args={[RUG_W, RUG_D]} />
         <meshStandardMaterial map={rugTex} transparent alphaTest={0.5} />
