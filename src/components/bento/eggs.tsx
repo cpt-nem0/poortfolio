@@ -104,10 +104,23 @@ export function EasterEggs() {
   return (
     // The page dies behind a translucent black sheet — the bento stays faintly
     // visible underneath, the way the game dims the world rather than replacing
-    // it. The glyph is a PNG keyed out of the owner's own reference
-    // (scripts/pixelart/gen-death-kanji.mjs), not a font character: it has to
-    // carry real brush strokes and a calligraphic CJK font is megabytes for one
-    // glyph.
+    // it.
+    //
+    // death-kanji.png is a PNG keyed out of a reference screenshot, not a font
+    // character: it has to carry real brush strokes, and a calligraphic CJK
+    // font is megabytes for one glyph. The source screenshot and its extractor
+    // are deliberately NOT in this repo — the 8.6KB result is all that ships.
+    // To regenerate (new colour, different crop), the recipe was:
+    //   source   1920x1080 death screen; the 死 occupies y265-628 (the DEATH
+    //            wordmark sits separately at y684-718, excluded — it's live
+    //            text here so it inherits the same CSS treatment)
+    //   crop     x740 y258 w448 h378
+    //   alpha    ramp on the red channel, 0 below r=60, 255 above r=125, with
+    //            the source's own anti-aliasing preserved between — and reject
+    //            any pixel that isn't distinctly red (r > g*1.6 && r > b*1.6),
+    //            which drops the reference's baked glow so the bloom can be
+    //            driven in CSS instead of burned into the pixels
+    //   colour   flat #b5251b over that alpha
     //
     // The halo is NOT a glow. Each element is rendered TWICE — a solid base
     // (the final state) and a larger translucent ghost laid exactly over it.
