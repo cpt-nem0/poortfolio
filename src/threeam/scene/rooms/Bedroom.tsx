@@ -5,6 +5,7 @@ import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { usePixelTexture } from "../usePixelTexture";
 import { Cat } from "./Cat";
+import { CatBed, CAT_BED_CUSHION_TOP } from "./CatBed";
 import { BroadleafPlant, PottedTree, TallPalm, FicusLyrata, Bonsai } from "../models/Plants";
 
 const WALL_H = 2.8; // must match House.tsx
@@ -47,16 +48,9 @@ const BEDROOM_POTTEDTREE_RECT = { x: 1.55, z: 5.0, w: 0.66, d: 0.66 };
 // (never hand-guessed, same rule as every other mesh in this section).
 const SCONCE_X = BED_RECT.x + BED_RECT.w / 2; // 4.0
 
-// rug — RE-CENTRED (this pass, owner ask: "moroccan, and move it at the
-// center along the bed"). Same centerline derivation as SCONCE_X
-// (BED_RECT.x + BED_RECT.w/2 = 4.0) — never hand-guessed. Size (2.4x1.7)
-// stays unchanged (still reads proportionate at the new position: 2.4m
-// wide vs. the bed's own 2.2m, a 0.1m overhang each side, the normal
-// "rug wider than the bed" look). RUG_TUCK slides the rug's own north
-// edge slightly under the bed's foot (BED_RECT.z + BED_RECT.d = 2.83),
-// the same natural "peeking out from under the bed" relationship the old
-// hardcoded position happened to have (see the JSX comment's old STALE
-// flag) — deliberate here instead of incidental.
+// rug — derived from the bed so it never has to be hand-guessed: centered
+// on BED_RECT's centerline, north edge tucked 0.15m under the bed's foot,
+// south edge clear of the wardrobe/plants zone.
 const RUG_W = 2.4;
 const RUG_D = 1.7;
 const RUG_TUCK = 0.15;
@@ -234,28 +228,6 @@ const BED_MODEL_POS: [number, number, number] = [3.81887070230198985563792430745
 
 // cat (Task 9, re-seated P4, re-seated again for the P4 recenter, the
 // SUPER-KING pass, the FURNISHING WAVE, and now the OPEN-SOUTH pass) —
-// STALE ABOVE: every prior derivation (foot-corner vertex cluster,
-// Tz/Zmin/Xc arithmetic) described curling on the GLB bed's own top
-// surface. The owner's ask that wave was "move the cat to her cat bed"
-// (CATBED_RECT, NE corner) — she no longer sits on the bed at all, so none
-// of that GLB-surface math applies anymore (kept above only as history for
-// the bed's own foot-surface height, which other future props could still
-// want). The new perch is this file's own constructed geometry
-// (CATBED_PAD_H below), not a probed mesh, so the derivation is direct:
-// CAT_Y is exactly the inner pad's top surface (CATBED_PAD_H, world y since
-// the pad sits on the floor at y=0), and CAT_X/CAT_Z sit at the pad's
-// center (CATBED_CENTER) — a round bed has no "foot corner" to inset from,
-// so the cat curls dead-center on the pad (rotationY left at the
-// component's own default, same curl look as before).
-// OPEN-SOUTH PASS / CATBED FIX PASS: re-checked against the new geometry
-// below — CATBED_RECT and CATBED_RING_R are UNCHANGED; CATBED_PAD_R shrinks
-// (CATBED FIX PASS, see that const's own comment) but its CENTER doesn't
-// move, so CAT_X/CAT_Y/CAT_Z — derived from CATBED_CENTER and CATBED_PAD_H,
-// neither of which changed — stay exactly what this same formula already
-// produced. Re-derived, not re-guessed: nothing to update.
-const CAT_X = CATBED_CENTER.x;
-const CAT_Z = CATBED_CENTER.z;
-
 // nightstands — cabinet pair (FURNISHING WAVE replaced the single east-side
 // nightstand with a flanking twin; both share the exact same body/top/
 // drawer construction and each gets its own small lamp on top — see the
@@ -264,145 +236,6 @@ const CAT_Z = CATBED_CENTER.z;
 const NS_BODY_H = 0.46;
 const NS_TOP_T = 0.03;
 const NS_TOP_Y = NS_BODY_H + NS_TOP_T; // top surface, world y = 0.49
-
-// cat bed (FURNISHING WAVE; radii re-tuned by CATBED FIX PASS, see below)
-// — round pet bed: a cushion ring with a flat inner pad nested inside it.
-// CATBED_RING_TUBE still sets the ring's own (full-height) thickness off
-// the floor; pad height is independent (it's a separate flat cylinder, not
-// derived from the ring). Pad HEIGHT is untouched throughout every pass
-// (only ever a diameter/radius brief, never a taller-cushion one).
-// CATBED_RING_R / CATBED_RING_TUBE — CATBED FIX PASS re-tunes both (was
-// 0.304 / 0.112). Root cause #2 of the fan/starburst screenshot: a
-// full-height rim segment's inner edge sits at RING_R − TUBE, which at the
-// old values (0.304 − 0.112 = 0.192) was SMALLER than the pad radius
-// (0.256) — the pad was nested UNDER the ring's inner lip instead of
-// inside it, so the cushion barely read. First attempt at the fix shrank
-// the pad instead (to 0.17) — verified in-browser (screenshot diff) that
-// this actually made things WORSE: CAT_SCALE's own comment above states
-// the pad should be big enough to give her "room to stretch out in", and a
-// 0.17 pad is smaller than her own scaled body footprint (main loaf box
-// 0.28×0.2 at CAT_SCALE 1.3 ≈ 0.36×0.26), so she covered the entire pad and
-// the cushion still didn't read. Correct fix: widen the RING's inner
-// radius instead, so the pad can stay big (0.256, unchanged from the
-// ENLARGE pass) and still clear the rim. TUBE narrows 0.112→0.067 (a
-// slimmer wall, still a real rim) and RING_R grows 0.304→0.343 to
-// compensate — inner edge = 0.343−0.067 = 0.276 (0.02m/~8% clear of
-// CATBED_PAD_R), outer edge = 0.343+0.067 = 0.41, still inside the
-// CATBED_RECT half-extent (0.44m) with a ~7% margin (same margin class the
-// ENLARGE pass established, 0.416/0.44 ≈ 5.5%).
-const CATBED_RING_R = 0.343;
-const CATBED_RING_TUBE = 0.067;
-const CATBED_PAD_R = 0.256; // back to the ENLARGE pass's value — see the RING_R/TUBE comment above for why shrinking the pad was the wrong fix
-const CATBED_PAD_H = 0.05; // inner pad height — this IS the cat's on-surface Y (unchanged)
-const CAT_Y = CATBED_PAD_H;
-// OPEN-SOUTH PASS (owner ask: "BIG ROUND bed with its SOUTH side with no
-// height, or open, so the whole cat is visible" — the dollhouse camera
-// looks NORTH from the south, per layout.ts's "z grows south (toward the
-// camera)" convention, so the ring's SOUTH arc — local +z, angle a=0 in
-// this file's own sin/cos ring convention, e.g. RAILING_PLANTS above — sits
-// directly between the camera and the cat). The single smooth torus is
-// replaced by a ring of discrete box segments (chunky-pixel style, matching
-// this file's other ring builds) whose HEIGHT is a function of each
-// segment's own angle — a smoothstep falloff, not a hand-picked per-segment
-// value: full rim height (CATBED_RIM_FULL_H, same as the old torus's own
-// outer diameter 2×tube) everywhere outside a due-south opening arc, easing
-// down to a low front LIP (CATBED_RIM_MIN_H) at due-south itself.
-//
-// CATBED FIX PASS (this pass — the OPEN-SOUTH build above rendered as a
-// flat red pie-slice fan/starburst, not a bed; owner screenshot). Root
-// causes, both fixed here:
-//  1. The opening was 150° total (±75°) — over half the ring's
-//     circumference was low, and every low segment was still
-//     CATBED_RIM_FULL_H (0.224m) DEEP radially (the box's Z dimension was
-//     hard-coded to the full-height depth regardless of its own height) —
-//     so a near-zero-height segment became a flat plank reaching all the
-//     way in from the ring path to near the pad's center. A field of these
-//     side-by-side IS the fan: each low segment is a thin radial spoke, and
-//     the dark seams between them are the fan's "pleats". Fix: the opening
-//     shrinks to a much narrower ±35° (70° total, inside the 60–80° brief),
-//     and every segment's radial DEPTH now tracks its own HEIGHT
-//     (`depth = h`, a square cross-section at every angle, same as the old
-//     torus's own circular cross-section reads at full height) — a low
-//     segment is now a small chunky curb, not a wide flat plank, so low
-//     segments no longer reach in anywhere near the cat.
-//  2. CATBED_RIM_MIN_H was ~0 (2mm) — no lip at all, which is also part of
-//     why it read as a starburst instead of a bed (a bed needs SOME front
-//     edge). Fixed lip: CATBED_RIM_MIN_H = 40% of CATBED_RIM_FULL_H
-//     (≈0.09m). Checked against the cat's own geometry (Cat.tsx, read-only
-//     — mounted in the wrapping group at CAT_Y + local-y·CAT_SCALE): the
-//     main body loaf tops out at local y 0.09 (world y 0.05+0.09·1.3=0.167)
-//     and the cream chest patch spans local y 0.02–0.08 (world y
-//     0.05+0.026=0.076 to 0.05+0.104=0.154) — both comfortably above a
-//     0.09m lip built from the floor (world y 0, same base as the pad).
-//     Only the tucked paw (world y 0.05–0.089, i.e. resting on the pad
-//     surface) is near the lip's height, but with depth now tied to height
-//     the lip's inner edge sits at RING_R − h/2 ≈ 0.259 (vs. the old
-//     buried-plank's 0.192), well clear of the paw's own position near the
-//     pad center — and the camera's steep dollhouse angle (~48° above
-//     horizontal, FollowCamera's y:10.5/z:9.5 area offset) gives ample
-//     clearance over any distance the lip sits back from the cat. Segment
-//     count bumped 28→36 so the taper across the (now much narrower) open
-//     arc reads as a smooth curve, not a coarse stairstep.
-const CATBED_RIM_SEGMENTS = 36; // segment count around the ring — bumped from 28 (CATBED FIX PASS) so the narrower ±35° taper still reads smooth, not stairstepped
-const CATBED_RIM_FULL_H = CATBED_RING_TUBE * 2; // full rim height = the old torus's own outer diameter, unchanged
-const CATBED_RIM_MIN_H = CATBED_RIM_FULL_H * 0.4; // CATBED FIX PASS: a real low lip (≈0.09m), not ~flat — see the pass comment above for the cat-clearance check
-const CATBED_RIM_OPEN_HALF_ANGLE = (35 * Math.PI) / 180; // CATBED FIX PASS: 35° each side of due-south = 70° total opening arc (was 150° — the fan's main cause)
-const CATBED_RIM_SEG_W =
-  ((2 * Math.PI * CATBED_RING_R) / CATBED_RIM_SEGMENTS) * 1.15; // tangential width per segment — arc length at the ring's path radius, +15% so neighboring chunks overlap slightly (no gaps in the ring)
-// smoothstep ease (C1-continuous, not a hard step) from the low lip at
-// due-south (d=0) up to full height at the opening's own edge
-// (d=CATBED_RIM_OPEN_HALF_ANGLE); returns 1 (full height) beyond that.
-function catbedRimFalloff(angularDistFromSouth: number): number {
-  if (angularDistFromSouth >= CATBED_RIM_OPEN_HALF_ANGLE) return 1;
-  const t = angularDistFromSouth / CATBED_RIM_OPEN_HALF_ANGLE;
-  return t * t * (3 - 2 * t);
-}
-// one entry per segment: its angle (for position/rotation, same sin/cos
-// ring convention as RAILING_PLANTS above) and its derived height. Angular
-// distance from due-south wraps signed angle into (-π, π] first so the
-// falloff is symmetric on both sides of south, not just increasing angle.
-const CATBED_RIM_SEGS: { a: number; h: number }[] = Array.from(
-  { length: CATBED_RIM_SEGMENTS },
-  (_, i) => {
-    const a = (i / CATBED_RIM_SEGMENTS) * Math.PI * 2;
-    const signed = a > Math.PI ? a - Math.PI * 2 : a; // wrap to (-π, π], 0 = due south
-    const dist = Math.abs(signed);
-    const h = CATBED_RIM_MIN_H + catbedRimFalloff(dist) * (CATBED_RIM_FULL_H - CATBED_RIM_MIN_H);
-    return { a, h };
-  }
-);
-// CAT_SCALE (CATBED ENLARGE PASS) — a modest 1.3x bump on the cat herself
-// (NOT the full 1.6x bed factor — the brief's ask is a bigger, cozier bed
-// she has room to stretch out in, not a cat scaled to fill it edge-to-edge
-// like before; a full bed-scale match would read as a dog bed). Applied via
-// a wrapping <group> in the JSX below (Cat.tsx has no scale prop and is
-// off-limits this pass) — the group is positioned at CAT_X/Y/Z and scaled,
-// with Cat itself mounted at its own local origin so the scale doesn't also
-// multiply the world position.
-const CAT_SCALE = 1.3;
-// CAT_EXTRA_ROTATION_Y (OPEN-SOUTH PASS) — discovered in-browser (sampling
-// the cream-patch meshes' own world positions via the scene graph) that
-// Cat.tsx's default rotationY (0.35 rad, unpassed/unchanged, Cat.tsx is
-// off-limits this pass) points her chest/muzzle/paw cluster toward world
-// angle ≈+87.4°+0.35rad≈107.5° in this file's own sin/cos ring convention
-// (a=0 due south, +90° due east) — i.e. mostly EAST, not south, so the
-// south-opened rim above didn't line up with the exact features the brief
-// calls out ("the cream chest/muzzle... NOT occluded"). Cat.tsx exposes
-// rotationY as an overridable prop specifically for callers like this one;
-// this file already owns her whole placement (CAT_X/Y/Z, CAT_SCALE), so the
-// fix is an ADDITIONAL spin on the SAME wrapping <group> (Y-axis rotations
-// compose by simple addition regardless of nesting order, and the group's
-// scale is uniform so it doesn't interact with rotation) — not an edit to
-// Cat.tsx or its default. Derived, not hand-picked: aims the chest patch's
-// own local position (copied verbatim from Cat.tsx, read-only reference)
-// at CAT_FRONT_TARGET_ANGLE, a few degrees east of dead-south (not exactly
-// 0° — a perfectly frontal pose reads stiffer, and it keeps the chest
-// comfortably inside CATBED_RIM_OPEN_HALF_ANGLE with margin either way).
-const CAT_CHEST_LOCAL = { x: 0.11, z: 0.005 }; // Cat.tsx's own chest-patch mesh position (local, pre-rotation)
-const CAT_CHEST_LOCAL_ANGLE = Math.atan2(CAT_CHEST_LOCAL.x, CAT_CHEST_LOCAL.z); // ≈87.4°
-const CAT_INTERNAL_ROTATION_Y = 0.35; // Cat.tsx's own default rotationY (component default — cited here only to compute the total, never overridden)
-const CAT_FRONT_TARGET_ANGLE = (10 * Math.PI) / 180; // chest patch's target world angle — 10° east of due south
-const CAT_EXTRA_ROTATION_Y = CAT_FRONT_TARGET_ANGLE - CAT_CHEST_LOCAL_ANGLE - CAT_INTERNAL_ROTATION_Y;
 
 // ── engawa (P4 engawa rework, renamed from "balcony" — this is a
 // ground-level Japanese veranda overlooking the future outside area, not
@@ -1532,14 +1365,18 @@ export function Bedroom() {
   // its scripts/pixelart/gen-variants.mjs JOBS entry in place (HANDOFF §6:
   // deleting one without the other lets the generator silently resurrect
   // it) since it may return on a throw blanket.
-  // rug — LOCKED (owner pick, this pass): rug-moroccan, replacing
-  // rug-bedroom. Same repeat(1,1) + transparent convention as MusicNook's
-  // rugKilim (moroccan is a tiled diamond-lattice pattern, not an
-  // alpha-cutout oval like rug-bedroom was, so it now fills the plane as a
-  // rectangle — expected given the source texture, not a bug). The other
-  // four rug PNGs generated alongside it stay on disk, unreferenced, in
-  // case the owner revisits.
-  const rugTex = usePixelTexture("/3am/tex/rug-moroccan.png", 1, 1);
+  // rug — midcentury, chosen by cycling every candidate live in this room's
+  // own warm night lighting rather than judging them off a flat contact
+  // sheet (which had produced three wrong answers). It wins here because the
+  // floor is dark and visually heavy, so a light-ground rug lifts it; it's
+  // composed rather than a repeating pattern; and its teal/mustard/rust sits
+  // with the sage walls without matching them. Every rejected candidate
+  // (ticket, flower, blob, mushroom, moroccan, the rugOption* set…) stays on
+  // disk unreferenced per the standing "keep rejected variants" rule — see
+  // the linen-quilt comment above for the same pattern.
+  // alphaTest stays on the material: harmless for this opaque texture, and
+  // required if a cutout rug is ever swapped back in.
+  const rugTex = usePixelTexture("/3am/tex/rug-midcentury.png", 1, 1);
   // deck floor — same floor-oak family as the room. Cut into 4 pieces
   // around the zen garden (ZEN_DECK_NORTH/SOUTH/WEST/EAST above) instead
   // of one continuous plane — see the const-block comment for why (the
@@ -2348,68 +2185,15 @@ export function Bedroom() {
         </Suspense>
       </group>
 
-      {/* sleeping cat (Task 9, re-seated P4/SUPER-KING, MOVED this wave) —
-          she no longer sleeps on the bed: FURNISHING WAVE gives her a round
-          cat bed in the NE corner (CATBED_RECT), and she now curls on its
-          own inner pad, world-space at (CAT_X, CAT_Y, CAT_Z) — see the
-          consts above (by CATBED_PAD_H) for the derivation, which is now
-          just this file's own constructed geometry, not GLB probing.
-          Behaviors (breathing, ear twitch, pettable hearts) are untouched;
-          only the seat moved. CATBED ENLARGE PASS: wrapped in a scale group
-          (CAT_SCALE, see the const's comment above) — Cat itself mounts at
-          its own local origin (x/y/z=0) so the group's own position carries
-          CAT_X/Y/Z unscaled. OPEN-SOUTH PASS adds a rotation to this SAME
-          group (CAT_EXTRA_ROTATION_Y, see its comment above) so her
-          chest/muzzle/paw cluster actually faces the rim's new open south
-          arc instead of Cat.tsx's own default facing (east) — Cat.tsx
-          itself is untouched, this is purely how Bedroom orients her. */}
-      <group position={[CAT_X, CAT_Y, CAT_Z]} scale={CAT_SCALE} rotation={[0, CAT_EXTRA_ROTATION_Y, 0]}>
-        <Cat x={0} y={0} z={0} />
-      </group>
-
-      {/* ── cat's bed — collider {6.72,0.45,0.88,0.88}, FURNISHING WAVE,
-          enlarged CATBED ENLARGE PASS (was {7.05,0.45,0.55,0.55} — see the
-          CATBED_RECT const's comment above for the clearance arithmetic).
-          Round pet bed: OPEN-SOUTH PASS replaces the old continuous torus
-          rim with a ring of chunky box segments (CATBED_RIM_SEGS above)
-          whose height falls off toward due-south (the camera-facing side),
-          down to a low front lip there so the cat curled on the inner pad
-          reads fully unoccluded from the default dollhouse view — full
-          height everywhere else, still a proper round padded cushion.
-          CATBED FIX PASS: each segment's radial DEPTH now equals its own
-          HEIGHT (`h`, was the constant CATBED_RIM_FULL_H for every segment
-          regardless of height) — a square cross-section at every angle, so
-          a low segment is a small chunky curb, not a wide flat plank lying
-          on the floor (that fixed-depth mismatch was the fan/starburst
-          bug — see the CATBED_RIM_MIN_H comment above for the full
-          diagnosis). Pad radius shrunk this pass too (CATBED_PAD_R, see its
-          own comment) so the cushion is visibly nested inside the ring
-          rather than buried under its inner lip — the cat sits on its own
-          top surface (CATBED_PAD_H, see the consts above). No light — reads
-          by the room's ambient + the nearby sconce/lamps. ── */}
+      {/* The soft bed and cat share one origin derived from the collider.
+          The cat is a painted GLB loaf (models/CatModel.tsx) already
+          rescaled to house units — no extra scale here. She sleeps on the
+          cushion top, face toward the follow camera; sunk 1cm so her belly
+          doesn't float on the rounded cushion, nudged 4cm south so her chin
+          overhangs the bed's low front lip rather than the tall back rim. */}
       <group position={[CATBED_CENTER.x, 0, CATBED_CENTER.z]}>
-        {CATBED_RIM_SEGS.map(({ a, h }, i) => (
-          <mesh
-            key={i}
-            position={[Math.sin(a) * CATBED_RING_R, h / 2, Math.cos(a) * CATBED_RING_R]}
-            rotation={[0, a, 0]}
-          >
-            <boxGeometry args={[CATBED_RIM_SEG_W, h, h]} />
-            <meshStandardMaterial color="#a04b3a" />
-          </mesh>
-        ))}
-        {/* CATBED FIX PASS: pad recolored #e6d8b8→#8a94a0 (dusty blue-gray).
-            Cat.tsx's own CAT_CREAM (#e8d9bc, chest/muzzle/paw) is nearly
-            identical to the pad's old cream — same tone sitting on same
-            tone reads as one blob, so "cream chest/muzzle visible" failed
-            on color contrast even once the rim stopped occluding her. A
-            cushion tone distinct from both the cat's cream AND the rim's
-            rust now makes her actually read as a separate shape on the
-            pad. Cat.tsx is off-limits this pass, so the fix is here. */}
-        <mesh position={[0, CATBED_PAD_H / 2, 0]}>
-          <cylinderGeometry args={[CATBED_PAD_R, CATBED_PAD_R, CATBED_PAD_H, 16]} />
-          <meshStandardMaterial color="#8a94a0" />
-        </mesh>
+        <CatBed width={CATBED_RECT.w} depth={CATBED_RECT.d} />
+        <Cat x={0} y={CAT_BED_CUSHION_TOP - 0.01} z={0.04} />
       </group>
 
       {/* ── twin nightstands — colliders {2.25,0.4,0.55,0.5} (west) and
@@ -2531,22 +2315,12 @@ export function Bedroom() {
         <pointLight color="#ffcf8f" intensity={5} distance={3.6} decay={2} />
       </group>
 
-      {/* ── rug (no collider — visual only, walkable) — RE-CENTRED this
-          pass (owner: "moroccan, and move it at the center along the
-          bed"). See the RUG_* const-block comment above (near SCONCE_X)
-          for the centerline/tuck derivation: x-range 2.8–5.2 (centered on
-          BED_RECT's own centerline, 4.0, a 0.1m overhang past the bed's
-          2.9–5.1 span each side), z-range 2.68–4.38 (north edge tucks
-          0.15m under the bed's foot at 2.83, south edge sits well clear of
-          the wardrobe/plants zone, z-min 5.0). Same y=0.035 offset as
-          before — no z-fight with the floor. Checked clear of the cat bed
-          (x-range 6.72–7.6, no x overlap), the plants (z-min 5.0, 0.62m
-          clear of the rug's own south edge), and every walkway probe (no
-          collider, so purely a visual check — nothing here blocks
-          movement either way). ── */}
+      {/* ── rug — the movie-ticket rug (W12). Position/size derivation and
+          the clearance checks against the bed, cat bed and plants live in
+          the RUG_* comment block above. ── */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[RUG_X, 0.035, RUG_Z]}>
         <planeGeometry args={[RUG_W, RUG_D]} />
-        <meshStandardMaterial map={rugTex} transparent />
+        <meshStandardMaterial map={rugTex} transparent alphaTest={0.5} />
       </mesh>
 
       {/* ── PLANT PASS — the two hand-built corner plants (pot cylinder +
@@ -2603,9 +2377,14 @@ export function Bedroom() {
       {/* ── south floor lamp — collider {2.55,5.25,0.35,0.35}. See the
           SOUTH_LAMP_* const-block comment above for the placement
           arithmetic. Tripod base / pole / open-cone shade, warm pointLight
-          NESTED inside the shade group (rotation-safe by construction,
-          no castShadow — same convention as every other fixture-nested
-          light in this room). ── */}
+          NESTED inside the shade group (rotation-safe by construction).
+          This room has no literal ceiling pendant (every other bedroom
+          light is wall/furniture-mounted or an engawa-deck lantern), so
+          this is the pick for the room's shadow caster — the tallest
+          freestanding fixture over open interior floor (owner override of
+          the old "2 casters, both music nook" rule — discrete-room
+          rendering means only this room's own caster is ever live while
+          occupied). ── */}
       <group position={[SOUTH_LAMP_CENTER.x, 0, SOUTH_LAMP_CENTER.z]}>
         <mesh position={[0, SOUTH_LAMP_BASE_H / 2, 0]}>
           <cylinderGeometry args={[SOUTH_LAMP_BASE_R, SOUTH_LAMP_BASE_R + 0.02, SOUTH_LAMP_BASE_H, 10]} />
@@ -2619,7 +2398,7 @@ export function Bedroom() {
           <cylinderGeometry args={[0.14, 0.19, SOUTH_LAMP_SHADE_H, 10, 1, true]} />
           <meshStandardMaterial color="#ffb35c" emissive="#ffb35c" emissiveIntensity={0.85} side={2} />
         </mesh>
-        <pointLight position={[0, SOUTH_LAMP_SHADE_Y, 0]} color="#ffd9a0" intensity={5} distance={4.5} decay={2} />
+        <pointLight castShadow shadow-mapSize={[256, 256]} shadow-bias={-0.0015} shadow-radius={3} shadow-intensity={0.85} position={[0, SOUTH_LAMP_SHADE_Y, 0]} color="#ffd9a0" intensity={5} distance={4.5} decay={2} />
       </group>
 
       {/* ── single-person sofa / armchair — collider {0.6,0.4,0.95,0.95},

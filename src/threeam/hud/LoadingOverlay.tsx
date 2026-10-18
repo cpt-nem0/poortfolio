@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useProgress } from "@react-three/drei";
+import { useThreeAm } from "@/threeam/state/store";
 
 // Grace window before we trust "nothing is loading" as a real signal, not a
 // race where useProgress just hasn't seen the first onStart yet.
@@ -13,6 +14,10 @@ const FADE_MS = 400;
 
 export function LoadingOverlay() {
   const { progress, active } = useProgress();
+  // Shader warm-up (Scene.tsx ShaderWarmup) links every room's shader
+  // variants behind this overlay so the first walk into each room doesn't
+  // drop a frame; it flips this flag when done (8s safety cap on its side).
+  const warmupDone = useThreeAm((s) => s.warmupDone);
   const [hasStarted, setHasStarted] = useState(false);
   const [graceOver, setGraceOver] = useState(false);
   const [fadingOut, setFadingOut] = useState(false);
@@ -36,11 +41,11 @@ export function LoadingOverlay() {
   // must not resurrect this overlay.
   useEffect(() => {
     if (dismissed || fadingOut) return;
-    const readyToDismiss = (hasStarted || graceOver) && progress >= 100 && !active;
+    const readyToDismiss = (hasStarted || graceOver) && progress >= 100 && !active && warmupDone;
     if (!readyToDismiss) return;
     const holdTimer = setTimeout(() => setFadingOut(true), HOLD_MS);
     return () => clearTimeout(holdTimer);
-  }, [progress, active, hasStarted, graceOver, dismissed, fadingOut]);
+  }, [progress, active, hasStarted, graceOver, dismissed, fadingOut, warmupDone]);
 
   useEffect(() => {
     if (!fadingOut) return;

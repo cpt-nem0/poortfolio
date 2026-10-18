@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { useAudioStore } from "@/threeam/state/audio";
-import { startCrackle } from "./sfx";
+import { playPurr, startCrackle } from "./sfx";
 
 const AMBIENT_URL = "/3am/audio/ambient.mp3";
 const AMBIENT_VOL = 0.35;
@@ -152,6 +152,18 @@ class Engine {
         useAudioStore.getState().setError("record skipped… try again");
       }
     }
+  }
+
+  /**
+   * Petting the cat (rooms/Cat.tsx). The click is a user gesture, so it
+   * doubles as the audio unlock (same as "press any key"); the purr then
+   * rides the listener's master gain, so mute still silences it and pause
+   * (a suspended context) simply holds it.
+   */
+  purr() {
+    this.unlock();
+    if (!this.listener) return;
+    playPurr(this.listener.context, this.listener.getInput());
   }
 
   /** Tonearm lift/drop: hard-mutes everything via the listener master gain. */

@@ -2,6 +2,10 @@ import { PALETTE, hexToRgb, shade, hash2 } from "./palette.mjs";
 import { writePng } from "./png.mjs";
 
 const OUT = "public/3am/tex";
+// The contact sheet below is a human-review artifact, not a shipped asset —
+// it goes to a gitignored preview dir, the same convention gen-favicon.mjs
+// (.favicon-preview/) and gen-celestial.mjs (.celestial-preview/) use.
+const PREVIEW = "scripts/pixelart/.texture-preview";
 
 /* ---- floor planks: 32×32, horizontal planks 8px tall, staggered seams ---- */
 const PLANK_TONES = [PALETTE.wood300, PALETTE.wood500, PALETTE.wood500, PALETTE.wood700];
@@ -68,7 +72,7 @@ const SCALE = 8;
 const PAD = 8;
 const sheetW = TILES.reduce((w, t) => w + t.size * SCALE + PAD, PAD);
 const sheetH = Math.max(...TILES.map((t) => t.size * SCALE)) + PAD * 2;
-await writePng(`${OUT}/_contact-sheet.png`, sheetW, sheetH, (x, y) => {
+await writePng(`${PREVIEW}/_contact-sheet.png`, sheetW, sheetH, (x, y) => {
   let ox = PAD;
   for (const t of TILES) {
     const w = t.size * SCALE;
@@ -79,4 +83,4 @@ await writePng(`${OUT}/_contact-sheet.png`, sheetW, sheetH, (x, y) => {
   }
   return hexToRgb(PALETTE.night900);
 });
-console.log(`wrote ${OUT}/_contact-sheet.png`);
+console.log(`wrote ${PREVIEW}/_contact-sheet.png`);

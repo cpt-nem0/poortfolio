@@ -823,9 +823,1122 @@ function stoneSlab(x, y) {
   return c;
 }
 
+/* blueprint paper v2, 64×44 (W3 polish pass, project building table's
+   drafting board — REPLACES the v1 placeholder sketch outright, same JOBS
+   slot/filename so nothing else needs touching): THE HOUSE'S OWN v2 FLOOR
+   PLAN. Deep blue ground (own local const, same "one-off hue for one
+   texture" idiom wall-teal/wall-plum/etc use above), a lighter grid every
+   5px, white linework tracing the house's actual room rects — bedroom,
+   common, workstation, genkan, music — with real door gaps cut into the
+   shared walls. Border kept 1px dark for a page edge, same convention
+   posterMountainRidge/posterSpacePlanet use.
+
+   Room rects + door gaps below are a deterministic SNAPSHOT of
+   src/threeam/world/layout.ts's real consts as of this pass (this script
+   has no import of layout.ts — it's pure JS/pixel generation, no
+   three.js, no app code) — bedroom {0,0,8,6}, common (still RoomId
+   "workspace") {8,0,8,6}, workstation (WORKSTATION_ROOM) {8,-6.2,8,6},
+   genkan (GENKAN_ROOM) {8,6.2,8,1.9}, music {16,0,6,6}; doors at x=8
+   (DOOR_LO/HI 2.2-3.8), x=16 (DOOR_LO/HI 2.2-3.8), z≈0 (WS_DOOR_LO/HI
+   11.35-12.65), z≈6 (GENKAN_DOOR_LO/HI 11.4-12.7). Orientation: world x
+   maps left-to-right (bedroom west → music east); world z maps top-to-
+   bottom (workstation's north edge at the top, genkan's south/entry strip
+   at the bottom) — a plausible architect's-plan read, not a literal
+   top-down camera match. The genkan's own south wall (the locked front
+   door) stays solid, no gap — matches FRONT_DOOR being collision-locked
+   in layout.ts. */
+const BLUEPRINT = "#1e4d8c";
+const BP_W = 64, BP_H = 44;
+const BP_ROOMS = [
+  { x: 0, z: 0, w: 8, d: 6 }, // bedroom
+  { x: 8, z: 0, w: 8, d: 6 }, // common
+  { x: 8, z: -6.2, w: 8, d: 6 }, // workstation
+  { x: 8, z: 6.2, w: 8, d: 1.9 }, // genkan
+  { x: 16, z: 0, w: 6, d: 6 }, // music
+];
+// [axis ('v' = wall runs along z at fixed world x, 'h' = wall runs along x
+// at fixed world z), fixed coordinate, gap lo, gap hi] — mirrors
+// DOOR_LO/HI, WS_DOOR_LO/HI, GENKAN_DOOR_LO/HI in layout.ts. The 0.3
+// tolerance in inDoorGap (below) absorbs the real ~0.2m wall-thickness gap
+// between e.g. the workstation's own south edge (z-0.2) and the common
+// area's north edge (z0) — both edges get the same door cut.
+const BP_DOORS = [
+  ["v", 8, 2.2, 3.8], // bedroom <-> common
+  ["v", 16, 2.2, 3.8], // common <-> music
+  ["h", 0, 11.35, 12.65], // workstation <-> common
+  ["h", 6, 11.4, 12.7], // common <-> genkan
+];
+const BP_SCALE = 2.5;
+const BP_OX = 4, BP_OZ = 4; // pixel margin
+const BP_X0 = 0, BP_Z0 = -6.2; // world origin (workstation's north edge)
+function bpx(wx) { return Math.round(BP_OX + (wx - BP_X0) * BP_SCALE); }
+function bpz(wz) { return Math.round(BP_OZ + (wz - BP_Z0) * BP_SCALE); }
+function inDoorGap(axis, fixedWorld, alongWorld) {
+  return BP_DOORS.some(
+    ([a, at, lo, hi]) => a === axis && Math.abs(at - fixedWorld) < 0.3 && alongWorld >= lo && alongWorld <= hi
+  );
+}
+function blueprintPaper(x, y) {
+  if (x === 0 || x === BP_W - 1 || y === 0 || y === BP_H - 1) return shade(BLUEPRINT, 0.65);
+  let c = shade(BLUEPRINT, 0.92 + hash2(x, y, 601) * 0.1); // paper grain
+  if (x % 5 === 0 || y % 5 === 0) c = shade(BLUEPRINT, 1.18); // lighter grid rules
+  for (const r of BP_ROOMS) {
+    const px0 = bpx(r.x), px1 = bpx(r.x + r.w);
+    const pz0 = bpz(r.z), pz1 = bpz(r.z + r.d);
+    if ((x === px0 || x === px1) && y >= pz0 && y <= pz1) {
+      const wx = x === px0 ? r.x : r.x + r.w;
+      const wz = BP_Z0 + (y - BP_OZ) / BP_SCALE;
+      if (!inDoorGap("v", wx, wz)) c = shade(PALETTE.cream100, 1.0); // sketched room outline
+    }
+    if ((y === pz0 || y === pz1) && x >= px0 && x <= px1) {
+      const wz = y === pz0 ? r.z : r.z + r.d;
+      const wx = BP_X0 + (x - BP_OX) / BP_SCALE;
+      if (!inDoorGap("h", wz, wx)) c = shade(PALETTE.cream100, 1.0); // sketched room outline
+    }
+  }
+  return c;
+}
+
+/* pegboard 40×24 (W3 polish pass, workstation west wall behind/above the
+   project table): pale hardboard, a regular grid of dark perforation
+   dots, faint horizontal grain streaks. Tool silhouettes (hammer, wrench,
+   wire coil, clamp) are hand-built 3D clutter in Workstation.tsx, not
+   baked into this texture — same "texture for the material surface, real
+   geometry for the objects" convention the corkboard/pinned-notes pair
+   uses. */
+const PEGBOARD_BASE = "#c9b088";
+function pegboard(x, y) {
+  if (x === 0 || x === 39 || y === 0 || y === 23) return shade(PEGBOARD_BASE, 0.6);
+  let c = shade(PEGBOARD_BASE, 0.94 + hash2(x, y, 691) * 0.08);
+  if (y % 7 === 3) c = shade(PEGBOARD_BASE, 0.88); // faint horizontal grain streak
+  if (x % 4 === 2 && y % 4 === 2) c = shade(PALETTE.wood900, 0.85); // perforation dot
+  return c;
+}
+
+/* door glow 8×32 (T8 finale item 16, workstation doorway visibility):
+   vertical amber gradient, dim/transparent at the top (y=0), bright/opaque
+   at the bottom (y=31) — mapped onto a quad recessed in the door gap so
+   the opening reads as "light spilling from the room beyond" without a
+   real light (sanctioned painted-light pattern, same idiom as the neon
+   signs' meshBasicMaterial glow). */
+function doorGlow(x, y) {
+  const h = 32;
+  const t = y / (h - 1); // 0 top .. 1 bottom
+  const alpha = Math.round(30 + t * 170);
+  return [...shade(PALETTE.amber500, 0.7 + t * 0.5), alpha];
+}
+
+/* floor spill 32×32 (T8 finale item 16): radially-symmetric soft warm
+   glow blob — deliberately has no directional axis (unlike a vertical
+   gradient) so the mesh's own rotation/orientation on the floor can't get
+   it backwards. Centered, falls off to fully transparent by the tile
+   edge. */
+function floorSpill(x, y) {
+  const cx = 15.5, cy = 15.5, R = 15;
+  const d = Math.hypot(x - cx, y - cy);
+  const t = Math.max(0, 1 - d / R);
+  const alpha = Math.round(t * t * 150);
+  return [...shade(PALETTE.amber500, 0.85 + t * 0.3), alpha];
+}
+
+/* ---- workstation wall posters (W4 polish pass): four NEW original 64×96
+   (2:3) art prints for the workstation's own north wall — deliberately a
+   different FAMILY from the bedroom's movie-poster gallery (no dramatic
+   central image + title band; these are flat art-print/schematic/chart
+   designs), so the two rooms don't read as reusing the same wall set.
+   Wholly invented, house palette only, no real product/brand/film/game
+   references. Same 1px night900 border convention as every other poster
+   above. ---- */
+const WSP_W = 64, WSP_H = 96;
+
+/* 1. retro computer ad — cream ad-paper stock, a chunky beige CRT monitor
+   on a low desk, soft green screen glow, an illegible tagline scribble
+   band at the bottom (never real lettering, same idiom as posterCredits). */
+function posterRetroAd(x, y) {
+  if (x === 0 || x === WSP_W - 1 || y === 0 || y === WSP_H - 1) return shade(PALETTE.wood900, 1.3);
+  const mx = x - 32;
+  if (y >= 68 && y < 86) {
+    if (y === 68) return shade(PALETTE.wood900, 1.15);
+    return shade(PALETTE.wood500, 0.72 + ((y - 68) / 18) * 0.18 + hash2(x, y, 653) * 0.05); // desk surface
+  }
+  if (y >= 86) {
+    if (y <= 92) {
+      const on = hash2(Math.floor(x / 2), (y - 86) * 13, 654) > 0.5;
+      return shade(PALETTE.wood900, on ? 1.3 : 0.7); // illegible ad tagline
+    }
+    return shade(PALETTE.plaster300, 0.85);
+  }
+  if (y >= 58 && y < 68 && Math.abs(mx) < (y < 64 ? 8 : 14)) {
+    return shade(PALETTE.wood700, y < 64 ? 1.05 : 0.9); // monitor neck + base
+  }
+  if (y > 22 && y < 58 && Math.abs(mx) < 20) {
+    if (y > 29 && y < 53 && Math.abs(mx) < 15) {
+      const d = Math.hypot(mx, (y - 41) * 1.1);
+      const glow = Math.max(0, 1 - d / 16);
+      const scan = y % 2 === 0 ? 1.0 : 0.92;
+      return shade(PALETTE.green500, (0.42 + glow * 0.55) * scan); // screen glow + scanlines
+    }
+    return shade(PALETTE.wood700, 0.82 + hash2(x, y, 652) * 0.1); // bezel
+  }
+  let c = shade(PALETTE.plaster300, 0.9 + hash2(x, y, 651) * 0.08); // ad paper
+  if (y % 9 === 0) c = shade(PALETTE.plaster500, 0.85); // faint print-stock lines
+  return c;
+}
+
+/* 2. circuit-schematic art print — dark PCB-silkscreen field: a regular
+   teal trace grid, mint via-dots at intersections, three purple "chip"
+   blocks with pin marks, one striped resistor-style component. */
+const CIRCUIT_BG = PALETTE.night900;
+const CIRCUIT_TRACE = PALETTE.teal500;
+const CIRCUIT_CHIPS = [
+  { x0: 14, x1: 26, y0: 20, y1: 34 },
+  { x0: 36, x1: 52, y0: 44, y1: 58 },
+  { x0: 10, x1: 24, y0: 66, y1: 78 },
+];
+const CIRCUIT_RESISTOR = { x0: 44, x1: 58, y0: 8, y1: 14 };
+function posterCircuit(x, y) {
+  if (x === 0 || x === WSP_W - 1 || y === 0 || y === WSP_H - 1) return shade(PALETTE.night900, 1.4);
+  let c = shade(CIRCUIT_BG, 0.95 + hash2(x, y, 661) * 0.06);
+  const onH = (y - 6) % 10 === 0 && y > 4 && y < 92;
+  const onV = (x - 6) % 10 === 0 && x > 4 && x < 60;
+  if (onH || onV) c = shade(CIRCUIT_TRACE, 0.55);
+  if (onH && onV) c = shade(PALETTE.mint400, 0.85); // via dot
+  const R0 = CIRCUIT_RESISTOR;
+  if (x >= R0.x0 && x <= R0.x1 && y >= R0.y0 && y <= R0.y1) {
+    const stripe = (x - R0.x0 + (y - R0.y0) * 2) % 5 < 2;
+    return stripe ? shade(PALETTE.amber500, 0.9) : shade(PALETTE.cream100, 0.85);
+  }
+  for (const ch of CIRCUIT_CHIPS) {
+    if (x >= ch.x0 && x <= ch.x1 && y >= ch.y0 && y <= ch.y1) {
+      c = shade(PALETTE.purple700, 0.85 + hash2(x, y, 662) * 0.1);
+      if ((x === ch.x0 || x === ch.x1) && (y - ch.y0) % 3 === 1) c = shade(PALETTE.mint400, 0.9); // pin marks
+    }
+  }
+  return c;
+}
+
+/* 3. synthwave grid-sun — banded purple-to-amber sky, a scan-barred sun
+   disc low on the horizon, a converging perspective grid on the dark
+   ground below (lines spread WIDER near the bottom — closer to the
+   "viewer" — same as real perspective). */
+const SYN_BANDS = [PALETTE.purple700, PALETTE.purple500, "#8a4a72", PALETTE.red500, PALETTE.amber500];
+function posterSynthwave(x, y) {
+  if (x === 0 || x === WSP_W - 1 || y === 0 || y === WSP_H - 1) return shade(PALETTE.night900, 1.4);
+  const HORIZON = 52;
+  if (y < HORIZON) {
+    const t = y / HORIZON;
+    const bandIdx = Math.min(SYN_BANDS.length - 1, Math.floor(t * SYN_BANDS.length));
+    const cx = 32, cy = HORIZON - 4, r = 22;
+    const dx = x - cx, dy = y - cy;
+    const rr = Math.sqrt(dx * dx + dy * dy);
+    if (rr < r) {
+      const bar = (y - (cy - r)) % 4 < 1;
+      return bar ? shade(SYN_BANDS[bandIdx], 0.8) : shade(PALETTE.amber500, 0.75 + ((r - rr) / r) * 0.35);
+    }
+    if (t < 0.4 && hash2(x, y, 672) > 0.98) return shade(PALETTE.cream100, 0.8); // stars, upper sky only
+    return shade(SYN_BANDS[bandIdx], 0.75 + t * 0.25 + hash2(x, y, 671) * 0.04);
+  }
+  const gy = y - HORIZON; // 0 at horizon .. 43 at the bottom
+  const lineSpacing = Math.max(2, Math.round(2 + gy * 0.35));
+  if (gy % lineSpacing < 1) return shade(PALETTE.red500, 0.6 + (gy / 43) * 0.3); // horizontal grid line
+  const spread = 1 + gy * 0.9;
+  for (let i = -6; i <= 6; i++) {
+    if (x === Math.round(32 + i * spread * 0.5)) return shade(PALETTE.red500, 0.55 + (gy / 43) * 0.3); // converging vertical
+  }
+  return shade(PALETTE.night900, 1.0 + hash2(x, y, 673) * 0.06);
+}
+
+/* 4. star chart — dark navy field, concentric chart rings + 15°-spaced
+   tick marks around the outer ring, scattered deterministic stars, one
+   glowing "hero" moon in the upper-left, a small hand-drawn constellation
+   line connecting five fixed points. */
+const STARCHART_BG = PALETTE.night700;
+const STARCHART_PTS = [
+  [14, 60], [26, 54], [22, 68], [38, 62], [46, 50],
+];
+function posterStarChart(x, y) {
+  if (x === 0 || x === WSP_W - 1 || y === 0 || y === WSP_H - 1) return shade(PALETTE.night900, 1.4);
+  const cx = 32, cy = 46;
+  const dx = x - cx, dy = y - cy;
+  const rr = Math.hypot(dx, dy);
+  const hx = 20, hy = 22, hr = 5;
+  const hd = Math.hypot(x - hx, y - hy);
+  if (hd < hr) return shade(PALETTE.cream100, 0.9 + ((hr - hd) / hr) * 0.15); // hero moon
+  if (hd < hr + 4) return shade(PALETTE.amber300, 0.5 * (1 - (hd - hr) / 4)); // moon glow
+  for (let i = 0; i < STARCHART_PTS.length - 1; i++) {
+    const [ax, ay] = STARCHART_PTS[i], [bx, by] = STARCHART_PTS[i + 1];
+    const segLen2 = (bx - ax) * (bx - ax) + (by - ay) * (by - ay);
+    const t = ((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / segLen2;
+    if (t >= 0 && t <= 1) {
+      const px = ax + t * (bx - ax), py = ay + t * (by - ay);
+      if (Math.hypot(x - px, y - py) < 0.6) return shade(PALETTE.teal500, 0.55); // constellation line
+    }
+  }
+  for (const [px, py] of STARCHART_PTS) {
+    if (Math.hypot(x - px, y - py) < 1.2) return shade(PALETTE.cream100, 0.85); // constellation star
+  }
+  for (const ring of [16, 28, 40]) {
+    if (Math.abs(rr - ring) < 0.6) return shade(PALETTE.amber300, 0.45); // concentric chart ring
+  }
+  if (Math.abs(rr - 40) < 1.2) {
+    const deg = ((Math.atan2(dy, dx) + Math.PI) / (Math.PI * 2)) * 360;
+    if (deg % 15 < 2) return shade(PALETTE.amber300, 0.7); // outer-ring tick marks
+  }
+  const s = hash2(x, y, 682);
+  if (s > 0.985) return shade(PALETTE.cream100, 0.95);
+  if (s > 0.975) return shade(PALETTE.cream100, 0.6);
+  return shade(STARCHART_BG, 0.9 + hash2(x, y, 681) * 0.08);
+}
+
+
+/* ---- rug: classic pixel SUPER MUSHROOM (W7 fix round — owner-directed IP
+   homage, replacing the arcade-confetti rug the owner said "reads cheap".
+   Owner supplied a photo reference of a fan-tufted mushroom rug: red cap,
+   3 big white spots, beige/cream face band with two dark rectangular eyes,
+   thick black outline, irregular pixel-stepped ROUND silhouette. 64×64
+   WITH ALPHA — writePng keeps a 4th component when colorAt returns one, so
+   pixels outside the silhouette come back fully transparent ([0,0,0,0]).
+   Deterministic, no hash needed — pure geometry off one center point
+   (32,32): the outer edge is quantized to a 4px step grid BEFORE the
+   distance test, which is what gives the "chunky pixel-stepped round"
+   silhouette (a smooth circle would read as a plain disc, not fan-tufted
+   pixel art) — same "no Math.random" rule as every other job in this file,
+   just satisfied by arithmetic instead of hash2 since nothing here needs
+   per-pixel randomness. ---- */
+const MUSH_CENTER = 32;
+const MUSH_STEP = 4; // chunky pixel-step quantization for the outer silhouette
+const MUSH_R = 28; // outer radius (post-quantization) — 4px margin to the 64px canvas edge
+const MUSH_BORDER = 4; // thick black outline band width
+const MUSH_CAP_BOTTOM = 38; // cap zone: y 4..38, the upper ~60% of the 56px vertical span (4..60)
+const MUSH_SEP_BOTTOM = 41; // 3px black cap/face separation line, y 38..41
+const MUSH_BLACK = [...hexToRgb(PALETTE.vinyl900), 255];
+const MUSH_RED = [...shade(PALETTE.red500, 1.12), 255];
+const MUSH_CREAM = [...hexToRgb(PALETTE.cream100), 255];
+const MUSH_BEIGE = [...hexToRgb(PALETTE.plaster300), 255];
+function mushStepCoord(v) {
+  return Math.floor(v / MUSH_STEP) * MUSH_STEP + MUSH_STEP / 2;
+}
+function mushSpotHit(x, y, cx, cy, r) {
+  const dx = x - cx, dy = y - cy;
+  return dx * dx + dy * dy < r * r;
+}
+function rugMushroom(x, y) {
+  const bx = mushStepCoord(x);
+  const by = mushStepCoord(y);
+  const dist = Math.hypot(bx - MUSH_CENTER, by - MUSH_CENTER);
+  if (dist > MUSH_R) return [0, 0, 0, 0]; // outside the silhouette — fully transparent
+
+  if (dist > MUSH_R - MUSH_BORDER) return MUSH_BLACK; // thick outer outline
+
+  if (y < MUSH_CAP_BOTTOM) {
+    // cap zone (upper ~60%) — red field, 3 big white spots: one center,
+    // two sides pushed close enough to the rim that the outline above
+    // clips them, per the reference photo.
+    if (
+      mushSpotHit(x, y, MUSH_CENTER, 15, 8) ||
+      mushSpotHit(x, y, MUSH_CENTER - 20, 21, 7) ||
+      mushSpotHit(x, y, MUSH_CENTER + 20, 21, 7)
+    ) {
+      return MUSH_CREAM;
+    }
+    return MUSH_RED;
+  }
+  if (y < MUSH_SEP_BOTTOM) return MUSH_BLACK; // cap/face separation line
+
+  // face band — beige/cream, two dark vertical rectangular eyes
+  if (Math.abs(x - MUSH_CENTER) > 6 && Math.abs(x - MUSH_CENTER) < 12 && y > 44 && y < 54) {
+    return MUSH_BLACK;
+  }
+  return MUSH_BEIGE;
+}
+
+/* ---- rug-blob (W10 polish pass, bedroom rug swap — owner supplied a photo
+   reference of a designer rug: an irregular organic "blob"/amoeba puddle
+   silhouette, near-black field, cream sinuous channels winding through it
+   like rivers, splitting the black into rounded islands. Two colors, high
+   contrast, no straight edges anywhere.
+
+   SILHOUETTE: six overlapping Wyvill soft-object metaball sources (bounded
+   support, unlike a plain inverse-square field — keeps distant sources
+   from raising a baseline everywhere and makes the merge/pinch behavior
+   between neighbors controllable) at fixed, unevenly-sized offsets,
+   thresholded. That's what gives the lobed puddle edge with concave waist
+   pinches instead of a smooth oval — sources are deliberately asymmetric
+   (varied radii, off-center placement) since a symmetric blob reads wrong
+   per the reference. 112x80 = the bedroom rug mesh's 2.4:1.7 aspect,
+   112/80 = 1.4 vs 2.4/1.7 = 1.412, close enough not to stretch visibly.
+
+   CHANNELS: a domain-warped sum-of-sines scalar field (each axis term's
+   phase is itself pushed by a sin/cos of the other axis, so the level
+   curves wind non-repeatingly instead of reading as straight diagonal
+   stripes). A FIRST pass picked channels by thresholding a fixed VALUE
+   band around a level (|field - level| < w) — that reads fine as ASCII
+   but renders wrong: near the field's local extrema the gradient goes to
+   ~0, so a fixed value-band balloons into a wide round patch there
+   (nowhere near "narrow river" — two of those patches next to the
+   silhouette's own rounded lobes read as cow-print/panda spots, not a
+   Matisse cutout — this is what the owner flagged as "completely wrong"
+   live in the actual bedroom). Fixed by normalizing the band width by the
+   LOCAL GRADIENT MAGNITUDE (central-difference estimate) instead of using
+   a fixed value-band: half-width-in-field-units = pxHalf * |grad(field)|,
+   so the rendered channel stays a genuinely constant ~pxHalf*2 px wide
+   everywhere and pinches to a point (never balloons) at extrema — the
+   standard analytic-derivative trick for constant-screen-width implicit
+   contour lines. Four bands at different levels/widths are painted cream,
+   masked to the silhouette so channels never bleed past the edge — four
+   distinct meandering strands, ~22% of the rug's area, a minority accent
+   breaking up the near-black field rather than a 50/50 split.
+
+   Both the silhouette's outer rim and each channel's edge get a ~1px
+   darken band (silhouette: distance-to-threshold in field-value space;
+   channel: distance-to-band-edge in the same normalized px units as the
+   channel width itself) so the shapes read crisply at the fixed camera
+   distance, same idea as rug-mushroom's thick outline. Same alpha-cutout
+   convention as rug-mushroom: writePng keeps a 4th component, [0,0,0,0]
+   outside the silhouette. Colors are the house palette's near-black
+   (vinyl900, same tone rug-mushroom's outline uses) and cream (cream100)
+   rather than pure #000/#fff, with the same hash2 per-pixel shading every
+   other rug in this file uses so it doesn't read as flat vector art.
+   Deterministic — pure geometry + hash2 (the gradient estimate is a
+   central difference of the same deterministic riverField, not a random
+   perturbation), no Math.random, no Date. ---- */
+const BLOB_SOURCES = [
+  [31.43, 40, 28.35],
+  [60.73, 18.27, 23.63],
+  [88.13, 36.22, 25.51],
+  [69.23, 61.74, 24.57],
+  [33.32, 63.63, 21.74],
+  [96.64, 57.96, 15.12],
+];
+const BLOB_THRESH = 0.46; // metaball field threshold — the silhouette boundary
+const BLOB_EDGE_BAND = 0.035; // field-value band just past threshold — the darkened outer rim
+const BLOB_RIVER_BANDS = [
+  { level: -2.4, pxHalf: 1.6 },
+  { level: -0.9, pxHalf: 2.0 },
+  { level: 0.5, pxHalf: 1.8 },
+  { level: 1.7, pxHalf: 1.4 },
+];
+const BLOB_RIVER_GRAD_EPS = 0.75; // central-difference step for the gradient estimate
+const BLOB_RIVER_MIN_GRAD = 0.03; // floor so a near-zero gradient can't blow the band up
+function blobBump(d, r) {
+  // Wyvill soft-object falloff: 0 outside its own radius, so sources only
+  // influence their local neighborhood (unlike 1/d^2, which never reaches 0).
+  if (d >= r) return 0;
+  const t = d / r;
+  const u = 1 - t * t;
+  return u * u;
+}
+function blobField(x, y) {
+  let s = 0;
+  for (const [cx, cy, r] of BLOB_SOURCES) s += blobBump(Math.hypot(x - cx, y - cy), r);
+  return s;
+}
+function blobRiverField(x, y) {
+  return (
+    Math.sin(x * 0.075 + Math.sin(y * 0.05) * 2.1 + 0.3) +
+    Math.sin(y * 0.06 - Math.cos(x * 0.045) * 1.7 + 1.1) +
+    Math.sin((x + y) * 0.035 + 2.4) +
+    Math.sin((x - y) * 0.05 - 0.7)
+  );
+}
+function blobRiverGrad(x, y) {
+  const eps = BLOB_RIVER_GRAD_EPS;
+  const dfdx = (blobRiverField(x + eps, y) - blobRiverField(x - eps, y)) / (2 * eps);
+  const dfdy = (blobRiverField(x, y + eps) - blobRiverField(x, y - eps)) / (2 * eps);
+  return Math.hypot(dfdx, dfdy);
+}
+// > 0 (and how far past 0) = inside a channel, in roughly constant px units;
+// <= 0 = outside every channel. One shared helper for both the fill test
+// and the edge-rim test below.
+function blobRiverInsideAmount(x, y) {
+  const v = blobRiverField(x, y);
+  const g = Math.max(blobRiverGrad(x, y), BLOB_RIVER_MIN_GRAD);
+  let best = -Infinity;
+  for (const b of BLOB_RIVER_BANDS) {
+    const amount = b.pxHalf - Math.abs(v - b.level) / g;
+    if (amount > best) best = amount;
+  }
+  return best;
+}
+function rugBlob(x, y) {
+  const field = blobField(x, y);
+  if (field <= BLOB_THRESH) return [0, 0, 0, 0]; // outside the silhouette — fully transparent
+  const onSilhouetteEdge = field - BLOB_THRESH < BLOB_EDGE_BAND;
+  const riverInside = blobRiverInsideAmount(x, y);
+  const river = riverInside > 0;
+  const onRiverEdge = !onSilhouetteEdge && river && riverInside < 1; // outer ~1px shell of the channel
+  const base = river ? PALETTE.cream100 : PALETTE.vinyl900;
+  let f = 0.94 + hash2(x, y, 751) * 0.1; // per-pixel shading so it doesn't read as flat vector art
+  if (onSilhouetteEdge || onRiverEdge) f *= 0.82; // 1px darkened edge — crisp read at camera distance
+  return [...shade(base, f), 255];
+}
+
+/* ---- rug-flower (W11 polish pass, bedroom rug swap — rug-blob replaced by
+   a SECOND owner photo reference: a tufted black-and-white daisy/flower
+   rug. Colour roles are INVERTED from rug-blob: cream field, near-black
+   shapes. rug-blob and rugBlob() above stay on disk unreferenced, same
+   "keep rejected variants" rule that already protects rug-moroccan/
+   linen-quilt (see the rug-blob comment above and the Bedroom.tsx rugTex
+   comment). 112×80, same 2.4:1.7 mesh aspect as rug-blob.
+
+   GEOMETRY: two six-petal daisies (flower A upper-left-of-centre, smaller;
+   flower B lower-centre-right, larger), each petal an ellipse whose own
+   centre sits offset `off` px out from the flower centre along angle
+   k·60°+rotDeg (k=0..5; the two flowers use different rotDeg so they don't
+   look like stamped copies of each other), long axis (rx) aligned radially,
+   short axis (ry) tangential — that anisotropy plus the offset placement is
+   what reads as a lobe fanning out from the centre rather than a plain
+   dot. A small axis-aligned ellipse at each flower's own centre is the
+   black centre dot. For any shape, f = hypot(du/rx, dv/ry) in the shape's
+   own rotated frame is 1 on its boundary; (f-1)*min(rx,ry) approximates a
+   signed distance in px, small near the boundary regardless of the shape's
+   size, which is what lets ONE border width (FLOWER_BORDER) read as
+   uniform across differently-sized petals and dots. d = min of that
+   approx-distance over every petal + both centre dots in the whole
+   texture: d<0 → black, d<FLOWER_BORDER → cream, else fully transparent
+   (alpha-cutout, like rug-blob/rug-mushroom) — one rule that produces the
+   black shapes, the uniform cream border AND the scalloped silhouette
+   together, since the border is just the shape boundary dilated outward by
+   a constant width. The offset/radius pair (off vs prx) is tuned so each
+   petal's inner tip sits just outside its flower's own centre dot (a few
+   px of clear gap, well under 2×FLOWER_BORDER) — the border bands of the
+   dot and the petal then merge across that gap into one continuous ring
+   instead of leaving a stray transparent hole, which is what reads as
+   "petals separated from the centre dot by a clean cream ring" rather than
+   "petals touching the dot" or "a floating dot with a moat around it".
+   Flower B sits low enough that its southmost petal tips run a couple px
+   past the 80px canvas bottom, cropping that petal into a partial one —
+   one of several sources of the irregular, non-mechanically-repeated
+   silhouette the reference photo shows (no separate "partial petal" case
+   needed, just the same canvas-bounds clip every job in this file gets).
+   The bigger source is the two flowers' differing rotDeg: their petal
+   reach overlaps by a few px in the middle, and because the flowers are
+   NOT mirror images of each other, that overlap boundary itself is
+   irregular rather than a clean lens shape — matching the reference's
+   "slightly overlapping, not fused, not symmetric" pair.
+
+   SHADING: same hash2 per-pixel shading idiom as every other rug in this
+   file (so it doesn't read as flat vector art), plus a 1px darker-cream
+   line on the cream side immediately adjacent to every black edge (0 <= d
+   < 1), which is the "barely-darker cream inner shadow line" the
+   reference's tufted pile shows where black meets cream. Deterministic —
+   pure geometry, no Math.random, no Date; running the generator twice
+   produces byte-identical output. ---- */
+const FLOWER_BORDER = 2.2; // uniform cream border width (px) around every black shape
+const FLOWER_BLACK = PALETTE.vinyl900; // same near-black every other rug's ink uses
+const FLOWER_CREAM = PALETTE.cream100;
+const FLOWERS = [
+  // cx, cy: flower centre. off: petal-centre offset from cx,cy. prx/pry:
+  // petal ellipse radii (radial/tangential). rotDeg: angular offset so the
+  // two flowers' petals don't line up. dotRx/dotRy: centre-dot ellipse.
+  { cx: 34, cy: 24, off: 14, prx: 9, pry: 3.0, rotDeg: 12, dotRx: 3.4, dotRy: 2.8 }, // upper-left, smaller
+  { cx: 74, cy: 54, off: 17, prx: 11, pry: 3.7, rotDeg: 40, dotRx: 4, dotRy: 3.2 }, // lower-centre-right, larger
+];
+function flowerEllipseDist(x, y, cx, cy, rx, ry, angleRad) {
+  const dx = x - cx, dy = y - cy;
+  const ux = Math.cos(angleRad), uy = Math.sin(angleRad); // radial (long) axis
+  const vx = -Math.sin(angleRad), vy = Math.cos(angleRad); // tangential (short) axis
+  const du = dx * ux + dy * uy;
+  const dv = dx * vx + dy * vy;
+  const f = Math.hypot(du / rx, dv / ry); // 1 on the ellipse boundary
+  return (f - 1) * Math.min(rx, ry); // ~signed distance in px near the boundary
+}
+function flowerFieldDist(x, y) {
+  let best = Infinity;
+  for (const fl of FLOWERS) {
+    const dDot = flowerEllipseDist(x, y, fl.cx, fl.cy, fl.dotRx, fl.dotRy, 0);
+    if (dDot < best) best = dDot;
+    for (let k = 0; k < 6; k++) {
+      const ang = ((k * 60 + fl.rotDeg) * Math.PI) / 180;
+      const pcx = fl.cx + fl.off * Math.cos(ang);
+      const pcy = fl.cy + fl.off * Math.sin(ang);
+      const d = flowerEllipseDist(x, y, pcx, pcy, fl.prx, fl.pry, ang);
+      if (d < best) best = d;
+    }
+  }
+  return best;
+}
+function rugFlower(x, y) {
+  const d = flowerFieldDist(x, y);
+  if (d >= FLOWER_BORDER) return [0, 0, 0, 0]; // outside every shape's border — fully transparent
+  const black = d < 0;
+  let f = 0.94 + hash2(x, y, 761) * 0.1; // per-pixel shading so it doesn't read as flat vector art
+  if (!black && d < 1) f *= 0.85; // 1px darker-cream line just inside the black edge
+  return [...shade(black ? FLOWER_BLACK : FLOWER_CREAM, f), 255];
+}
+
+/* ---- rug-ticket (W12 polish pass, bedroom rug swap — a THIRD owner photo
+   reference superseded rug-flower: a tufted movie-ticket-stub rug, a big
+   red cinema admission ticket lying on the floor. rug-flower/rugFlower()
+   and rug-blob/rugBlob() above both stay on disk unreferenced, same "keep
+   rejected variants" rule that already protects rug-moroccan (now three
+   rejected/superseded bedroom rugs on record: moroccan → blob → flower →
+   ticket). 176×124 — bigger than the previous rugs' 112×80 on purpose (the
+   owner's own resolution call): this job carries actual lettering
+   ("FLIXXX" / "AND CHILL"), and 112×80 doesn't have enough pixels for
+   legible block capitals at the mesh's fixed 2.4×1.7m size and the room's
+   fixed dollhouse camera distance. 176/124 = 1.419 vs the mesh's 2.4/1.7 =
+   1.412 — close enough not to stretch visibly, same tolerance every rug in
+   this file uses.
+
+   SILHOUETTE: same "combine primitive signed-distance shapes, then dilate
+   by a border width" trick rug-flower used, just with different
+   primitives — a box (the ticket body) with two circles subtracted (the
+   classic concave semicircular notches bitten out of the left/right
+   edges) and a row of small boxes subtracted along the top/bottom edges
+   (the perforated-stub teeth). CSG subtraction on signed distance fields
+   is `max(d_A, -d_B)` for "A minus B" (outside the result if you're
+   either outside A or inside B) — chained across every notch/tooth via
+   repeated `Math.max` gives one combined distance field for the whole
+   toothed/notched outline. `ticketBodyDist < 0` is the ticket's own body
+   (red field); `0 <= ticketBodyDist < RT_BORDER` is the cream border,
+   which automatically follows every notch and tooth for free since it's
+   just that same distance field's own contour, dilated outward — no
+   separate notch-by-notch border case needed, identical reasoning to
+   rug-flower's petal borders. Past RT_BORDER: fully transparent
+   (alpha-cutout, same writePng convention every rug in this file uses).
+
+   INTERIOR: a thin black band just inside the body boundary
+   (RT_INNER_OUTLINE px of interior depth) traces the same combined
+   distance field, so it also automatically follows every notch/tooth —
+   the "black outline running just inside the cream border, following the
+   ticket shape" from the reference. A straight vertical band ~1/5 of the
+   body's own width in from its left edge is the stub divider (tested only
+   once a pixel already clears the outline band, so the divider and the
+   top/bottom outline merge into one continuous line rather than doubling
+   up). Everything else inside is the red field.
+
+   TEXT: no real font — GLYPHS below is a hand-built 5-wide×7-tall block
+   capital bitmap font (only the 9 letters FLIXXX/AND CHILL actually use:
+   F L I X A N D C H), rendered by textPixel() at an integer pixel scale
+   (3x for "FLIXXX", 2x for "AND CHILL" — dominant vs. secondary per the
+   owner's ask) with a same-direction-offset shadow copy of the same glyph
+   lookup drawn first in black, then the real glyph on top in white, which
+   is what gives the hard drop-shadow without a second bitmap. Both text
+   blocks are centered in the main panel (right of the stub divider).
+   Stars are a fixed small 7×7 pixel-art sparkle bitmap (STAR_GLYPH, not a
+   parametric 5-point-star distance field — at 7px across a hand-drawn
+   bitmap reads more clearly than a tiny analytic star would) placed at
+   fixed centres: a diagonal row of 5 between the two text lines, plus 2
+   more in the stub panel, clear of the notch circles.
+
+   Same hash2 per-pixel shading idiom as every other rug in this file, on
+   every fill (border, field, outline, divider, text, stars alike) so nothing
+   reads as flat vector art. Deterministic — pure geometry + a hand-built
+   font table + hash2, no Math.random, no Date. ---- */
+const RT_W = 176, RT_H = 124;
+const RT_CX = 88, RT_CY = 62; // body centre
+const RT_HX = 82, RT_HY = 56; // body half-extents (box spans x 6..170, y 6..118)
+const RT_BORDER = 3; // cream border width
+const RT_INNER_OUTLINE = 2.5; // black inner-outline band depth
+const RT_NOTCH_R = 16; // left/right concave notch radius
+const RT_TOOTH_W = 5, RT_TOOTH_D = 4, RT_TOOTH_PERIOD = 12; // perforation teeth
+const RT_TOOTH_X0 = 24, RT_TOOTH_X1 = 152; // kept clear of the notch circles
+const RT_DIVIDER_X = RT_CX - RT_HX + (RT_HX * 2) / 5; // ~1/5 in from the left edge
+const RT_DIVIDER_HALF = 1;
+const RT_RED = "#c23b2b"; // warm brick/orange-red field
+const RT_CREAM = PALETTE.cream100;
+const RT_BLACK = PALETTE.vinyl900;
+const RT_WHITE = "#ffffff";
+const RT_GOLD = "#f2c14e";
+function sdBox(x, y, cx, cy, hx, hy) {
+  const qx = Math.abs(x - cx) - hx, qy = Math.abs(y - cy) - hy;
+  const ox = Math.max(qx, 0), oy = Math.max(qy, 0);
+  return Math.hypot(ox, oy) + Math.min(Math.max(qx, qy), 0);
+}
+function sdCircle(x, y, cx, cy, r) {
+  return Math.hypot(x - cx, y - cy) - r;
+}
+function ticketBodyDist(x, y) {
+  let d = sdBox(x, y, RT_CX, RT_CY, RT_HX, RT_HY);
+  d = Math.max(d, -sdCircle(x, y, RT_CX - RT_HX, RT_CY, RT_NOTCH_R)); // left notch
+  d = Math.max(d, -sdCircle(x, y, RT_CX + RT_HX, RT_CY, RT_NOTCH_R)); // right notch
+  for (let tx = RT_TOOTH_X0; tx <= RT_TOOTH_X1; tx += RT_TOOTH_PERIOD) {
+    d = Math.max(d, -sdBox(x, y, tx, RT_CY - RT_HY, RT_TOOTH_W / 2, RT_TOOTH_D / 2)); // top tooth
+    d = Math.max(d, -sdBox(x, y, tx, RT_CY + RT_HY, RT_TOOTH_W / 2, RT_TOOTH_D / 2)); // bottom tooth
+  }
+  return d;
+}
+// 5-wide x 7-tall block capitals — only the letters FLIXXX/AND CHILL need.
+const GLYPHS = {
+  F: ["#####", "#....", "#....", "####.", "#....", "#....", "#...."],
+  L: ["#....", "#....", "#....", "#....", "#....", "#....", "#####"],
+  I: ["#####", "..#..", "..#..", "..#..", "..#..", "..#..", "#####"],
+  X: ["#...#", ".#.#.", "..#..", "..#..", "..#..", ".#.#.", "#...#"],
+  A: [".###.", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"],
+  N: ["#...#", "##..#", "#.#.#", "#.#.#", "#..##", "#...#", "#...#"],
+  D: ["####.", "#...#", "#...#", "#...#", "#...#", "#...#", "####."],
+  C: [".####", "#....", "#....", "#....", "#....", "#....", ".####"],
+  H: ["#...#", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"],
+  // added for the rooftop "UNDER CONSTRUCTION" sign (2026-10-19)
+  U: ["#...#", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."],
+  E: ["#####", "#....", "#....", "####.", "#....", "#....", "#####"],
+  R: ["####.", "#...#", "#...#", "####.", "#.#..", "#..#.", "#...#"],
+  O: [".###.", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."],
+  S: [".####", "#....", "#....", ".###.", "....#", "....#", "####."],
+  T: ["#####", "..#..", "..#..", "..#..", "..#..", "..#..", "..#.."],
+};
+function glyphWidth(ch) {
+  return GLYPHS[ch] ? 5 : 3; // space (or any unmapped char) is a 3-unit blank
+}
+// Is (x,y) ink for `str` rendered at `scale` px/unit, top-left at (originX, originY)?
+function textPixel(x, y, str, originX, originY, scale) {
+  const ly = y - originY;
+  if (ly < 0 || ly >= 7 * scale) return false;
+  const rowIdx = Math.floor(ly / scale);
+  let cursor = 0; // in font units
+  for (const ch of str) {
+    const glyph = GLYPHS[ch];
+    const w = glyphWidth(ch);
+    const localX = x - (originX + cursor * scale);
+    if (localX >= 0 && localX < w * scale) {
+      if (!glyph) return false;
+      const colIdx = Math.floor(localX / scale);
+      return glyph[rowIdx][colIdx] === "#";
+    }
+    cursor += w + 1; // + 1 unit gap between characters
+  }
+  return false;
+}
+// Fixed small pixel-art sparkle (stands in for a 5-point star — a
+// parametric star distance field doesn't read as "star" at 7px across;
+// a hand-drawn bitmap does) — cross + diagonal ticks.
+const STAR_GLYPH = ["...#...", "...#...", ".#.#.#.", "..###..", "#######", "..###..", ".#.#.#."];
+const RT_STARS = [
+  // main-panel diagonal row, between the two text lines
+  [56, 51], [80, 53], [104, 55], [128, 57], [148, 59],
+  // stub panel, clear of the left notch circle (notch reaches to x~22)
+  [24, 26], [24, 96],
+];
+function starHit(x, y, cx, cy) {
+  const lx = Math.floor(x - (cx - 3));
+  const ly = Math.floor(y - (cy - 3));
+  if (lx < 0 || lx >= 7 || ly < 0 || ly >= 7) return false;
+  return STAR_GLYPH[ly][lx] === "#";
+}
+function rugTicket(x, y) {
+  const d = ticketBodyDist(x, y);
+  if (d >= RT_BORDER) return [0, 0, 0, 0]; // outside the border — fully transparent
+  let f = 0.94 + hash2(x, y, 771) * 0.1; // per-pixel shading so it doesn't read as flat vector art
+
+  if (d >= 0) return [...shade(RT_CREAM, f), 255]; // border band, follows every notch/tooth
+
+  const innerDepth = -d;
+  if (innerDepth < RT_INNER_OUTLINE) return [...shade(RT_BLACK, f), 255]; // inner outline band
+
+  if (Math.abs(x - RT_DIVIDER_X) < RT_DIVIDER_HALF) return [...shade(RT_BLACK, f), 255]; // stub divider
+
+  // FLIXXX — dominant, scale 3, shadow offset (2,2)
+  if (textPixel(x, y, "FLIXXX", 52, 26, 3)) return [...shade(RT_WHITE, f), 255];
+  if (textPixel(x - 2, y - 2, "FLIXXX", 52, 26, 3)) return [...shade(RT_BLACK, f), 255];
+  // AND CHILL — secondary, scale 2, shadow offset (1,1)
+  if (textPixel(x, y, "AND CHILL", 53, 64, 2)) return [...shade(RT_WHITE, f), 255];
+  if (textPixel(x - 1, y - 1, "AND CHILL", 53, 64, 2)) return [...shade(RT_BLACK, f), 255];
+
+  for (const [scx, scy] of RT_STARS) {
+    if (starHit(x, y, scx, scy)) return [...shade(RT_GOLD, f), 255];
+  }
+
+  return [...shade(RT_RED, f), 255]; // field
+}
+
+/* ---- rug option set (W13 polish pass — rug-ticket read badly live and the
+   owner called a stop on chasing further photo-reference rewrites; asked
+   instead for a few ORIGINAL designs, not modeled on any supplied photo,
+   to choose from). None of these three is wired into Bedroom.tsx — that's
+   the owner's pick to make. All three share one canvas size (120×85,
+   120/85 = 1.412 vs. the rug mesh's 2.4/1.7 = 1.412 — matches to 3
+   decimal places) and the same alpha-cutout/hash2-shading conventions
+   every rug in this file uses, so whichever one gets picked drops straight
+   onto the existing mesh with no aspect stretch. rug-ticket.png/
+   rug-flower.png/rug-blob.png/rug-moroccan.png all stay on disk per the
+   "keep rejected variants" rule. ---- */
+const OPT_W = 120, OPT_H = 85;
+const OPT_CX = 60, OPT_CY = 42.5;
+const OPT_HX = 54, OPT_HY = 36; // rounded-rect body half-extents (stripe/diamond)
+const OPT_CORNER = 8;
+const OPT_BORDER = 3;
+function sdRoundBox(x, y, cx, cy, hx, hy, r) {
+  return sdBox(x, y, cx, cy, hx - r, hy - r) - r;
+}
+function sdEllipse(x, y, cx, cy, rx, ry) {
+  // same "(f-1)*min(rx,ry) approximates px distance near the boundary"
+  // trick rug-flower's petals use.
+  const f = Math.hypot((x - cx) / rx, (y - cy) / ry);
+  return (f - 1) * Math.min(rx, ry);
+}
+
+/* rug-option-stripe: plain rounded-rect silhouette, cream field, even
+   45°-diagonal cream/teal stripes with a thin ink pinstripe at each color
+   change — the simplest, calmest of the three. */
+function rugOptionStripe(x, y) {
+  const d = sdRoundBox(x, y, OPT_CX, OPT_CY, OPT_HX, OPT_HY, OPT_CORNER);
+  if (d >= OPT_BORDER) return [0, 0, 0, 0];
+  let f = 0.94 + hash2(x, y, 811) * 0.1;
+  if (d >= 0) return [...shade(PALETTE.cream100, f), 255];
+  const band = Math.floor((x + y) / 9); // 45° diagonal period-9 bands
+  const onLine = ((x + y) % 9 === 0 || (x + y) % 9 === 8) && -d > 1.5; // pinstripe, not on the outer rim
+  if (onLine) return [...shade(PALETTE.night900, f), 255];
+  const c = band % 2 === 0 ? PALETTE.cream100 : PALETTE.teal500;
+  return [...shade(c, f), 255];
+}
+
+/* rug-option-diamond: plain rounded-rect silhouette, argyle/lattice
+   diamond grid (plum + cream), thin lattice line at every cell edge —
+   busier, cozier "grandma-chic" read. */
+const OPT_DIAMOND_SIZE = 12;
+function rugOptionDiamond(x, y) {
+  const d = sdRoundBox(x, y, OPT_CX, OPT_CY, OPT_HX, OPT_HY, OPT_CORNER);
+  if (d >= OPT_BORDER) return [0, 0, 0, 0];
+  let f = 0.94 + hash2(x, y, 821) * 0.1;
+  if (d >= 0) return [...shade(PALETTE.cream100, f), 255];
+  const u = x + y, v = x - y;
+  const um = ((u % OPT_DIAMOND_SIZE) + OPT_DIAMOND_SIZE) % OPT_DIAMOND_SIZE;
+  const vm = ((v % OPT_DIAMOND_SIZE) + OPT_DIAMOND_SIZE) % OPT_DIAMOND_SIZE;
+  const onLattice = um < 1.2 || vm < 1.2;
+  if (onLattice && -d > 1.5) return [...shade(PALETTE.purple500, f), 255];
+  const cellU = Math.floor(u / OPT_DIAMOND_SIZE), cellV = Math.floor(v / OPT_DIAMOND_SIZE);
+  const c = (cellU + cellV) % 2 === 0 ? PALETTE.cream100 : PALETTE.purple700;
+  return [...shade(c, f), 255];
+}
+
+/* rug-option-ring: OVAL silhouette (not a rectangle, unlike the other two
+   — a different shape option, not just a different pattern), concentric
+   alternating warm rings standing in for a classic braided round rug.
+   Slight per-ring-band angular hash2 variation on top of the base per-
+   pixel shading, so the rings read as woven cord rather than flat paint
+   bands. */
+const OPT_RING_RX = 54, OPT_RING_RY = 36;
+const OPT_RING_BAND = 6.5;
+const OPT_RING_COLORS = [PALETTE.wood700, PALETTE.amber500, PALETTE.cream100, PALETTE.wood300];
+function rugOptionRing(x, y) {
+  const d = sdEllipse(x, y, OPT_CX, OPT_CY, OPT_RING_RX, OPT_RING_RY);
+  if (d >= OPT_BORDER) return [0, 0, 0, 0];
+  let f = 0.93 + hash2(x, y, 831) * 0.1;
+  if (d >= 0) return [...shade(PALETTE.cream100, f), 255];
+  const radial = Math.hypot((x - OPT_CX) / OPT_RING_RX, (y - OPT_CY) / OPT_RING_RY) * OPT_RING_RX; // px-ish radius
+  const ring = Math.floor(radial / OPT_RING_BAND) % OPT_RING_COLORS.length;
+  f *= 0.96 + hash2(Math.floor(radial), Math.round(Math.atan2(y - OPT_CY, x - OPT_CX) * 6), 832) * 0.08; // braided-cord texture
+  return [...shade(OPT_RING_COLORS[ring], f), 255];
+}
+
+/* ---- workstation corkboard rework (W9 polish pass, owner ask: "put the
+   logos of the companies i've worked with there alongwith some high
+   designation papers there instead of the white with lines"). W9c
+   (owner, verbatim): "i dont want to show company cards there just show
+   something normal i dont want the company name on the card, make some
+   generic stuff to put on it" — the three company wordmark cards (and
+   their dedicated pixel wordmark font, below) are GONE; replaced with
+   three generic pinned items (a to-do checklist, a ticket stub, a small
+   scenic postcard) that carry no legible proper nouns, same "illegible
+   print" idiom the certificate/offer-letter below already use. The
+   certificate, offer-letter, and polaroid are UNCHANGED (owner liked
+   those). ---- */
+
+/* to-do checklist note: ruled lines, a red margin rule, a small checkbox
+   per line (checked = filled + tick stroke), one line struck through.
+   "Text" is an abstract ink bar per line — never real glyphs. */
+const TODO_W = 44, TODO_H = 56;
+const TODO_PAPER = PALETTE.cream100;
+const TODO_INK = PALETTE.wood900;
+const TODO_ROWS = [
+  { y: 12, checked: true, crossed: false },
+  { y: 21, checked: true, crossed: false },
+  { y: 30, checked: false, crossed: true },
+  { y: 39, checked: true, crossed: false },
+  { y: 48, checked: false, crossed: false },
+];
+function todoChecklist(x, y) {
+  if (x === 0 || x === TODO_W - 1 || y === 0 || y === TODO_H - 1) return shade(TODO_INK, 0.75); // page edge
+  if (x === 7) return shade(PALETTE.red500, 0.8 + hash2(x, y, 881) * 0.1); // ruled-paper margin rule
+  let c = shade(TODO_PAPER, 0.95 + hash2(x, y, 882) * 0.05); // paper grain
+  for (const row of TODO_ROWS) {
+    if (y === row.y + 3 && x > 10 && x < TODO_W - 4) c = shade(TODO_INK, 0.35); // faint rule line
+    const boxSize = 5;
+    const bx0 = 11, by0 = row.y - boxSize;
+    const inBox = x >= bx0 && x < bx0 + boxSize && y >= by0 && y < by0 + boxSize;
+    if (inBox) {
+      const onEdge = x === bx0 || x === bx0 + boxSize - 1 || y === by0 || y === by0 + boxSize - 1;
+      if (onEdge) c = shade(TODO_INK, 0.8);
+      else if (row.checked) {
+        // simple tick: two short diagonal strokes
+        const lx = x - bx0, ly = y - by0;
+        c = lx + ly === 4 || Math.abs(lx - ly) <= 1 ? shade(TODO_INK, 0.9) : c;
+      }
+    }
+    const textW = 6 + Math.floor(hash2(0, row.y, 883) * 14); // deterministic per-row bar length
+    const inText = x >= 19 && x < 19 + textW && y >= row.y - 4 && y < row.y - 1;
+    if (inText) c = shade(TODO_INK, 0.55 + hash2(x, y, 884) * 0.1); // abstract text bar, never real glyphs
+    if (row.crossed && x >= 17 && x < 40 && y === row.y - 2) c = shade(PALETTE.red500, 0.75); // strike-through
+  }
+  return c;
+}
+
+/* ticket stub: dark header band, a couple of abstract text bars, a
+   dashed perforation line separating a small stub with its own punched
+   hole, pinned at a jaunty angle in the JSX below. */
+const TICKET_W = 76, TICKET_H = 30;
+const TICKET_PAPER = PALETTE.plaster300;
+const TICKET_INK = PALETTE.night900;
+const TICKET_PERF_X = 58;
+function ticketStub(x, y) {
+  if (x === 0 || x === TICKET_W - 1 || y === 0 || y === TICKET_H - 1) return shade(TICKET_INK, 0.85); // page edge
+  if (y > 1 && y < 8) return shade(TICKET_INK, 0.9 + hash2(x, y, 891) * 0.08); // dark header band
+  if (x === TICKET_PERF_X && y % 3 !== 0) return shade(TICKET_INK, 0.55); // dashed perforation (tear edge)
+  const stub = x > TICKET_PERF_X; // small stub past the perforation, faint tint difference
+  let c = shade(TICKET_PAPER, (stub ? 0.9 : 0.96) + hash2(x, y, 892) * 0.05);
+  if (y > 12 && y < 15 && x > 5 && x < TICKET_PERF_X - 4) c = shade(TICKET_INK, 0.6 + hash2(x, y, 893) * 0.1); // text bar 1
+  if (y > 18 && y < 21 && x > 5 && x < TICKET_PERF_X - 10) c = shade(TICKET_INK, 0.55 + hash2(x, y, 894) * 0.1); // text bar 2
+  const hx = TICKET_PERF_X + (TICKET_W - TICKET_PERF_X) / 2, hy = TICKET_H / 2, hr = 3;
+  const dh = Math.hypot(x - hx, y - hy);
+  if (stub && dh < hr) c = shade(TICKET_INK, dh < hr - 1.2 ? 1.3 : 0.6); // punched hole (dark negative-space fake)
+  return c;
+}
+
+/* small scenic postcard: thin white border, a toy horizon/hills/moon
+   print (reuses the house's own dusk-vignette motif at postcard scale,
+   same as the pinned photo below), a stamp square in one corner. */
+const POSTCARD_W = 64, POSTCARD_H = 44;
+const POSTCARD_BORDER = 3;
+function postcardScenic(x, y) {
+  const inBorder = x < POSTCARD_BORDER || x >= POSTCARD_W - POSTCARD_BORDER || y < POSTCARD_BORDER || y >= POSTCARD_H - POSTCARD_BORDER;
+  if (inBorder) return shade(PALETTE.cream100, 0.97 + hash2(x, y, 901) * 0.04); // thin white border
+  const y0 = POSTCARD_BORDER, y1 = POSTCARD_H - POSTCARD_BORDER;
+  const t = (y - y0) / (y1 - y0);
+  let c = shade(PALETTE.purple700, 0.6 + (1 - t) * 0.45); // dusk sky gradient
+  const horizon = y0 + Math.round((y1 - y0) * 0.6);
+  if (y >= horizon) {
+    const ridgeY = horizon + Math.round(Math.sin((x - POSTCARD_BORDER) / 5.2) * 2.4);
+    c = y >= ridgeY ? shade(PALETTE.night700, 1.05 + hash2(x, y, 902) * 0.05) : shade(PALETTE.amber500, 0.5); // simple hills / sky sliver
+  }
+  const mx = POSTCARD_W * 0.32, my = horizon - 6, mr = 3.5;
+  if (Math.hypot(x - mx, y - my) < mr) c = shade(PALETTE.cream100, 0.92); // moon disc
+  // stamp square, top-right corner of the scenic print, serrated edge look
+  const sx0 = POSTCARD_W - POSTCARD_BORDER - 13, sy0 = POSTCARD_BORDER + 1, ss = 11;
+  if (x >= sx0 && x < sx0 + ss && y >= sy0 && y < sy0 + ss) {
+    const lx = x - sx0, ly = y - sy0;
+    const edge = lx === 0 || lx === ss - 1 || ly === 0 || ly === ss - 1;
+    if (edge && (lx + ly) % 2 === 0) c = shade(PALETTE.cream100, 0.95); // serrated dashes
+    else if (edge) c = shade(PALETTE.teal500, 0.7);
+    else c = shade(PALETTE.teal500, 0.75 + hash2(x, y, 903) * 0.15); // stamp ink block
+  }
+  return c;
+}
+
+/* ---- "high designation" documents: two official-looking prints, distinct
+   from the plain note stock above. Neither carries real lettering (same
+   "illegible print" idiom posterCredits/the ad tagline use elsewhere in
+   this file) — they read as important paper from shape/border/seal
+   alone, which is the whole ask. Same 56×72 footprint so they pin
+   together cleanly. ---- */
+const DOC_W = 56, DOC_H = 72;
+
+/* certificate/award: parchment stock, ornate double border, a gold seal
+   w/ ribbon tails low-center, a bold centered title band + two shorter
+   body lines up top. */
+const CERT_PAPER = PALETTE.cream100;
+const CERT_INK = PALETTE.wood900;
+const CERT_GOLD = PALETTE.amber500;
+function certificatePaper(x, y) {
+  const b = Math.min(x, DOC_W - 1 - x, y, DOC_H - 1 - y);
+  if (b === 0) return shade(CERT_INK, 0.8); // outer border
+  if (b === 2 || b === 3) return shade(CERT_GOLD, 0.88 + hash2(x, y, 851) * 0.1); // inner gold rule
+  let c = shade(CERT_PAPER, 0.95 + hash2(x, y, 852) * 0.05); // paper grain
+  if (y > 9 && y < 15 && y % 3 < 2 && x > 10 && x < DOC_W - 10 - ((y * 5) % 6)) c = shade(CERT_INK, 1.15); // title band
+  if (y > 20 && y < 24 && x > 14 && x < DOC_W - 14) c = shade(CERT_INK, 0.55); // body line 1
+  if (y > 27 && y < 31 && x > 16 && x < DOC_W - 16) c = shade(CERT_INK, 0.5); // body line 2
+  const cx = DOC_W / 2, cy = 52, r = 10;
+  const dx = x - cx, dy = y - cy;
+  const rr = Math.hypot(dx, dy);
+  if (rr < r) {
+    c = shade(CERT_GOLD, Math.floor(rr) % 3 === 0 ? 0.72 : 1.05); // seal
+    if (rr < 3.5) c = shade(CERT_INK, 0.9); // center medallion
+  } else if (y > cy + r - 3 && y < DOC_H - 3) {
+    const t = y - (cy + r - 3);
+    if (Math.abs(x - (cx - 3 - t * 0.3)) < 1.6 || Math.abs(x - (cx + 3 + t * 0.3)) < 1.6) {
+      c = shade(PALETTE.red500, 0.85 + hash2(x, y, 853) * 0.1); // ribbon tails
+    }
+  }
+  return c;
+}
+
+/* offer-letter / spec-sheet: plain stock, a solid letterhead bar, dense
+   tightly-packed illegible body lines, a looser signature squiggle near
+   the bottom — laid out denser than the certificate above so the two
+   read as different document types. */
+const OFFER_PAPER = PALETTE.plaster300;
+const OFFER_INK = PALETTE.night900;
+function offerLetterPaper(x, y) {
+  if (x === 0 || x === DOC_W - 1 || y === 0 || y === DOC_H - 1) return shade(OFFER_INK, 0.7); // page edge
+  if (y > 2 && y < 9) return shade(OFFER_INK, 0.92 + hash2(x, y, 861) * 0.06); // letterhead bar
+  if (y === 10) return shade(OFFER_INK, 0.6); // rule under the letterhead
+  let c = shade(OFFER_PAPER, 0.95 + hash2(x, y, 862) * 0.05); // paper grain
+  if (y > 14 && y < 52 && y % 3 === 0 && x > 6 && x < DOC_W - 6 - ((y * 7) % 14)) {
+    c = shade(OFFER_INK, 0.55 + hash2(x, y, 863) * 0.1); // dense body text
+  }
+  const wob = Math.sin((x - 10) / 3) * 2 + Math.sin((x - 10) / 1.3) * 0.8;
+  if (x > 10 && x < DOC_W - 14 && Math.abs(y - (60 + wob)) < 1.4) c = shade(OFFER_INK, 0.85); // signature squiggle
+  return c;
+}
+
+/* ---- pinned photo (personal item, corkboard rework): a small polaroid —
+   white card stock, a tiny invented dusk/mountain vignette (reuses the
+   house's own sunset-bars/mountain-ridge motif at toy scale, not a new
+   subject) in the photo window, a blank caption strip at the bottom like
+   a real polaroid. ---- */
+const POLA_W = 44, POLA_H = 52;
+const POLA_CAP_H = 12; // blank caption strip at the bottom
+function pinnedPhoto(x, y) {
+  const inPhoto = x >= 3 && x < POLA_W - 3 && y >= 3 && y < POLA_H - POLA_CAP_H;
+  if (!inPhoto) return shade(PALETTE.cream100, 0.96 + hash2(x, y, 871) * 0.05); // white polaroid card
+  const y0 = 3, y1 = POLA_H - POLA_CAP_H;
+  const t = (y - y0) / (y1 - y0);
+  let c = shade(PALETTE.purple700, 0.55 + (1 - t) * 0.5); // dusk sky gradient
+  const horizon = y0 + Math.round((y1 - y0) * 0.62);
+  if (y >= horizon) {
+    const ridgeY = horizon + Math.round(Math.sin((x - 3) / 3.4) * 2);
+    c = y >= ridgeY ? shade(PALETTE.night900, 1.05) : shade(PALETTE.amber500, 0.55); // ground / sky sliver
+  }
+  const cx = (3 + POLA_W - 3) / 2, cy = horizon - 4;
+  if (Math.hypot(x - cx, y - cy) < 4) c = shade(PALETTE.amber300, 0.9); // small sun disc
+  return c;
+}
+
+/* ---- tokonoma hanging scrolls (common area alcove): two kakejiku 32×96 —
+   cream washi paper panel between deep-teal silk mounting strips (top +
+   bottom, ~6px each; reuses the module's existing TEAL so the alcove ties
+   into the room's other teal accents). Ink-wash idiom borrows directly from
+   posterMountainRidge's RIDGE_LAYERS (lighter tone = further layer, array
+   order back-to-front so nearer layers override) and PALETTE's night900/
+   night500 ink tiers. ---- */
+const SCROLL_H = 96, SCROLL_MOUNT_H = 6;
+const SCROLL_SEAL_X0 = 24, SCROLL_SEAL_Y0 = 74; // shared 4×4 red seal, bottom-right of the paper
+
+function scrollMount(x, y, seed) {
+  let f = 0.88 + hash2(x, y, seed) * 0.14;
+  if (y % 2 === 0) f *= 0.93; // woven silk banding
+  return shade(TEAL, f);
+}
+
+function scrollWashi(x, y, seed) {
+  let f = 0.87 + hash2(x, y, seed) * 0.08; // aged cream, not bright white
+  if (hash2(x, y, seed + 1) > 0.965) f *= 0.85; // occasional darker fibre fleck
+  return shade(PALETTE.cream100, f);
+}
+
+function scrollSeal(x, ry, seed) {
+  const sx = x - SCROLL_SEAL_X0, sy = ry - SCROLL_SEAL_Y0;
+  if (sx < 0 || sx > 3 || sy < 0 || sy > 3) return null;
+  return shade(PALETTE.red500, 0.72 + hash2(x, ry, seed) * 0.2);
+}
+
+/* 1. ink landscape — DELETED 2026-10-19 (owner locked the ensō; the texture
+   and its JOBS entry were removed together so the next generator run can't
+   resurrect it — HANDOFF §7 bug class 5). */
+
+/* 2. enso: a single open, uneven zen brush circle (thick brush-start, thin
+   dry-brush end) centred upper-middle of the paper, a short column of
+   abstract ink marks below it (NOT real kanji — plain brush blots), same
+   seal + mount treatment the deleted ink landscape used. */
+const SCROLL_ENSO_MARKS = [
+  { cy: 46, w: 7, dx: 0 }, { cy: 52, w: 5, dx: 1 },
+  { cy: 58, w: 6, dx: -1 }, { cy: 64, w: 4, dx: 0 },
+];
+function scrollEnso(x, y) {
+  if (y < SCROLL_MOUNT_H || y >= SCROLL_H - SCROLL_MOUNT_H) return scrollMount(x, y, 911);
+  const ry = y - SCROLL_MOUNT_H;
+  let c = scrollWashi(x, y, 912);
+
+  const cx = 16, cy = 27, R = 11;
+  const dx = x - cx, dy = ry - cy;
+  const angle = Math.atan2(dy, dx);
+  const wobble = (hash2(Math.round((angle + Math.PI) * 6), 0, 913) - 0.5) * 1.6; // slightly uneven ring
+  const rr = Math.sqrt(dx * dx + dy * dy);
+  const startAngle = -2.5, sweep = 5.1; // ~90% of the circle; the rest is the open end
+  const delta = ((angle - startAngle) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+  if (delta <= sweep) {
+    const t = delta / sweep; // 0 = brush start (thick), 1 = brush end (thin)
+    const half = (2.6 - 1.9 * t) / 2;
+    if (Math.abs(rr - (R + wobble)) < half && hash2(x, y, 914) > t * 0.45) {
+      c = shade(PALETTE.night900, 1.15 + hash2(x, y, 915) * 0.1); // dry-brush gaps grow toward the thin end
+    }
+  }
+
+  for (const m of SCROLL_ENSO_MARKS) {
+    if (ry >= m.cy && ry < m.cy + 3) {
+      const half = m.w / 2 + hash2(x, ry, 916) * 0.6;
+      if (Math.abs(x - (16 + m.dx)) < half && hash2(x, y, 917) > 0.12) c = shade(PALETTE.night900, 1.05);
+    }
+  }
+
+  const seal = scrollSeal(x, ry, 918);
+  if (seal) c = seal;
+  return c;
+}
+
 /* Only textures referenced by src/ belong here — a JOBS entry for a deleted
    PNG silently resurrects it on the next generator run. Prune both together.
    (Variant fns for rejected style-gate options are kept below for reference.) */
+/* ---- rooftop "UNDER CONSTRUCTION" hoarding panel 156×100 (owner, 2026-10-19:
+   "the text on that under construction sign is not visible or readable").
+   TWO faults in the old 96×40 plank version:
+     1. every special-cased branch returned a hex STRING where writePng wants
+        an [r,g,b] array — pngjs coerced `png.data[i] = "#"` to 0 and took the
+        alpha from the string's 4th character, so the painted text and BOTH
+        hazard bands were written near-fully transparent. The letters were
+        literally not in the file. Everything below returns arrays.
+     2. the panel was 0.62m wide on screen (~5px per 5×7 glyph at the
+        dollhouse camera). The board is now a 1.56m × 1.0m standing hoarding.
+   Texture aspect 156:100 matches the panel's 1.56m:1.0m exactly, so glyphs
+   are not stretched. Black #111 ink on safety yellow #e3b23c (max contrast,
+   no mid-tones), 3-texel black border, diagonal black/yellow hazard chevrons
+   in a 12-texel band along the BOTTOM only. "UNDER" is drawn at 5× pixel
+   scale (25×35 texels per glyph ≈ 22px on screen) and carries the
+   legibility; "CONSTRUCTION" is 12 characters wide, so 2× (10×14) is the
+   largest scale that fits across a panel this wide — it reads as a word
+   shape rather than letter-by-letter, which is the hard limit of this
+   camera. ---- */
+const SIGN_W = 156;
+const SIGN_H = 100;
+const SIGN_BORDER = 3;
+const SIGN_HAZARD_H = 12; // bottom band only (6-texel chevrons at 2× scale)
+const SIGN_YELLOW = "#e3b23c";
+const SIGN_INK = "#111111";
+const SIGN_NAIL = "#5a5047";
+const SIGN_L1 = { text: "UNDER", scale: 5 };
+const SIGN_L2 = { text: "CONSTRUCTION", scale: 2 };
+// textPixel advances 6 font units per character and the last one only
+// occupies 5 — same measure the glyph table uses, so the lines stay centred
+// if a scale ever changes.
+const signTextW = (l) => (l.text.length * 6 - 1) * l.scale;
+const SIGN_L1_X = Math.floor((SIGN_W - signTextW(SIGN_L1)) / 2);
+const SIGN_L2_X = Math.floor((SIGN_W - signTextW(SIGN_L2)) / 2);
+const SIGN_L1_Y = 13;
+const SIGN_L2_Y = SIGN_L1_Y + 7 * SIGN_L1.scale + 12;
+const SIGN_HAZ_TOP = SIGN_H - SIGN_BORDER - SIGN_HAZARD_H;
+function signUnderConstruction(x, y) {
+  // 3-texel black border on all four edges
+  if (x < SIGN_BORDER || x >= SIGN_W - SIGN_BORDER || y < SIGN_BORDER || y >= SIGN_H - SIGN_BORDER) {
+    return hexToRgb(SIGN_INK);
+  }
+  // bottom hazard band: 45° chevrons, 6 texels yellow / 6 black
+  if (y >= SIGN_HAZ_TOP) {
+    return hexToRgb(Math.floor((x + (SIGN_H - y)) / 6) % 2 === 0 ? SIGN_YELLOW : SIGN_INK);
+  }
+  // nail heads, 2×2, just inside the top corners and above the hazard band
+  const nailX = x - SIGN_BORDER < 4 || SIGN_W - SIGN_BORDER - x <= 4;
+  const nailY = y - SIGN_BORDER < 3 || SIGN_HAZ_TOP - y <= 3;
+  if (nailX && nailY && (x + y) % 2 === 0) return hexToRgb(SIGN_NAIL);
+  // the paint, in flat #111 — no shading on the ink, contrast is the point
+  if (textPixel(x, y, SIGN_L1.text, SIGN_L1_X, SIGN_L1_Y, SIGN_L1.scale)) return hexToRgb(SIGN_INK);
+  if (textPixel(x, y, SIGN_L2.text, SIGN_L2_X, SIGN_L2_Y, SIGN_L2.scale)) return hexToRgb(SIGN_INK);
+  // plywood ground: safety yellow with a faint vertical grain streak so it
+  // doesn't read as flat vector art (kept inside ±4% so the ink still pops)
+  const streak = hash2(Math.floor(x / 3), Math.floor(y / 7), 781);
+  const f = (streak > 0.93 ? 0.94 : streak < 0.07 ? 1.05 : 1) + hash2(x, y, 782) * 0.03;
+  return shade(SIGN_YELLOW, f);
+}
+
 const JOBS = [
   ["neon-3am", 40, 16, neonSign],
   ["neon-shipped", 62, 22, neonShipped],
@@ -861,6 +1974,29 @@ const JOBS = [
   ["zen-gravel", 64, 64, zenGravel],
   ["zen-moss", 32, 32, zenMoss],
   ["stone-slab", 32, 32, stoneSlab],
+  ["blueprint-paper", BP_W, BP_H, blueprintPaper],
+  ["door-glow", 8, 32, doorGlow],
+  ["floor-spill", 32, 32, floorSpill],
+  ["pegboard", 40, 24, pegboard],
+  ["poster-retro-ad", WSP_W, WSP_H, posterRetroAd],
+  ["poster-circuit", WSP_W, WSP_H, posterCircuit],
+  ["poster-synthwave", WSP_W, WSP_H, posterSynthwave],
+  ["poster-star-chart", WSP_W, WSP_H, posterStarChart],
+  ["rug-mushroom", 64, 64, rugMushroom],
+  ["rug-blob", 112, 80, rugBlob],
+  ["rug-flower", 112, 80, rugFlower],
+  ["rug-ticket", RT_W, RT_H, rugTicket],
+  ["rug-option-stripe", OPT_W, OPT_H, rugOptionStripe],
+  ["rug-option-diamond", OPT_W, OPT_H, rugOptionDiamond],
+  ["rug-option-ring", OPT_W, OPT_H, rugOptionRing],
+  ["corkboard-item-todo", TODO_W, TODO_H, todoChecklist],
+  ["corkboard-item-ticket", TICKET_W, TICKET_H, ticketStub],
+  ["corkboard-item-postcard", POSTCARD_W, POSTCARD_H, postcardScenic],
+  ["corkboard-doc-certificate", DOC_W, DOC_H, certificatePaper],
+  ["corkboard-doc-offer-letter", DOC_W, DOC_H, offerLetterPaper],
+  ["corkboard-photo-polaroid", POLA_W, POLA_H, pinnedPhoto],
+  ["scroll-enso", 32, 96, scrollEnso],
+  ["sign-under-construction", SIGN_W, SIGN_H, signUnderConstruction],
 ];
 
 for (const [name, w, h, fn] of JOBS) {

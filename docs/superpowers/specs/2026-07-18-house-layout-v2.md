@@ -75,3 +75,20 @@ approximate; exact rects get locked per-plan with Rohan.)
    follow the desk [it IS the work content]; coffee + bookshelf + katana stay common.)
 2. Gaming den contents + whether it's part of the museum secret or reached openly.
 3. Real doors (animated? just openings with frames?) vs current open arches.
+
+## Resolutions (Rohan, 2026-08-09 — supersede the open questions above)
+
+1. **Migration**: the ENTIRE current workspace interior moves to the new workstation room,
+   arranged per Rohan's excalidraw #3 (workstation interior): desk+chair north-center,
+   corkboard north-east, projects/polaroid wall west-north, EVA southwest freestanding,
+   **coffee bar → workstation east wall north** (NOT staying in common), neon "shipped"
+   above the corkboard (proposed default). Bookshelf, katana shelf, plants STAY in the
+   common area (proposed default). West-wall-middle slot = TBD ("i don't know what to put
+   here yet") — candidates: bookshelf / mini server rack / scope-creep whiteboard; may ship
+   as bare wall. STAIRS remain in the common area (NE), NOT in the workstation.
+2. **Doors**: FRAMED OPENINGS everywhere (visible frames + threshold trim, no leaf, no
+   animation). Workstation door = south wall, east portion (~x 5.2–6.5 room-local, swing
+   arc drawn). Engawa's sliding glass stays the only "real" door.
+3. **Scope (this plan)**: full skeleton — common-area conversion + workstation room +
+   genkan strip + roof stair-room + basement stair stub. Basement interior = separate plan.
+4. **Process**: branch + PR flow (site is live); Rohan feel-checks on the Vercel PR preview.

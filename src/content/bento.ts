@@ -71,6 +71,8 @@ export const HERO_QUOTES = [
   { text: "a wizard is never late.", source: "gandalf, the lord of the rings" },
   { text: "there is no secret ingredient.", source: "kung fu panda" },
   { text: "why waste time say lot word when few word do trick.", source: "kevin malone, the office" },
+  { text: "hey, you. you're finally awake.", source: "ralof, skyrim" },
+  { text: "i used to be an adventurer like you. then i took an arrow in the knee.", source: "a guard, skyrim" },
 ] as const;
 
 export const MORE_PROJECT_BLURBS: Record<string, string> = {

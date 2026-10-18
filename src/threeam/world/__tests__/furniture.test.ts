@@ -1,6 +1,19 @@
 import { describe, it, expect } from "vitest";
-import { HOUSE, type Rect } from "@/threeam/world/layout";
-import { isBlocked, resolveMovement } from "@/threeam/world/collision";
+import {
+  COMMON_RECTS,
+  DOOR_LO,
+  DOOR_HI,
+  HOUSE,
+  GENKAN_DOOR_LO,
+  GENKAN_DOOR_HI,
+  GENKAN_ROOM,
+  GENKAN_STOOL_RECT,
+  WS_DOOR_LO,
+  FRONT_DOOR_LO,
+  FRONT_DOOR_HI,
+  type Rect,
+} from "@/threeam/world/layout";
+import { isBlocked, resolveMovement, PLAYER_RADIUS } from "@/threeam/world/collision";
 import { STATIONS } from "@/threeam/world/stations";
 
 const ground = HOUSE.areas.ground;
@@ -51,63 +64,283 @@ describe("music-room furniture colliders", () => {
 });
 
 describe("workspace furniture colliders", () => {
-  it("desk and chair block", () => {
-    expect(isBlocked(ground, 11, 0.75)).toBe(true); // desk
-    expect(isBlocked(ground, 10.8, 1.9)).toBe(true); // chair (shifted 0.3 west, wave E)
+  // LAYOUT V2 (2026-08-09): the desk, EVA shrine, and coffee bar migrated
+  // out of the common area into the new WORKSTATION_ROOM behind it (see
+  // layout.ts's LAYOUT V2 comment block) — probes below re-point to the
+  // new workstation coords instead of the old common-area ones.
+  it("desk and chair block (migrated to the workstation)", () => {
+    expect(isBlocked(ground, 11.6, -5.55)).toBe(true); // desk
+    expect(isBlocked(ground, 11.4, -4.6)).toBe(true); // chair, center
   });
 
-  it("the spot east of the shifted chair is walkable (desk front unobstructed)", () => {
-    expect(isBlocked(ground, 11.65, 1.9)).toBe(false);
+  it("the desk collider covers the desktop's visual EAST overhang (owner: 'i can walk in the work table' — rect widened 2.2->2.4; west overhang stays uncovered on purpose, it sits inside the projects station trigger zone, see layout.ts)", () => {
+    expect(isBlocked(ground, 12.85, -5.55)).toBe(true); // east overhang, was outside the old x-max 12.7
   });
 
-  it("the SW EVA-01 shrine blocks (replaces the storage-shelf lamp)", () => {
-    expect(isBlocked(ground, 9.1, 5.45)).toBe(true); // plinth center
+  it("the sunset lamp below the akira poster blocks (real floor furniture, genkan precedent)", () => {
+    expect(isBlocked(ground, 8.35, -2.65)).toBe(true); // lamp center
+    expect(isBlocked(ground, 8.6, -3.3)).toBe(false); // floor SE of it stays walkable (probe clear of the west wall's own 0.35 radius margin)
   });
 
-  it("the coffee counter blocks (south wall, center)", () => {
-    // probes sit north of the wall's own bounds margin (z + 0.35 < 6) so
-    // they only pass if the counter rect itself blocks
-    expect(isBlocked(ground, 12, 5.6)).toBe(true); // front face, center
-    expect(isBlocked(ground, 11.4, 5.6)).toBe(true); // west end
-    expect(isBlocked(ground, 12.6, 5.6)).toBe(true); // east end
+  it("the old common-area desk/chair spots are walkable again (migrated to the workstation)", () => {
+    // COMMON KOTATSU PASS: the old desk probe itself (11, 0.75) is now
+    // inside the tokonoma alcove's PLAYER_RADIUS margin (alcove rect
+    // x8.6-10.9, z0-0.6 — its SE corner is 0.18m from that point), so the
+    // probe moves 0.55m south, still squarely in the old desk's footprint.
+    expect(isBlocked(ground, 11.1, 1.3)).toBe(false); // old desk spot
+    expect(isBlocked(ground, 10.8, 1.9)).toBe(false); // old chair spot
+    // ...and the ORIGINAL probe coordinate is blocked, by the tokonoma —
+    // which is the whole reason it moved. Without this the retarget is an
+    // unexplained edit.
+    expect(isBlocked(ground, 11, 0.75)).toBe(true);
   });
 
-  it("the paper-lantern floor lamp blocks (south wall, right of the counter)", () => {
-    expect(isBlocked(ground, 13.8, 5.55)).toBe(true); // lamp center (same rect as the old tripod)
+  it("the spot east of the chair is walkable (desk front unobstructed — probe moved -4.6→-4.4 when the desk collider gained its 0.2m south stand-off, owner round 2 of 'i can walk in the work table')", () => {
+    expect(isBlocked(ground, 12.2, -4.4)).toBe(false);
   });
 
-  it("the south walkway around the coffee corner stays open", () => {
+  it("the SW EVA-01 shrine blocks (migrated to the workstation)", () => {
+    expect(isBlocked(ground, 9.05, -1.1)).toBe(true); // plinth center
+  });
+
+  it("the old common-area EVA shrine spot is walkable again (migrated to the workstation) — COMMON KOTATSU PASS moved the probe north: the kotatsu set now fills the SW quadrant it freed", () => {
+    // was (9.1, 5.45), which sits inside the kotatsu set's own rect
+    // (x8.6-10.9, z3.85-5.95). That the kotatsu — not the departed shrine —
+    // is what blocks there is asserted directly in the "common area kotatsu
+    // living room" block below; this probe keeps its original job (the
+    // shrine's rect is gone) on the open floor just north of the set.
+    expect(isBlocked(ground, 9.1, 3.2)).toBe(false);
+    // the ORIGINAL probe coordinate, blocked by the kotatsu set that took
+    // the quadrant over (the reason the probe moved at all).
+    expect(isBlocked(ground, 9.1, 5.45)).toBe(true);
+  });
+
+  it("the coffee bar blocks (east wall, workstation) — counter + machine + paper lantern merged into one rect", () => {
+    expect(isBlocked(ground, 15.15, -5.5)).toBe(true); // west end
+    expect(isBlocked(ground, 15.5, -5.5)).toBe(true); // center
+    expect(isBlocked(ground, 15.9, -5.5)).toBe(true); // east end
+  });
+
+  it("the full-wall bookshelf blocks (east wall, SE corner — T8 finale item 13: 2nd move, off the west wall)", () => {
+    expect(isBlocked(ground, 15.7, -1.15)).toBe(true); // shelf center
+    expect(isBlocked(ground, 15.7, -1.7)).toBe(true); // near the north end (z-1.8..-0.5 band)
+    expect(isBlocked(ground, 15.7, -0.6)).toBe(true); // near the south end
+  });
+
+  it("the old west-wall bookshelf spot (item 10) is walkable again — probed between the project table's south edge (z-3.9) and the sunset lamp (z-2.88..-2.42, which now stands in the north half of the old bookshelf run, so the probe sits in the remaining south gap)", () => {
+    expect(isBlocked(ground, 8.6, -3.4)).toBe(false);
+  });
+
+  it("the project-building table blocks (west wall, workstation — T8 finale item 15)", () => {
+    expect(isBlocked(ground, 8.5, -5.0)).toBe(true); // table center
+    expect(isBlocked(ground, 8.5, -6.0)).toBe(true); // near the north wall end
+    expect(isBlocked(ground, 8.5, -4.0)).toBe(true); // near the south end
+  });
+
+  it("the bookshelf's rect doesn't overlap the coffee bar's rect (raw AABB check — both on the east wall, shelf south of it)", () => {
+    const bookshelf = ground.furniture.find((f) => f.x === 15.46 && f.z === -1.8)!;
+    const coffeeBar = ground.furniture.find((f) => f.x === 15.1 && f.z === -6.15)!;
+    expect(bookshelf).toBeDefined();
+    expect(coffeeBar).toBeDefined();
+    const overlap =
+      bookshelf.x < coffeeBar.x + coffeeBar.w &&
+      bookshelf.x + bookshelf.w > coffeeBar.x &&
+      bookshelf.z < coffeeBar.z + coffeeBar.d &&
+      bookshelf.z + bookshelf.d > coffeeBar.z;
+    expect(overlap).toBe(false);
+  });
+
+  it("the project table's rect doesn't overlap the EVA shrine's rect (raw AABB check)", () => {
+    const table = ground.furniture.find((f) => f.x === 8 && f.z === -6.1)!;
+    const eva = ground.furniture.find((f) => f.x === 8.3 && f.z === -1.7)!;
+    expect(table).toBeDefined();
+    expect(eva).toBeDefined();
+    const overlap =
+      table.x < eva.x + eva.w &&
+      table.x + table.w > eva.x &&
+      table.z < eva.z + eva.d &&
+      table.z + table.d > eva.z;
+    expect(overlap).toBe(false);
+  });
+
+  it("the old separate paper-lantern floor lamp rect is gone (merged into the coffee bar)", () => {
+    const found = ground.furniture.some(
+      (f) => f.x === 13.55 && f.z === 5.3 && f.w === 0.5 && f.d === 0.5
+    );
+    expect(found).toBe(false);
+  });
+
+  it("the old common-area coffee-corner spot is walkable again (migrated to the workstation)", () => {
+    expect(isBlocked(ground, 12, 5.6)).toBe(false); // old counter front face, center
+    expect(isBlocked(ground, 13.8, 5.55)).toBe(false); // old lamp center
+  });
+
+  it("the south walkway around the old coffee corner stays open", () => {
     expect(isBlocked(ground, 11.5, 5.15)).toBe(false); // between shrine and counter front
     expect(isBlocked(ground, 12, 5.1)).toBe(false); // in front of the counter (coffee-making spot)
     expect(isBlocked(ground, 13.15, 5.5)).toBe(false); // between counter and lantern lamp
     expect(isBlocked(ground, 14.75, 5.5)).toBe(false); // between lamp and bookshelf
   });
 
-  it("the old drawer's footprint is walkable again (drawer removed)", () => {
-    expect(isBlocked(ground, 8.5, 4.8)).toBe(false);
+  it("the old drawer's footprint is walkable again (drawer removed) — COMMON KOTATSU PASS moved the probe north, the kotatsu set reaches x8.6 now", () => {
+    // was (8.5, 4.8): 0.1m west of the kotatsu rect's own x-min, inside the
+    // player radius. Same point of the test, 1.6m north.
+    expect(isBlocked(ground, 8.5, 3.2)).toBe(false);
+    // the ORIGINAL probe coordinate, inside the kotatsu rect's own player-
+    // radius margin now (rect x-min 8.6, probe x 8.5).
+    expect(isBlocked(ground, 8.5, 4.8)).toBe(true);
   });
 
-  it("the SE full-wall bookshelf blocks", () => {
-    expect(isBlocked(ground, 15.7, 4.9)).toBe(true); // bookshelf center
-    expect(isBlocked(ground, 15.7, 4.0)).toBe(true); // near the doorway end of the shelf
-    expect(isBlocked(ground, 15.7, 5.8)).toBe(true); // near the south-wall end of the shelf
+  it("the old common-area SE bookshelf spot is walkable again (T8 finale: moved into the workstation, items 10 then 13) — probed at x15.5, clear of both the (now-gone) bookshelf AND the x16 common/music divider's own PLAYER_RADIUS margin", () => {
+    expect(isBlocked(ground, 15.5, 4.9)).toBe(false); // old bookshelf center
+    expect(isBlocked(ground, 15.5, 4.0)).toBe(false); // old doorway-end of the shelf
+    // COMMON KOTATSU PASS: the shelf's old SOUTH end is the SE potted
+    // tree's corner now (layout.ts COMMON_SE_TREE_RECT, moved out of the
+    // kotatsu footprint), so this probe moves 0.9m north — still inside the
+    // old shelf's own z-band (3.85-5.95) and clear of the tree.
+    expect(isBlocked(ground, 15.5, 4.6)).toBe(false); // old south half of the shelf
+    // the ORIGINAL probe coordinate, blocked by the relocated SE potted
+    // tree (the reason it moved 0.9m north).
+    expect(isBlocked(ground, 15.5, 5.5)).toBe(true);
   });
 
   it("workspace walkways stay open", () => {
     expect(isBlocked(ground, 12, 3)).toBe(false); // room center
-    expect(isBlocked(ground, 9.7, 2.9)).toBe(false); // between chair and west door
+    expect(isBlocked(ground, 9.7, 2.9)).toBe(false); // open floor (old chair spot, migrated to the workstation)
     expect(isBlocked(ground, 13.5, 1.1)).toBe(false); // corkboard station spot
     expect(isBlocked(ground, 8.9, 1.2)).toBe(false); // projects station spot
-    expect(isBlocked(ground, 15.0, 4.9)).toBe(false); // west of the bookshelf, still walkable
+    expect(isBlocked(ground, 15.0, 4.9)).toBe(false); // old bookshelf's west flank, still walkable (bookshelf gone from here)
     expect(isBlocked(ground, 16, 3)).toBe(false); // doorway into the music room stays open
   });
 
-  it("PLANT PASS: the potted tree between the EVA shrine and the coffee counter blocks", () => {
-    expect(isBlocked(ground, 9.97, 5.32)).toBe(true); // rect corner
+  it("PLANT PASS: the common-area potted tree blocks — COMMON KOTATSU PASS moved it from the south wall to the SE corner", () => {
+    const t = COMMON_RECTS.seTree;
+    expect(isBlocked(ground, t.x + t.w / 2, t.z + t.d / 2)).toBe(true); // rect centre
   });
 
-  it("PLANT PASS: the floor in front of the potted tree stays walkable", () => {
-    expect(isBlocked(ground, 10.3, 4.9)).toBe(false); // north of the plant, room-facing
+  it("PLANT PASS: the floor in front of the potted tree stays walkable (re-probed at its new SE home)", () => {
+    expect(isBlocked(ground, 15.3, 4.8)).toBe(false); // north of the plant, room-facing
+  });
+});
+
+describe("W7 workstation floor pass (owner-approved: mushroom rug + beanbag/pile + waste bin — W7 FIX ROUND grew the beanbag's footprint and moved the bin south, per owner review)", () => {
+  it("the beanbag blocks players standing on it (real furniture — genkan phase-through precedent, honest collider)", () => {
+    expect(isBlocked(ground, 13.2, -2.1)).toBe(true); // rect center (owner size-up: 0.8->1.0, center moved east to keep x-min pinned at 12.7)
+    expect(isBlocked(ground, 12.7, -2.6)).toBe(true); // rect corner (owner size-up: was 12.7,-2.5)
+  });
+
+  it("the waste bin blocks players standing on it", () => {
+    expect(isBlocked(ground, 12.85, -4.75)).toBe(true); // rect center (FIX ROUND: moved south, was -5.75)
+    expect(isBlocked(ground, 12.7, -4.9)).toBe(true); // rect corner (FIX ROUND: was 12.7,-5.9)
+  });
+
+  it("the rug itself has no collider — its footprint (away from the beanbag) stays walkable, visual floor dressing only", () => {
+    expect(isBlocked(ground, 12, -3.0)).toBe(false); // rug center
+    expect(isBlocked(ground, 11.5, -3.2)).toBe(false); // inside the round mushroom rug's own footprint (FIX ROUND: rug is now a 2.1x2.1 circle, not the old 3.0x2.2 rect — this point sits ~0.54m from its center, comfortably inside the ~1.05m radius), clear of the chair/desk/beanbag colliders
+  });
+
+  it("the beanbag doesn't overlap the waste bin, the coffee bar, or the 'experience' station trigger (raw AABB checks)", () => {
+    const intersects = (a: Rect, b: Rect) =>
+      a.x < b.x + b.w && b.x < a.x + a.w && a.z < b.z + b.d && b.z < a.z + a.d;
+    const beanbag = ground.furniture.find((f) => f.x === 12.7 && f.z === -2.6)!;
+    const bin = ground.furniture.find((f) => f.x === 12.7 && f.z === -4.9)!;
+    const coffeeBar = ground.furniture.find((f) => f.x === 15.1 && f.z === -6.15)!;
+    const experienceTrigger: Rect = { x: 13.0, z: -5.6, w: 1.9, d: 1.5 };
+    expect(beanbag).toBeDefined();
+    expect(bin).toBeDefined();
+    expect(intersects(beanbag, bin)).toBe(false);
+    expect(intersects(beanbag, coffeeBar)).toBe(false);
+    expect(intersects(bin, coffeeBar)).toBe(false);
+    expect(intersects(beanbag, experienceTrigger)).toBe(false);
+    expect(intersects(bin, experienceTrigger)).toBe(false);
+  });
+
+  it("walk-path sanity: the door↔desk lane stays open (probes along the chair's east flank, the existing 'desk front unobstructed' corridor at x12.2 — the new rug/beanbag/bin add nothing in its way)", () => {
+    expect(isBlocked(ground, 12, -0.3)).toBe(false); // at the door
+    expect(isBlocked(ground, 12.2, -1.5)).toBe(false); // onto the rug
+    expect(isBlocked(ground, 12.2, -2.8)).toBe(false); // rug mid-span, clear of the beanbag (x-min 12.7, FIX ROUND)
+    expect(isBlocked(ground, 12.2, -4.0)).toBe(false); // approaching the chair, still clear at this x
+    expect(isBlocked(ground, 12.2, -4.4)).toBe(false); // pre-existing probe, moved -4.6→-4.4 with the desk's 0.2m south stand-off (owner round 2), still south of the desk rect's new z-max -4.9 by a clean 0.5m
+  });
+
+  it("walk-path sanity: the door↔worktable lane stays open (probes along a straight line from the door toward the worktable, each individually clear of the EVA shrine's and project table's own player-radius margins)", () => {
+    expect(isBlocked(ground, 12, -0.3)).toBe(false); // at the door
+    expect(isBlocked(ground, 11.0, -1.2)).toBe(false);
+    expect(isBlocked(ground, 10.0, -2.2)).toBe(false); // clears the EVA shrine's expanded z-margin (-2.05) by 0.15m
+    expect(isBlocked(ground, 9.3, -3.1)).toBe(false); // clears the project table's expanded z-margin (-3.55) by 0.45m
+  });
+});
+
+describe("genkan furniture colliders (T8 finale item 17 — owner-reported: T6 shipped these decor-only, colliders added now that layout.ts is in scope)", () => {
+  it("the shoe rack and umbrella stand block, matching their rendered footprints in Genkan.tsx", () => {
+    expect(isBlocked(ground, 8.8, 6.55)).toBe(true); // shoe rack center
+    expect(isBlocked(ground, 14.6, 7.5)).toBe(true); // umbrella stand center
+  });
+
+  it("the doormat stays walkable (floor decal, not furniture — no collider by design)", () => {
+    expect(isBlocked(ground, 12.05, 7.6)).toBe(false);
+  });
+
+  it("genkan furniture doesn't block the inner-door↔front-door walking lane (x11.4-12.7, live sweep — z capped at 7.7, short of GK_FRONT_WALL's own z8.1 face plus its PLAYER_RADIUS margin, since that wall is intentionally solid/locked, not a furniture concern)", () => {
+    for (let z = 6.3; z < 7.7; z += 0.1) {
+      expect(isBlocked(ground, 12, z)).toBe(false);
+    }
+  });
+
+  // NORTH-WALL DRESSING pass (owner ask, 2026-10-19). Everything that pass
+  // hangs on the common↔genkan divider is decor at y ≥ 0.9 — the one piece
+  // that meets the floor, and so the one piece that gets a collider, is the
+  // shoe step-stool.
+  describe("the shoe step-stool (north-wall dressing pass)", () => {
+    const stool = GENKAN_STOOL_RECT;
+    const shoeRack = ground.furniture.find((f) => f.x === 8.3 && f.z === 6.375)!;
+
+    it("is actually in the live furniture list (not just an exported const)", () => {
+      expect(ground.furniture).toContain(stool);
+    });
+
+    it("lies inside GENKAN_ROOM", () => {
+      expect(stool.x).toBeGreaterThanOrEqual(GENKAN_ROOM.x);
+      expect(stool.x + stool.w).toBeLessThanOrEqual(GENKAN_ROOM.x + GENKAN_ROOM.w);
+      expect(stool.z).toBeGreaterThanOrEqual(GENKAN_ROOM.z);
+      expect(stool.z + stool.d).toBeLessThanOrEqual(GENKAN_ROOM.z + GENKAN_ROOM.d);
+    });
+
+    it("keeps at least 0.05m clear of the shoe rack (their z-bands overlap, so the gap has to be on x)", () => {
+      expect(shoeRack).toBeDefined();
+      const zOverlap = stool.z < shoeRack.z + shoeRack.d && shoeRack.z < stool.z + stool.d;
+      expect(zOverlap).toBe(true); // guards the premise — if they ever stop
+      // overlapping on z this assertion should be rewritten, not silently pass
+      const xGap = Math.max(stool.x - (shoeRack.x + shoeRack.w), shoeRack.x - (stool.x + stool.w));
+      expect(xGap).toBeGreaterThanOrEqual(0.05);
+    });
+
+    it("never touches the front-door↔doorway walk line (x11.3-12.8, raw AABB, player-radius independent)", () => {
+      expect(stool.x < 12.8 && stool.x + stool.w > 11.3).toBe(false);
+    });
+
+    it("blocks at its own centre while the door↔doorway line stays walkable", () => {
+      expect(isBlocked(ground, stool.x + stool.w / 2, stool.z + stool.d / 2)).toBe(true);
+      expect(isBlocked(ground, 12.05, 7.0)).toBe(false);
+    });
+  });
+
+  it("neither genkan furniture rect overlaps the inner doorway or front-door gap (raw AABB, live sweep — same convention as layout-v2.test.ts's door-gap sweep)", () => {
+    const gaps: Rect[] = [
+      { x: GENKAN_DOOR_LO, z: 6, w: GENKAN_DOOR_HI - GENKAN_DOOR_LO, d: 0.2 },
+      { x: FRONT_DOOR_LO, z: 8.1, w: FRONT_DOOR_HI - FRONT_DOOR_LO, d: 0.2 },
+    ];
+    const shoeRack = ground.furniture.find((f) => f.x === 8.3 && f.z === 6.375)!;
+    const umbrella = ground.furniture.find((f) => f.x === 14.45 && f.z === 7.35)!;
+    expect(shoeRack).toBeDefined();
+    expect(umbrella).toBeDefined();
+    for (const f of [shoeRack, umbrella]) {
+      for (const gap of gaps) {
+        const overlap =
+          f.x < gap.x + gap.w && f.x + f.w > gap.x && f.z < gap.z + gap.d && f.z + f.d > gap.z;
+        expect(overlap).toBe(false);
+      }
+    }
   });
 });
 
@@ -743,4 +976,179 @@ describe("station triggers vs furniture", () => {
       }
     }
   });
+});
+
+// ── COMMON KOTATSU PASS (owner-approved: the common area becomes a
+// Japanese kotatsu living room). Five new rects — kotatsu set, tokonoma
+// alcove, tansu chest, andon lantern, and the relocated SE potted tree.
+// Nothing here is a snapshot: every assertion sweeps the LIVE
+// `ground.furniture` / `COMMON_RECTS` data through the real collision API
+// (HANDOFF §7 bug class 4 — a hand-copied array once hid a genuine
+// overlap). Proven red by temporarily widening the kotatsu rect east into
+// the north–south walk band: the "north–south walk path" test below fails
+// at x=12.0 the moment a rect reaches x > 11.65.
+describe("common area kotatsu living room", () => {
+  // Pulled from the live `rooms` list, not re-typed: the common area is
+  // still RoomId "workspace" (layout.ts's LAYOUT V2 note — Task 4 renamed
+  // the room and the file, not the id).
+  const INTERIOR: Rect = ground.rooms.find((r) => r.id === "workspace")!.rect;
+  const NEW_RECTS = Object.entries(COMMON_RECTS);
+
+  it("every new rect is in ground.furniture (the live list, not a copy)", () => {
+    for (const [name, rect] of NEW_RECTS) {
+      expect(ground.furniture, `${name} is missing from ground.furniture`).toContain(rect);
+    }
+  });
+
+  it("every new rect lies inside the common area's interior (x 8-16, z 0-6)", () => {
+    for (const [name, r] of NEW_RECTS) {
+      expect(r.x, `${name} crosses the west divider`).toBeGreaterThanOrEqual(INTERIOR.x);
+      expect(r.x + r.w, `${name} crosses the east divider`).toBeLessThanOrEqual(
+        INTERIOR.x + INTERIOR.w
+      );
+      expect(r.z, `${name} crosses the north wall`).toBeGreaterThanOrEqual(INTERIOR.z);
+      expect(r.z + r.d, `${name} crosses the south wall`).toBeLessThanOrEqual(
+        INTERIOR.z + INTERIOR.d
+      );
+    }
+  });
+
+  it("no new rect enters the north-south walk band (x WS_DOOR_LO..GENKAN_DOOR_HI) — raw AABB, independent of the player radius", () => {
+    for (const [name, r] of NEW_RECTS) {
+      const insideBand = r.x < GENKAN_DOOR_HI && r.x + r.w > WS_DOOR_LO;
+      expect(insideBand, `${name} reaches into the north-south walk band`).toBe(false);
+    }
+  });
+
+  it("no new rect enters the east-west walk band (z DOOR_LO..DOOR_HI)", () => {
+    for (const [name, r] of NEW_RECTS) {
+      const insideBand = r.z < DOOR_HI && r.z + r.d > DOOR_LO;
+      expect(insideBand, `${name} reaches into the east-west walk band`).toBe(false);
+    }
+  });
+
+  it("the north-south walk path (workstation door -> genkan door) is walkable end to end", () => {
+    for (let z = 0.3; z <= 5.9 + 1e-9; z += 0.2) {
+      const zz = Math.round(z * 100) / 100;
+      expect(isBlocked(ground, 12.0, zz), `blocked walking north-south at z=${zz}`).toBe(
+        false
+      );
+    }
+  });
+
+  it("the east-west walk path (bedroom door -> music door) is walkable end to end", () => {
+    const z = (DOOR_LO + DOOR_HI) / 2; // 3.0
+    // Sweeps all the way to x 15.7 — the far end is the music doorway's own
+    // threshold (the player radius 0.35 keeps x > 15.7 out of reach of the
+    // x=16 divider's own faces). It used to stop at 14.4 while claiming to
+    // run "end to end", leaving the whole stair-flight / SE corner stretch
+    // of the lane untested.
+    for (let x = 8.3; x <= 15.7 + 1e-9; x += 0.2) {
+      const xx = Math.round(x * 100) / 100;
+      expect(isBlocked(ground, xx, z), `blocked walking east-west at x=${xx}`).toBe(false);
+    }
+  });
+
+  it("resolveMovement actually carries the player down the north-south path (not just point probes)", () => {
+    // Walk the capsule from just inside the workstation door to just inside
+    // the genkan door in 0.1m steps; if any collider clipped the lane the
+    // run would stall short of the target.
+    let pos = { x: 12.0, z: 0.3 };
+    for (let i = 0; i < 60; i++) pos = resolveMovement(ground, pos, { x: 0, z: 0.1 });
+    expect(pos.z).toBeGreaterThan(5.8);
+    expect(pos.x).toBeCloseTo(12.0, 6);
+  });
+
+  it("the kotatsu set blocks, and its north cushion keeps its stand-off from the doorway gap", () => {
+    const k = COMMON_RECTS.kotatsu;
+    expect(isBlocked(ground, k.x + k.w / 2, k.z + k.d / 2)).toBe(true); // table centre
+    expect(k.z - DOOR_HI).toBeGreaterThanOrEqual(0.05); // north cushion edge vs DOOR_HI
+    expect(k.z + k.d).toBeLessThanOrEqual(5.95); // south cushion clears the south wall
+  });
+
+  it("the moved tree's OLD spot (10.3, 5.65) is blocked now — by the kotatsu set, proving both the move and the new collider landed", () => {
+    expect(isBlocked(ground, 10.3, 5.65)).toBe(true);
+    // and its new home blocks too
+    const t = COMMON_RECTS.seTree;
+    expect(isBlocked(ground, t.x + t.w / 2, t.z + t.d / 2)).toBe(true);
+    // the old rect is gone from the live list
+    expect(
+      ground.furniture.some((f) => f.x === 9.97 && f.z === 5.32 && f.w === 0.66)
+    ).toBe(false);
+  });
+
+  it("the tokonoma, tansu and both andon all block", () => {
+    for (const name of ["tokonoma", "tansu", "andon", "andon2"] as const) {
+      const r = COMMON_RECTS[name];
+      expect(isBlocked(ground, r.x + r.w / 2, r.z + r.d / 2), `${name} does not block`).toBe(
+        true
+      );
+    }
+  });
+
+  // ── SE-WALL LIGHTING PASS: the SW-corner sibling andon. The generic
+  // tests above (in-ground.furniture, inside-the-interior, neither walk
+  // band) already cover it the moment COMMON_RECTS gains the key — these
+  // pin the two clearances that are specific to where it stands.
+  it("the second andon stands clear of the kotatsu set and north of the south wall", () => {
+    const a = COMMON_RECTS.andon2;
+    const k = COMMON_RECTS.kotatsu;
+    expect(k.x - (a.x + a.w)).toBeGreaterThanOrEqual(0.1); // west of the set
+    expect(a.z + a.d).toBeLessThanOrEqual(5.95); // clear of the south wall
+  });
+
+  it("the second andon costs the player no walkable floor (every point it blocks was already blocked)", () => {
+    // Sweeps the lantern's own blocked footprint (rect + PLAYER_RADIUS) at
+    // 5cm and checks each point is ALSO inside the west divider wall's or
+    // the kotatsu set's own expanded footprint — i.e. the corner it fills
+    // was already unreachable. Goes red the moment the rect is nudged east
+    // or south into open floor.
+    const a = COMMON_RECTS.andon2;
+    const grown = (r: Rect) => ({
+      x: r.x - PLAYER_RADIUS,
+      z: r.z - PLAYER_RADIUS,
+      w: r.w + 2 * PLAYER_RADIUS,
+      d: r.d + 2 * PLAYER_RADIUS,
+    });
+    const inside = (r: { x: number; z: number; w: number; d: number }, x: number, z: number) =>
+      x > r.x && x < r.x + r.w && z > r.z && z < r.z + r.d;
+    // the west divider's south segment, straight out of the live wall list
+    const westWall = ground.walls.find((w) => w.x === 7.9 && w.z === DOOR_HI)!;
+    expect(westWall).toBeDefined();
+    const already = [grown(westWall), grown(COMMON_RECTS.kotatsu)];
+    const f = grown(a);
+    for (let x = f.x + 0.01; x < f.x + f.w; x += 0.05) {
+      for (let z = f.z + 0.01; z < f.z + f.d; z += 0.05) {
+        const xx = Math.round(x * 100) / 100;
+        const zz = Math.round(z * 100) / 100;
+        expect(
+          already.some((r) => inside(r, xx, zz)),
+          `the second andon newly blocks walkable floor at (${xx}, ${zz})`
+        ).toBe(true);
+      }
+    }
+  });
+
+  it("the tansu keeps >= 0.2m clear of the stair flight's rect", () => {
+    const tansu = COMMON_RECTS.tansu;
+    const stairs = ground.furniture.find((f) => f.x === 14.65 && f.w === 1.1)!;
+    expect(stairs).toBeDefined();
+    expect(stairs.x - (tansu.x + tansu.w)).toBeGreaterThanOrEqual(0.2);
+  });
+
+  it("the SE potted tree stays south of the music doorway band", () => {
+    // REVIEW FIX: this used to also check the tree against a hand-copied
+    // {15.2, 3.18, 1.15, 0.85} stair-approach rug rect. That rug is a
+    // visual-only mesh inside House.tsx with no exported const, so the copy
+    // could silently drift from the thing it claimed to test (HANDOFF §7
+    // bug class 4) — assertion dropped rather than kept as decoration.
+    const t = COMMON_RECTS.seTree;
+    expect(t.z).toBeGreaterThan(DOOR_HI); // entirely south of the music doorway band
+  });
+
+  // REVIEW FIX: a second copy of the live pairwise overlap sweep used to sit
+  // here, byte-identical in body to the one in "bedroom furniture colliders"
+  // above. Both read the same `ground.furniture`, so it added coverage of
+  // nothing — deleted; that one sweep already covers every rect this pass
+  // adds the moment layout.ts lists it.
 });
