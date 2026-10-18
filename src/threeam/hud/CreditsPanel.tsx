@@ -97,6 +97,14 @@ const MODEL_CREDITS: ModelCredit[] = [
     license: "CC-BY-3.0",
     licenseUrl: "https://creativecommons.org/licenses/by/3.0/",
   },
+  {
+    name: "cat loaf",
+    sourceUrl: "https://poly.pizza/m/5qGO_C5GvAB",
+    author: "Hiroyuki Kajiwara (hk)",
+    authorUrl: "https://poly.pizza/u/Hiroyuki%20Kajiwara%20(hk)",
+    license: "CC-BY-3.0",
+    licenseUrl: "https://creativecommons.org/licenses/by/3.0/",
+  },
 ];
 
 function ExternalLink({ href, children }: { href: string; children: string }) {

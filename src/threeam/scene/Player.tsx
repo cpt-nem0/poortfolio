@@ -11,7 +11,7 @@ import { stationAt } from "@/threeam/world/stations";
 import { playerPosition, stepAreaCross, type AreaCrossArmState } from "@/threeam/world/runtime";
 import { useThreeAm } from "@/threeam/state/store";
 
-const SPEED = 2.2; // m/s — was 3.5 → 3.0 → 2.5 → 2.2; retuned each time real fps went up (dt clamping used to eat distance at low fps, so the same constant reads faster once frames are actually delivered) — 2.2 is the owner's layout-v2 retune (2026-08-10), the bigger room count made 2.5 feel rushed
+const SPEED = 2.2; // m/s — LOCKED 2.2 (Rohan 2026-08-10 retune). 2026-10-19 detour: 2.2 and 1.8 both read "way too fast" during a live session, 1.4 then read "way too slow" after a hard reload — the fast reads were an HMR split (two module instances both advancing the player, see runtime.ts playerPosition note), not the constant. Back to 2.2; retuned each time real fps went up (dt clamping used to eat distance at low fps, so the same constant reads faster once frames are actually delivered) — 2.2 is the owner's layout-v2 retune (2026-08-10), the bigger room count made 2.5 feel rushed
 
 export function Player() {
   const meshRef = useRef<Mesh>(null);

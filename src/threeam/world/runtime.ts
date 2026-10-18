@@ -20,7 +20,13 @@ export type AreaId = LayoutAreaId | "workstation";
  * Mutable per-frame game state. Lives outside React/zustand on purpose:
  * the player moves every frame and must not trigger React renders.
  */
-export const playerPosition = { x: SPAWN.x, z: SPAWN.z };
+// HMR-stable singleton (dev): Fast Refresh re-evaluates this module when it
+// or an import changes, which used to mint a NEW position object — the r3f
+// Player would keep writing one instance while the DOM Hud polled another
+// (label frozen, player snapped back to SPAWN). Parking it on globalThis
+// keeps one instance per page; production evaluates once anyway.
+const g = globalThis as unknown as { __3amPlayerPosition?: { x: number; z: number } };
+export const playerPosition = (g.__3amPlayerPosition ??= { x: SPAWN.x, z: SPAWN.z });
 
 /**
  * Discrete ground-floor x-band the player currently occupies: 0 = bedroom

@@ -6,6 +6,7 @@ import {
   STAIR_ROOM_DOOR_HI,
 } from "../layout";
 import { isBlocked, PLAYER_RADIUS } from "../collision";
+import * as layoutMod from "../layout";
 
 // Task 7: the roof stair-room enclosure. T1's placeholder STAIR_ROOM never
 // actually contained the stairs-up portal's real arrival point
@@ -73,6 +74,112 @@ describe("roof stair-room (Task 7)", () => {
         STAIR_ROOM.z < f.z + f.d &&
         f.z < STAIR_ROOM.z + STAIR_ROOM.d;
       expect(overlap, `STAIR_ROOM overlaps furniture ${JSON.stringify(f)}`).toBe(false);
+    }
+  });
+});
+
+describe("rooftop under-construction dressing (owner wave 2026-10-19)", () => {
+  const {
+    ROOF_SIGN_RECT,
+    ROOF_CONE_RECT,
+    ROOF_BRICKS_RECT,
+    ROOF_SACKS_RECT,
+    ROOF_BUCKET_RECT,
+    STAIR_ROOM,
+    STAIR_ROOM_DOOR_LO,
+    STAIR_ROOM_DOOR_HI,
+    HOUSE,
+  } = layoutMod;
+  const roofArea = HOUSE.areas.roof;
+  const rooftop = roofArea.rooms[0].rect;
+  // the rects this pass owns — the hoarding board, the cone, and the three
+  // new site-clutter piles. Everything below sweeps these plus the LIVE
+  // roofArea.furniture list, never a hardcoded snapshot of it.
+  const DRESSING: Record<string, layoutMod.Rect> = {
+    sign: ROOF_SIGN_RECT,
+    cone: ROOF_CONE_RECT,
+    bricks: ROOF_BRICKS_RECT,
+    sacks: ROOF_SACKS_RECT,
+    bucket: ROOF_BUCKET_RECT,
+  };
+  const inside = (r: layoutMod.Rect) =>
+    r.x >= rooftop.x &&
+    r.z >= rooftop.z &&
+    r.x + r.w <= rooftop.x + rooftop.w &&
+    r.z + r.d <= rooftop.z + rooftop.d;
+
+  it("every dressing rect is inside the rooftop and in the live roof furniture list", () => {
+    for (const [name, r] of Object.entries(DRESSING)) {
+      expect(inside(r), `${name} ${JSON.stringify(r)} leaves the rooftop`).toBe(true);
+      expect(roofArea.furniture, `${name} is not in HOUSE.areas.roof.furniture`).toContain(r);
+    }
+  });
+
+  it("no two roof furniture rects overlap (live sweep over roof.furniture)", () => {
+    const f = roofArea.furniture;
+    for (let i = 0; i < f.length; i++) {
+      for (let j = i + 1; j < f.length; j++) {
+        const a = f[i];
+        const b = f[j];
+        const overlap =
+          a.x < b.x + b.w && b.x < a.x + a.w && a.z < b.z + b.d && b.z < a.z + a.d;
+        expect(
+          overlap,
+          `roof furniture overlap: ${JSON.stringify(a)} vs ${JSON.stringify(b)}`
+        ).toBe(false);
+      }
+    }
+  });
+
+  it("the stair-room door's exit line stays walkable all the way down the terrace", () => {
+    const xMid = (STAIR_ROOM_DOOR_LO + STAIR_ROOM_DOOR_HI) / 2;
+    // stop at 5.4 — south of that the terrace's own bounds start to block
+    for (let z = 3.05; z <= 5.4 + 1e-9; z += 0.2) {
+      expect(
+        isBlocked(roofArea, xMid, z),
+        `door exit line blocked at z=${z.toFixed(2)}`
+      ).toBe(false);
+    }
+  });
+
+  it("the stairs-up arrival point (12, 2) is still clear", () => {
+    expect(isBlocked(roofArea, 12, 2)).toBe(false);
+  });
+
+  it("every dressing rect actually blocks at its own centre", () => {
+    for (const [name, r] of Object.entries(DRESSING)) {
+      expect(
+        isBlocked(roofArea, r.x + r.w / 2, r.z + r.d / 2),
+        `${name} ${JSON.stringify(r)} does not block at its centre`
+      ).toBe(true);
+    }
+  });
+
+  it("the hoarding clears the doorway to its west and the stairs-down trigger to its east", () => {
+    expect(ROOF_SIGN_RECT.x).toBeGreaterThanOrEqual(STAIR_ROOM_DOOR_HI + 0.2);
+    // the shared stairs trigger must stay standable or the roof is a one-way
+    // trip — this is what caps the board's width, see layout.ts.
+    const down = HOUSE.portals.find((p) => p.id === "stairs-down")!;
+    expect(isBlocked(roofArea, down.trigger.x + down.trigger.w / 2, down.trigger.z + down.trigger.d / 2)).toBe(false);
+  });
+
+  it("the clutter sits south of the stair-room's south wall, 0.3m clear of its neighbours", () => {
+    const doorZ = STAIR_ROOM.z + STAIR_ROOM.d;
+    const piles = [ROOF_BRICKS_RECT, ROOF_SACKS_RECT, ROOF_BUCKET_RECT, ROOF_CONE_RECT];
+    for (const r of piles) expect(r.z).toBeGreaterThanOrEqual(doorZ);
+    const gap = (a: layoutMod.Rect, b: layoutMod.Rect) =>
+      Math.hypot(
+        Math.max(0, a.x - (b.x + b.w), b.x - (a.x + a.w)),
+        Math.max(0, a.z - (b.z + b.d), b.z - (a.z + a.d))
+      );
+    const all = Object.entries(DRESSING);
+    for (let i = 0; i < all.length; i++) {
+      for (let j = i + 1; j < all.length; j++) {
+        expect(
+          gap(all[i][1], all[j][1]),
+          `${all[i][0]} and ${all[j][0]} are closer than 0.3m`
+        ).toBeGreaterThanOrEqual(0.3 - 1e-9);
+      }
     }
   });
 });

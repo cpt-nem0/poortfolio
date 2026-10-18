@@ -6,7 +6,7 @@ import type { AreaId } from "./runtime";
  * prompt; E (or clicking the station's meshes) focuses it — the camera
  * flies to `camera` and a content panel opens. Pure data, no three/React.
  */
-export type StationId = "projects" | "experience" | "about";
+export type StationId = "projects" | "experience" | "about" | "construction";
 
 export type Station = {
   id: StationId;
@@ -97,6 +97,28 @@ export const STATIONS: Station[] = [
     // x≈4.94 before it could reach the trigger's x-min, so there's no
     // extrapolated line-of-sight risk either).
     camera: { pos: [1.8, 3.3, 4.4], look: [4.3, 1.1, 0.9] },
+  },
+  {
+    id: "construction",
+    area: "roof",
+    // Rooftop hoarding sign (Roof.tsx, ROOF_SIGN_RECT {12.85,2.95,1.65,0.2}
+    // — owner 2026-10-19: "add the [E] read-up on the sign", because 12
+    // letters across a 1.56m board can't read from the dollhouse camera).
+    // Trigger = the patch of terrace you step onto coming out of the
+    // stair-room door (door gap x STAIR_ROOM_DOOR_LO–HI 11.4–12.6 at z 2.75),
+    // slightly WEST of the board: x 12.0–12.9, z 3.25–4.05. Clear of every
+    // roof furniture rect (sign z≤3.15, bricks z≥4.4, bucket x≤10.92) and
+    // of the stairs-down portal trigger (x≥14.6) — roofStairRoom.test.ts
+    // sweeps the live lists.
+    trigger: { x: 12.0, z: 3.25, w: 0.9, d: 0.8 },
+    label: "read the sign",
+    // Camera comes in from the SOUTH-EAST, looking north-west at the board
+    // face (centre ≈ [13.67,1.1,3.05]): pos/look share no axis coordinate,
+    // and the ray's x-span [15.0→13.6] never reaches the trigger's x-range
+    // (≤12.9), so a player standing in the trigger is never in the shot —
+    // the same "stronger than height clearance" guarantee the about
+    // station documents.
+    camera: { pos: [15.0, 2.4, 5.4], look: [13.6, 1.05, 3.05] },
   },
 ];
 

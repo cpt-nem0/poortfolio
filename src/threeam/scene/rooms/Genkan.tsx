@@ -1,10 +1,12 @@
 "use client";
 
 import { usePixelTexture } from "../usePixelTexture";
+import { GenkanOnly } from "../GenkanOnly";
 import {
   GENKAN_ROOM as R,
   GENKAN_DOOR_LO,
   GENKAN_DOOR_HI,
+  GENKAN_STOOL_RECT,
   FRONT_DOOR_LO,
   FRONT_DOOR_HI,
 } from "@/threeam/world/layout";
@@ -58,6 +60,64 @@ const LEAF_Z = LEAF_FRONT + LEAF_DEPTH / 2;
 const LEAF_TOP = 2.3; // header band above the leaf, filled by the lintel
 const LEAF_INSET = 0.03; // leaf sits inside the jambs by this much, each side
 
+// ── NORTH-WALL DRESSING (owner ask, 2026-10-19: "do something about the
+// north genkan wall … just fill that area a bit"). The common↔genkan
+// divider (GK_WALL_LO/HI, layout.ts — z6..6.2, split by the inner doorway)
+// is THIS room's north wall, and from the genkan the dollhouse camera looks
+// straight north at it, so it reads face-on → detail wall (HANDOFF §6:
+// "put the good stuff on north walls").
+//
+// Its genkan-facing face: both halves of that divider render centred on
+// their rect (House.tsx — the `a.walls.map` lower stub at #57497a up to
+// SOUTH_STUB_H, plus GenkanDividerUpper above it), so the south face lands
+// exactly at rect.z + rect.d = 6.2, which is GENKAN_ROOM.z itself. Derived
+// from the const rather than re-typed (HANDOFF §5). +z is south, toward the
+// camera, so "proud" means LARGER z — same sense as TRIM_Z above.
+const N_FACE = R.z; // 6.2 — the divider's genkan-side face
+const N_PROUD = 0.008; // the ≥6mm anti-z-fight rule, with margin
+const N_BACK = N_FACE + N_PROUD; // 6.208 — back plane of every wall piece
+
+// Doorway keep-out. The inner doorway's trim (CommonArea's
+// HorizontalDoorFrame, mounted by House.tsx at z6.1 with FRAME_THICK=0.07
+// jambs centred on GENKAN_DOOR_LO/HI → x11.365-11.435 / 12.665-12.735) has
+// to stay completely clear, as does the front-door↔doorway walk line
+// (x11.4-12.7 at every z). Nothing below crosses these two x limits.
+const N_WEST_X_MAX = GENKAN_DOOR_LO - 0.12; // 11.28
+const N_EAST_X_MIN = GENKAN_DOOR_HI + 0.12; // 12.82
+
+// Palette — the house's walnut-trim family (#4a3a2e, same as FRAME_COLOR
+// above) for every wood surface, warm muted tones for everything else.
+// NO new lights: the house is at its ≤19 point-light budget (HANDOFF §5),
+// so the one hot accent here (the incense ember) is emissive-only.
+const N_WOOD = "#4a3a2e";
+const N_WOOD_DARK = "#3a2e24";
+const N_WOOD_WARM = "#6b4128";
+const N_CREAM = "#e8dcc4";
+const N_BRASS = "#c9a158";
+
+// Shelf surfaces. The two floating shelves are the only pieces carrying
+// other objects, and every one of those objects sits at `top + ON` — kept
+// in one place so the 6mm gap can't drift item by item.
+const N_SHELF_TOP = 1.45; // west wall shelf
+const N_CONSOLE_TOP = 0.95; // east console shelf
+const ON = 0.006;
+
+// Step-stool — the one piece of this pass with a real collider
+// (GENKAN_STOOL_RECT, layout.ts). Every number below derives from that
+// rect; nothing re-hardcodes it.
+const ST = GENKAN_STOOL_RECT;
+const STOOL_TOP = FLOOR_Y + 0.42;
+const STOOL_SEAT_T = 0.06;
+const STOOL_SEAT_D = ST.d - 0.016; // 0.324 — the rect hugs the render
+const STOOL_SEAT_ZC = N_BACK + STOOL_SEAT_D / 2;
+
+// Coat rail (west segment) and console shelf (east segment) are the two
+// pieces that sit nearest the doorway, so both derive their doorway-side
+// edge from the keep-out limits above rather than from a typed-in number.
+const RAIL_W = 0.35;
+const RAIL_XC = N_WEST_X_MAX - 0.03 - RAIL_W / 2; // 11.075 (rail x10.90-11.25)
+const CONSOLE_X = N_EAST_X_MIN + 0.38; // 13.20 (console x13.20-15.00)
+
 function ShoePair({ x, z, color }: { x: number; z: number; color: string }) {
   return (
     <group position={[x, 0, z]}>
@@ -99,6 +159,11 @@ function Umbrella({ x, z, tilt, color }: { x: number; z: number; tilt: number; c
  */
 export function Genkan() {
   const floor = usePixelTexture(FLOOR_TEX, R.w, R.d);
+  // North-wall dressing textures — both existing, whole-image 1x1, the
+  // same convention every poster/photo in the house already uses. No new
+  // texture was generated for this pass.
+  const printTex = usePixelTexture("/3am/tex/poster-wave-arc.png", 1, 1);
+  const photoTex = usePixelTexture("/3am/tex/corkboard-photo-polaroid.png", 1, 1);
 
   return (
     <group>
@@ -217,7 +282,8 @@ export function Genkan() {
           <coneGeometry args={[0.11, 0.14, 8, 1, true]} />
           <meshStandardMaterial color="#ffcf8f" emissive="#ffcf8f" emissiveIntensity={0.8} side={2} />
         </mesh>
-        <pointLight castShadow shadow-mapSize={[256, 256]} shadow-bias={-0.0015} shadow-radius={3} shadow-intensity={0.85} color="#ffcf8f" intensity={3} distance={3.2} decay={2} />
+        {/* reach raised 2026-10-19 (was 3/3.2) so the new north-wall dressing isn't in blue shadow — a second genkan light would push the two-band total past the ≤19 point-light cliff (HANDOFF §5) */}
+          <pointLight castShadow shadow-mapSize={[256, 256]} shadow-bias={-0.0015} shadow-radius={3} shadow-intensity={0.85} color="#ffcf8f" intensity={4.4} distance={5.2} decay={2} />
       </group>
 
       {/* front door — frame proud of the (already-solid) wall, leaf
@@ -258,6 +324,274 @@ export function Genkan() {
           <meshStandardMaterial color="#d8b26a" metalness={0.6} roughness={0.35} />
         </mesh>
       </group>
+
+      {/* ───────────────── NORTH-WALL DRESSING ─────────────────
+          See the N_FACE / N_BACK block at the top of this file for the
+          wall-face derivation and the doorway keep-out. Two segments,
+          split by the inner doorway: WEST (x8-11.28) and EAST
+          (x12.82-16). Everything hangs ≥8mm proud of the divider's
+          genkan-side face, every stacked surface is ≥6mm off the one
+          under it, and NO lights are added (point-light budget, §5) —
+          the incense ember is emissive-only. Hung decor carries no
+          collider (the doormat / shoe-rack precedent); the step-stool,
+          the only piece that meets the floor, does — GENKAN_STOOL_RECT. */}
+
+      {/* Visible only while the player is IN the genkan (GenkanOnly) — from
+          the common area this wall is camera-side and everything hung on
+          it would float over the knee-wall stub in front of the kotatsu;
+          it flips together with the divider's upper band (House.tsx). */}
+      <GenkanOnly>
+      {/* ── WEST SEGMENT ── */}
+
+      {/* floating wall shelf (x8.6-10.8) + two brackets */}
+      <mesh position={[9.7, N_SHELF_TOP - 0.025, N_BACK + 0.11]} castShadow receiveShadow>
+        <boxGeometry args={[2.2, 0.05, 0.22]} />
+        <meshStandardMaterial color={N_WOOD} />
+      </mesh>
+      {[9.0, 10.4].map((x) => (
+        <mesh key={`shbr${x}`} position={[x, N_SHELF_TOP - 0.12, N_BACK + 0.08]}>
+          <boxGeometry args={[0.05, 0.14, 0.16]} />
+          <meshStandardMaterial color={N_WOOD_DARK} />
+        </mesh>
+      ))}
+
+      {/* 3-book stack, spines facing the camera (muted brick / slate /
+          ochre). Stacked bottom-up from the shelf top + ON, each layer
+          clearing the one below it. */}
+      <mesh position={[8.86, N_SHELF_TOP + ON + 0.0225, N_BACK + 0.114]}>
+        <boxGeometry args={[0.17, 0.045, 0.2]} />
+        <meshStandardMaterial color="#7a4f4f" />
+      </mesh>
+      <mesh position={[8.885, N_SHELF_TOP + ON + 0.065, N_BACK + 0.118]} rotation={[0, 0.05, 0]}>
+        <boxGeometry args={[0.155, 0.04, 0.185]} />
+        <meshStandardMaterial color="#4f5f6b" />
+      </mesh>
+      <mesh position={[8.845, N_SHELF_TOP + ON + 0.107, N_BACK + 0.11]} rotation={[0, -0.04, 0]}>
+        <boxGeometry args={[0.165, 0.044, 0.195]} />
+        <meshStandardMaterial color="#7a6b4a" />
+      </mesh>
+
+      {/* potted succulent */}
+      <mesh position={[9.42, N_SHELF_TOP + ON + 0.045, N_BACK + 0.11]}>
+        <cylinderGeometry args={[0.055, 0.045, 0.09, 8]} />
+        <meshStandardMaterial color="#9c6b52" />
+      </mesh>
+      <mesh position={[9.39, N_SHELF_TOP + ON + 0.108, N_BACK + 0.095]} scale={[1, 0.75, 1]}>
+        <sphereGeometry args={[0.042, 7, 5]} />
+        <meshStandardMaterial color="#4f7a5a" />
+      </mesh>
+      <mesh position={[9.452, N_SHELF_TOP + ON + 0.118, N_BACK + 0.122]} scale={[1, 0.8, 1]}>
+        <sphereGeometry args={[0.038, 7, 5]} />
+        <meshStandardMaterial color="#3f6b4c" />
+      </mesh>
+      <mesh position={[9.42, N_SHELF_TOP + ON + 0.155, N_BACK + 0.108]} scale={[1, 0.85, 1]}>
+        <sphereGeometry args={[0.03, 7, 5]} />
+        <meshStandardMaterial color="#5c8a63" />
+      </mesh>
+
+      {/* tiny framed photo, leaning on the shelf against the wall —
+          picture plane 8mm proud of the frame's own front face */}
+      <mesh position={[9.92, N_SHELF_TOP + ON + 0.095, N_BACK + 0.018]}>
+        <boxGeometry args={[0.16, 0.19, 0.012]} />
+        <meshStandardMaterial color={N_WOOD_DARK} />
+      </mesh>
+      <mesh position={[9.92, N_SHELF_TOP + ON + 0.1, N_BACK + 0.032]}>
+        <planeGeometry args={[0.125, 0.15]} />
+        <meshStandardMaterial map={photoTex} />
+      </mesh>
+
+      {/* incense holder — dark tray, one stick at an angle, ember tip.
+          Emissive only (intensity 0.45), no light: §5 budget. */}
+      <mesh position={[10.3, N_SHELF_TOP + ON + 0.007, N_BACK + 0.112]}>
+        <boxGeometry args={[0.2, 0.014, 0.05]} />
+        <meshStandardMaterial color="#2e2a33" />
+      </mesh>
+      <mesh position={[10.31, N_SHELF_TOP + ON + 0.109, N_BACK + 0.11]} rotation={[0, 0, 0.45]}>
+        <cylinderGeometry args={[0.004, 0.004, 0.2, 5]} />
+        <meshStandardMaterial color="#6b5a4a" />
+      </mesh>
+      <mesh position={[10.2665, N_SHELF_TOP + ON + 0.199, N_BACK + 0.11]}>
+        <sphereGeometry args={[0.009, 6, 5]} />
+        <meshStandardMaterial color="#ff6a3a" emissive="#ff6a3a" emissiveIntensity={0.45} />
+      </mesh>
+
+      {/* daruma trinket — red body, cream face patch proud of its front */}
+      <mesh position={[10.64, N_SHELF_TOP + ON + 0.055, N_BACK + 0.112]} scale={[1, 0.95, 1]}>
+        <sphereGeometry args={[0.055, 10, 8]} />
+        <meshStandardMaterial color="#a8352f" />
+      </mesh>
+      <mesh position={[10.64, N_SHELF_TOP + ON + 0.065, N_BACK + 0.16]} scale={[1, 1, 0.4]}>
+        <sphereGeometry args={[0.034, 8, 6]} />
+        <meshStandardMaterial color={N_CREAM} />
+      </mesh>
+
+      {/* step-stool for putting shoes on — the only collidered piece of
+          this pass. Seat/legs derive from GENKAN_STOOL_RECT (ST). */}
+      <mesh position={[ST.x + ST.w / 2, STOOL_TOP - STOOL_SEAT_T / 2, STOOL_SEAT_ZC]} castShadow receiveShadow>
+        <boxGeometry args={[ST.w, STOOL_SEAT_T, STOOL_SEAT_D]} />
+        <meshStandardMaterial color={N_WOOD_WARM} />
+      </mesh>
+      {[ST.x + 0.05, ST.x + ST.w - 0.05].flatMap((x) =>
+        [N_BACK + 0.037, N_BACK + STOOL_SEAT_D - 0.037].map((z) => (
+          <mesh
+            key={`stleg${x}-${z}`}
+            position={[x, (FLOOR_Y + STOOL_TOP - STOOL_SEAT_T) / 2, z]}
+          >
+            <boxGeometry args={[0.06, STOOL_TOP - STOOL_SEAT_T - FLOOR_Y, 0.06]} />
+            <meshStandardMaterial color={N_WOOD_DARK} />
+          </mesh>
+        ))
+      )}
+      {/* folded cloth on the stool */}
+      <mesh position={[ST.x + 0.58, STOOL_TOP + ON + 0.025, STOOL_SEAT_ZC + 0.004]}>
+        <boxGeometry args={[0.26, 0.05, 0.2]} />
+        <meshStandardMaterial color="#6e7f8c" />
+      </mesh>
+      <mesh position={[ST.x + 0.58, STOOL_TOP + ON + 0.071, STOOL_SEAT_ZC + 0.02]}>
+        <boxGeometry args={[0.24, 0.03, 0.12]} />
+        <meshStandardMaterial color="#5c6d7a" />
+      </mesh>
+
+      {/* coat rail + 3 hooks, on the doorway side of the west segment
+          (x-max derived from the doorway keep-out, never hardcoded) */}
+      <mesh position={[RAIL_XC, 1.65, N_BACK + 0.015]}>
+        <boxGeometry args={[RAIL_W, 0.04, 0.03]} />
+        <meshStandardMaterial color={N_WOOD} />
+      </mesh>
+      {[RAIL_XC - 0.115, RAIL_XC, RAIL_XC + 0.115].map((x, i) => (
+        <mesh key={`hook${i}`} position={[x, 1.628, N_BACK + 0.04]}>
+          <boxGeometry args={[0.022, 0.055, 0.05]} />
+          <meshStandardMaterial color={N_BRASS} metalness={0.5} roughness={0.45} />
+        </mesh>
+      ))}
+      {/* tote bag hanging on the west hook */}
+      <mesh position={[RAIL_XC - 0.115, 1.44, N_BACK + 0.06]} castShadow>
+        <boxGeometry args={[0.22, 0.3, 0.055]} />
+        <meshStandardMaterial color="#2f3440" />
+      </mesh>
+      <mesh position={[RAIL_XC - 0.115, 1.62, N_BACK + 0.064]}>
+        <boxGeometry args={[0.025, 0.16, 0.018]} />
+        <meshStandardMaterial color="#454c5c" />
+      </mesh>
+      {/* keyring on the east hook — brass ring + 2 key slivers */}
+      <mesh position={[RAIL_XC + 0.115, 1.6, N_BACK + 0.05]}>
+        <torusGeometry args={[0.022, 0.005, 6, 12]} />
+        <meshStandardMaterial color={N_BRASS} metalness={0.6} roughness={0.4} />
+      </mesh>
+      <mesh position={[RAIL_XC + 0.107, 1.553, N_BACK + 0.05]} rotation={[0, 0, 0.16]}>
+        <boxGeometry args={[0.012, 0.05, 0.004]} />
+        <meshStandardMaterial color={N_BRASS} metalness={0.6} roughness={0.4} />
+      </mesh>
+      <mesh position={[RAIL_XC + 0.123, 1.556, N_BACK + 0.054]} rotation={[0, 0, -0.22]}>
+        <boxGeometry args={[0.011, 0.045, 0.004]} />
+        <meshStandardMaterial color="#b08f4e" metalness={0.6} roughness={0.4} />
+      </mesh>
+
+      {/* ── EAST SEGMENT ── */}
+
+      {/* framed print (poster-wave-arc, 32x40 portrait — unused elsewhere
+          in the house, so it doesn't echo an existing wall). Picture plane
+          8mm proud of the frame's front face. */}
+      <mesh position={[14.0, 1.7, N_BACK + 0.0175]} castShadow>
+        <boxGeometry args={[0.9, 1.1, 0.035]} />
+        <meshStandardMaterial color={N_WOOD} />
+      </mesh>
+      <mesh position={[14.0, 1.7, N_BACK + 0.043]}>
+        <planeGeometry args={[0.8, 1.0]} />
+        <meshStandardMaterial map={printTex} />
+      </mesh>
+
+      {/* slim floating console shelf under the print + two brackets */}
+      <mesh position={[CONSOLE_X + 0.9, N_CONSOLE_TOP - 0.025, N_BACK + 0.12]} castShadow receiveShadow>
+        <boxGeometry args={[1.8, 0.05, 0.24]} />
+        <meshStandardMaterial color={N_WOOD} />
+      </mesh>
+      {[CONSOLE_X + 0.3, CONSOLE_X + 1.5].map((x) => (
+        <mesh key={`cobr${x}`} position={[x, N_CONSOLE_TOP - 0.12, N_BACK + 0.09]}>
+          <boxGeometry args={[0.05, 0.14, 0.18]} />
+          <meshStandardMaterial color={N_WOOD_DARK} />
+        </mesh>
+      ))}
+
+      {/* shallow ceramic key bowl + 2 brass keys resting on its rim */}
+      <mesh position={[CONSOLE_X + 0.32, N_CONSOLE_TOP + ON + 0.0225, N_BACK + 0.122]}>
+        <cylinderGeometry args={[0.09, 0.065, 0.045, 12]} />
+        <meshStandardMaterial color="#8f9bab" />
+      </mesh>
+      <mesh position={[CONSOLE_X + 0.3, N_CONSOLE_TOP + ON + 0.057, N_BACK + 0.117]} rotation={[0, 0.3, 0]}>
+        <boxGeometry args={[0.012, 0.004, 0.055]} />
+        <meshStandardMaterial color={N_BRASS} metalness={0.6} roughness={0.4} />
+      </mesh>
+      <mesh position={[CONSOLE_X + 0.345, N_CONSOLE_TOP + ON + 0.057, N_BACK + 0.132]} rotation={[0, -0.4, 0]}>
+        <boxGeometry args={[0.011, 0.004, 0.05]} />
+        <meshStandardMaterial color="#b08f4e" metalness={0.6} roughness={0.4} />
+      </mesh>
+
+      {/* stack of 3 letters, slightly fanned, 8mm apart */}
+      {[
+        [0.83, 0.006, 0.06],
+        [0.85, 0.022, -0.05],
+        [0.82, 0.038, 0.12],
+      ].map(([dx, dy, yaw], i) => (
+        <mesh
+          key={`letter${i}`}
+          position={[CONSOLE_X + dx, N_CONSOLE_TOP + ON + dy, N_BACK + 0.12]}
+          rotation={[0, yaw, 0]}
+        >
+          <boxGeometry args={[0.22, 0.008, 0.15]} />
+          <meshStandardMaterial color={i === 1 ? "#ddd0b6" : N_CREAM} />
+        </mesh>
+      ))}
+
+      {/* small potted plant */}
+      <mesh position={[CONSOLE_X + 1.35, N_CONSOLE_TOP + ON + 0.05, N_BACK + 0.122]}>
+        <cylinderGeometry args={[0.05, 0.04, 0.1, 8]} />
+        <meshStandardMaterial color="#8a5f4a" />
+      </mesh>
+      <mesh position={[CONSOLE_X + 1.32, N_CONSOLE_TOP + ON + 0.125, N_BACK + 0.112]} scale={[1, 0.8, 1]}>
+        <sphereGeometry args={[0.05, 7, 5]} />
+        <meshStandardMaterial color="#4a7a58" />
+      </mesh>
+      <mesh position={[CONSOLE_X + 1.38, N_CONSOLE_TOP + ON + 0.14, N_BACK + 0.13]} scale={[1, 0.8, 1]}>
+        <sphereGeometry args={[0.042, 7, 5]} />
+        <meshStandardMaterial color="#3d6b4b" />
+      </mesh>
+
+      {/* tiny folded paper crane — body + two tilted wings */}
+      <mesh position={[CONSOLE_X + 1.67, N_CONSOLE_TOP + ON + 0.012, N_BACK + 0.122]} rotation={[0, 0.4, 0]}>
+        <boxGeometry args={[0.09, 0.012, 0.06]} />
+        <meshStandardMaterial color={N_CREAM} />
+      </mesh>
+      <mesh
+        position={[CONSOLE_X + 1.655, N_CONSOLE_TOP + ON + 0.039, N_BACK + 0.114]}
+        rotation={[0.5, 0.4, 0.35]}
+      >
+        <boxGeometry args={[0.085, 0.01, 0.05]} />
+        <meshStandardMaterial color="#f0e7d4" />
+      </mesh>
+      <mesh
+        position={[CONSOLE_X + 1.688, N_CONSOLE_TOP + ON + 0.039, N_BACK + 0.132]}
+        rotation={[-0.5, 0.4, -0.35]}
+      >
+        <boxGeometry args={[0.085, 0.01, 0.05]} />
+        <meshStandardMaterial color="#f0e7d4" />
+      </mesh>
+
+      {/* noren-style indigo fabric strip between the print and the
+          umbrella stand corner — rod, cloth, one pale brush stroke */}
+      <mesh position={[15.5, 2.27, N_BACK + 0.014]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.008, 0.008, 0.4, 6]} />
+        <meshStandardMaterial color={N_WOOD_DARK} />
+      </mesh>
+      <mesh position={[15.5, 1.76, N_BACK + 0.01]} castShadow>
+        <boxGeometry args={[0.3, 1.0, 0.012]} />
+        <meshStandardMaterial color="#2f3a63" />
+      </mesh>
+      <mesh position={[15.5, 1.82, N_BACK + 0.026]}>
+        <boxGeometry args={[0.11, 0.36, 0.008]} />
+        <meshStandardMaterial color="#b9c2d8" />
+      </mesh>
+      </GenkanOnly>
     </group>
   );
 }

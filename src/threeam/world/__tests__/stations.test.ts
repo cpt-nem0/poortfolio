@@ -16,11 +16,24 @@ const intersects = (a: Rect, b: Rect) =>
   a.x < b.x + b.w && b.x < a.x + a.w && a.z < b.z + b.d && b.z < a.z + a.d;
 
 describe("stations", () => {
-  it("registry has the projects, experience, and about stations, workstation-tagged except about", () => {
-    expect(STATIONS.map((s) => s.id).sort()).toEqual(["about", "experience", "projects"]);
+  it("registry has the projects, experience, about and construction stations, areas as designed", () => {
+    expect(STATIONS.map((s) => s.id).sort()).toEqual(["about", "construction", "experience", "projects"]);
     for (const s of STATIONS) {
-      expect(s.area).toBe(s.id === "about" ? "ground" : "workstation");
+      expect(s.area).toBe(s.id === "about" ? "ground" : s.id === "construction" ? "roof" : "workstation");
     }
+  });
+
+  it("the construction station is reachable only from the roof and sits clear of the roof's furniture + portal trigger", () => {
+    const c = STATIONS.find((s) => s.id === "construction")!;
+    const cx = c.trigger.x + c.trigger.w / 2;
+    const cz = c.trigger.z + c.trigger.d / 2;
+    expect(stationAt("roof", cx, cz)?.id).toBe("construction");
+    expect(stationAt("ground", cx, cz)).toBeNull();
+    for (const f of HOUSE.areas.roof.furniture) expect(intersects(c.trigger, f)).toBe(false);
+    for (const p of HOUSE.portals.filter((p) => p.area === "roof")) expect(intersects(c.trigger, p.trigger)).toBe(false);
+    // the camera ray never crosses the trigger's x-range (player never in shot)
+    const [px] = c.camera.pos; const [lx] = c.camera.look;
+    expect(Math.min(px, lx)).toBeGreaterThan(c.trigger.x + c.trigger.w);
   });
 
   it("stationAt finds a station inside its trigger and null elsewhere", () => {

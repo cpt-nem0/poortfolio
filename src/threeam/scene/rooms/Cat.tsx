@@ -1,78 +1,47 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
+import { Html } from "@react-three/drei";
 import * as THREE from "three";
 
-/**
- * Sleeping cat (Task 9), curled up in her own cat bed (FURNISHING WAVE —
- * she used to curl on the bed's duvet; the owner's final sketch gives her a
- * round pet bed in the room's NE corner instead, and moves her there).
- * Chunky "loaf" silhouette from 2 stacked boxes, a tucked head box, 2 ear
- * wedges (one twitches), and a tail that curls from the body's back around
- * toward the front. castShadow comes from Bedroom's mount-time traverse —
- * this component mounts inside that traversed root, so it deliberately
- * sets no shadow flags itself.
- *
- * RECOLOR: the original spec described her as a near-black cat, matte
- * everywhere with one lighter spine highlight — in this night-time room
- * that read as effectively invisible. Recolored to a classic orange tabby
- * with a cream/white underside (chest, muzzle, a tucked paw, tail tip) so
- * she reads clearly against the dark wood floor and cat bed, plus a couple
- * of subtle darker-orange tabby stripe bands. Still matte (roughness 1,
- * metalness 0, no emissive) and kept under the scene's Bloom luminance
- * threshold (0.6, Effects.tsx) so nothing blows out. A planned future
- * dark-mode feature gives her glowing eyes — that still works fine on an
- * orange coat. Purely a material/color (+ a few small decorative patch
- * meshes) change: geometry proportions and all animation are untouched.
- *
- * Position is a prop, not a hand-guessed local constant: Bedroom.tsx
- * derives x/y/z from the cat bed's own constructed geometry (its inner
- * pad's top surface + center) and passes them in. STALE HISTORY: from the
- * bed-swap task through the SUPER-KING pass, the source used to be the GLB
- * bed's own foot-area vertex cloud (see BedModel's attribution comment in
- * Bedroom.tsx for that old derivation, kept there for the record) — this
- * wave replaces all of that with the much simpler cat-bed-pad math (see the
- * CAT_X/CAT_Y/CAT_Z consts in Bedroom.tsx). Cat behavior/rendering itself
- * is untouched by the move — only the seat changed.
- */
+import { useReducedMotion } from "@/components/bento/effects";
+import { audioEngine } from "@/threeam/audio/engine";
+import { CatModel } from "../models/CatModel";
+import { PixelBubble } from "@/components/PixelBubble";
 
-// Orange tabby palette. Kept mid-warm (see per-const luminance notes) so
-// none of it crosses the scene's Bloom luminanceThreshold (0.6) even when
-// lit — no neon, no pastel-out, no washed-out blowout.
-const CAT_ORANGE = "#c97a3a"; // main coat — luminance ≈0.53, under Bloom's 0.6
-const CAT_ORANGE_DARK = "#8a4a20"; // tabby stripe bands, subtle
-const CAT_CREAM = "#e8d9bc"; // chest/muzzle/paw/tail-tip — matches the room's
-// existing off-white fabric tones (Bedroom.tsx e.g. "#e6d8b8", "#e8e1d2")
-const CAT_EAR_PINK = "#cf8880"; // soft inner-ear hint — luminance ≈0.59
+// The cat is a painted GLB now (see models/CatModel.tsx for the model +
+// attribution). This file owns the *petting*: click → hearts rise, a pixel
+// speech bubble pops open over her head, and she purrs (synthesized, see
+// audio/sfx.ts). The hand-built sphere cat it replaces is in git history.
 const HEART_COLOR = "#ff7d9c";
 
-// Ear at rest is tilted outward this much (z-rotation); the twitch animates
-// relative to this base so the idle pose isn't lost after the first cycle.
-const EAR_BASE_TILT = 0.15;
-const EAR_TWITCH_ANGLE = 0.2; // ~0.2 rad flick
-const EAR_TWITCH_DUR = 0.15; // 150ms out-and-back
-const EAR_TWITCH_MIN = 6; // 6–9s between twitches
-const EAR_TWITCH_RANGE = 3;
+const HEART_SHAPE = new THREE.Shape();
+HEART_SHAPE.moveTo(0, -0.025);
+HEART_SHAPE.bezierCurveTo(-0.065, 0.012, -0.028, 0.062, 0, 0.031);
+HEART_SHAPE.bezierCurveTo(0.028, 0.062, 0.065, 0.012, 0, -0.025);
 
-const HEART_BURST_COOLDOWN = 2; // max one burst per 2s
+const PET_COOLDOWN = 2; // one pet (hearts + purr + bubble) per 2s
 const HEART_RISE = 0.3; // float up 0.3m
 const HEART_FADE = 1; // fade over ~1s
+const HEART_BASE_Y = 0.46; // just above the loaf's ears (she's ~0.37m tall)
+const BUBBLE_Y = 0.4; // anchor = tail tip, just over her ears (she's ~0.37m tall)
+const BUBBLE_MS = 1700;
+const PURR_LINES = ["purr", "purrr", "prrr~", "…purr"];
+
+// Speech bubble: the site-wide PixelBubble (stepped pixel corners, #21242A
+// translucent fill, stair-step tail). Opens with a short fade+rise, eases
+// out before unmount.
+const BUBBLE_IN_MS = 320;
+const BUBBLE_OUT_MS = 240;
 
 /**
- * Deterministic pseudo-random in [0,1), seeded by an integer. Used to pick
- * the next ear-twitch interval and the heart-burst count/scatter — never
- * called from inside the per-frame hot path with a free-running seed, only
- * with counters that advance on discrete events (a twitch completing, a
- * click), so it's reproducible and never `Math.random()`-per-frame.
+ * Deterministic pseudo-random in [0,1), seeded by an integer. Only called on
+ * discrete events (a click), never per frame with a free-running seed.
  */
 function hash(n: number): number {
   const x = Math.sin(n * 12.9898) * 43758.5453;
   return x - Math.floor(x);
-}
-
-function matte(color: string = CAT_ORANGE) {
-  return <meshStandardMaterial color={color} roughness={1} metalness={0} />;
 }
 
 interface CatProps {
@@ -89,21 +58,33 @@ interface Heart {
   dz: number;
 }
 
-export function Cat({ x, y, z, rotationY = 0.35 }: CatProps) {
-  const bodyRef = useRef<THREE.Group>(null);
-  const earRef = useRef<THREE.Mesh>(null);
+interface Bubble {
+  id: number;
+  text: string;
+}
+
+export function Cat({ x, y, z, rotationY = -0.55 }: CatProps) {
+  const reducedMotion = useReducedMotion();
   const heartMeshRefs = useRef(new Map<number, THREE.Mesh>());
 
   const clockRef = useRef(0);
-  const twitchCountRef = useRef(1);
-  // seed from the literal initial count (1) — reading twitchCountRef.current
-  // here would be a ref-access-during-render lint error, and it's the same value
-  const nextTwitchRef = useRef(EAR_TWITCH_MIN + hash(1) * EAR_TWITCH_RANGE);
-  const twitchStartRef = useRef<number | null>(null);
-  const lastBurstRef = useRef(-Infinity);
+  const lastPetRef = useRef(-Infinity);
   const heartIdRef = useRef(0);
+  const petCountRef = useRef(0);
+  const bubbleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bubbleOutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bubbleElRef = useRef<HTMLDivElement | null>(null);
 
   const [hearts, setHearts] = useState<Heart[]>([]);
+  const [bubble, setBubble] = useState<Bubble | null>(null);
+
+  useEffect(
+    () => () => {
+      if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current);
+      if (bubbleOutTimerRef.current) clearTimeout(bubbleOutTimerRef.current);
+    },
+    []
+  );
 
   useFrame((_, rawDt) => {
     // clamped dt, same pattern as Turntable — never Date.now()/Math.random()
@@ -112,31 +93,7 @@ export function Cat({ x, y, z, rotationY = 0.35 }: CatProps) {
     clockRef.current += dt;
     const t = clockRef.current;
 
-    // breathing — subtle scale pulse on the body group's y axis
-    if (bodyRef.current) {
-      bodyRef.current.scale.y = 1 + 0.03 * Math.sin(t * 1.4);
-    }
-
-    // ear twitch — accumulator crosses a hash-seeded threshold, then the
-    // ear rotates out from its base tilt and back over 150ms
-    if (twitchStartRef.current === null && t >= nextTwitchRef.current) {
-      twitchStartRef.current = t;
-    }
-    if (twitchStartRef.current !== null) {
-      const elapsed = t - twitchStartRef.current;
-      if (elapsed <= EAR_TWITCH_DUR) {
-        const phase = elapsed / EAR_TWITCH_DUR;
-        const k = phase < 0.5 ? phase * 2 : (1 - phase) * 2; // triangular pulse
-        if (earRef.current) earRef.current.rotation.z = EAR_BASE_TILT + k * EAR_TWITCH_ANGLE;
-      } else {
-        if (earRef.current) earRef.current.rotation.z = EAR_BASE_TILT;
-        twitchStartRef.current = null;
-        twitchCountRef.current += 1;
-        nextTwitchRef.current = t + EAR_TWITCH_MIN + hash(twitchCountRef.current) * EAR_TWITCH_RANGE;
-      }
-    }
-
-    // hearts — rise + fade off the same clamped clock, then drop out
+    // hearts — rise + fade off the clamped clock, then drop out
     if (hearts.length > 0) {
       let anyDone = false;
       for (const h of hearts) {
@@ -148,7 +105,7 @@ export function Cat({ x, y, z, rotationY = 0.35 }: CatProps) {
         }
         if (!mesh) continue;
         const p = elapsed / HEART_FADE;
-        mesh.position.y = HEART_RISE * p;
+        mesh.position.y = HEART_BASE_Y + (reducedMotion ? 0 : HEART_RISE * p);
         const mat = mesh.material as THREE.MeshStandardMaterial;
         mat.opacity = 1 - p;
       }
@@ -158,11 +115,14 @@ export function Cat({ x, y, z, rotationY = 0.35 }: CatProps) {
     }
   });
 
-  function spawnHearts() {
+  function pet() {
     const t = clockRef.current;
-    if (t - lastBurstRef.current < HEART_BURST_COOLDOWN) return;
-    lastBurstRef.current = t;
-    const count = hash(twitchCountRef.current + heartIdRef.current) > 0.5 ? 2 : 1;
+    if (t - lastPetRef.current < PET_COOLDOWN) return;
+    lastPetRef.current = t;
+    const n = ++petCountRef.current;
+
+    // hearts
+    const count = hash(n + 7) > 0.5 ? 2 : 1;
     const spawned: Heart[] = [];
     for (let i = 0; i < count; i++) {
       const id = heartIdRef.current++;
@@ -174,15 +134,55 @@ export function Cat({ x, y, z, rotationY = 0.35 }: CatProps) {
       });
     }
     setHearts((prev) => [...prev, ...spawned]);
+
+    // bubble — a fresh id remounts the div so the open animation replays;
+    // the close eases out first, then the element is dropped
+    setBubble({ id: n, text: PURR_LINES[Math.floor(hash(n + 3) * PURR_LINES.length)] });
+    if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current);
+    if (bubbleOutTimerRef.current) clearTimeout(bubbleOutTimerRef.current);
+    bubbleOutTimerRef.current = setTimeout(() => {
+      const el = bubbleElRef.current;
+      if (el && !reducedMotion) {
+        el.animate(
+          [
+            { opacity: 1, transform: "scale(1) translateY(0)" },
+            { opacity: 0, transform: "scale(0.94) translateY(4px)" },
+          ],
+          { duration: BUBBLE_OUT_MS, easing: "cubic-bezier(0.4, 0, 0.6, 1)", fill: "forwards" }
+        );
+      }
+    }, BUBBLE_MS - BUBBLE_OUT_MS);
+    bubbleTimerRef.current = setTimeout(() => setBubble(null), BUBBLE_MS);
+
+    // sound — the click is a user gesture, so this also unlocks audio
+    audioEngine.purr();
+  }
+
+  // open: fade + rise + ease from 0.9 to 1 (expo-out, no bounce). Guarded
+  // by a dataset flag: React re-invokes a callback ref on every render
+  // (new function identity), and re-running animate() here would restart
+  // the fade from 0 each time a heart mounts/unmounts — a visible blink.
+  function animateBubbleIn(el: HTMLDivElement | null) {
+    bubbleElRef.current = el;
+    if (!el || reducedMotion || el.dataset.animatedIn) return;
+    el.dataset.animatedIn = "1";
+    el.animate(
+      [
+        { opacity: 0, transform: "scale(0.9) translateY(6px)" },
+        { opacity: 1, transform: "scale(1) translateY(0)" },
+      ],
+      { duration: BUBBLE_IN_MS, easing: "cubic-bezier(0.16, 1, 0.3, 1)", fill: "both" }
+    );
   }
 
   return (
     <group
+      name="sleeping-cat"
       position={[x, y, z]}
       rotation={[0, rotationY, 0]}
       onClick={(e) => {
         e.stopPropagation();
-        spawnHearts();
+        pet();
       }}
       onPointerOver={() => {
         document.body.style.cursor = "pointer";
@@ -191,86 +191,27 @@ export function Cat({ x, y, z, rotationY = 0.35 }: CatProps) {
         document.body.style.cursor = "auto";
       }}
     >
-      {/* body — breathing group, 2 stacked boxes forming a curled loaf */}
-      <group ref={bodyRef} position={[0, 0.045, 0]}>
-        <mesh>
-          <boxGeometry args={[0.28, 0.09, 0.2]} />
-          {matte()}
-        </mesh>
-        <mesh position={[-0.01, 0.075, 0.005]}>
-          <boxGeometry args={[0.21, 0.07, 0.16]} />
-          {matte()}
-        </mesh>
-        {/* tabby stripe bands along the spine — chunky, just 2, kept subtle */}
-        <mesh position={[-0.01, 0.112, 0.005]}>
-          <boxGeometry args={[0.19, 0.012, 0.05]} />
-          {matte(CAT_ORANGE_DARK)}
-        </mesh>
-        <mesh position={[-0.07, 0.09, 0.005]}>
-          <boxGeometry args={[0.03, 0.045, 0.15]} />
-          {matte(CAT_ORANGE_DARK)}
-        </mesh>
+      <Suspense fallback={null}>
+        <CatModel />
+      </Suspense>
 
-        {/* cream chest patch — poking out at the body/head join, the main
-            spot the white reads from the dollhouse camera since the belly
-            itself is tucked away in the loaf pose */}
-        <mesh position={[0.11, 0.005, 0.005]}>
-          <boxGeometry args={[0.05, 0.06, 0.1]} />
-          {matte(CAT_CREAM)}
-        </mesh>
-        {/* cream tucked paw, front-bottom of the loaf near the chest patch */}
-        <mesh position={[0.135, -0.03, 0.035]}>
-          <boxGeometry args={[0.05, 0.03, 0.05]} />
-          {matte(CAT_CREAM)}
-        </mesh>
+      {bubble && (
+        <Html position={[0, BUBBLE_Y, 0]} zIndexRange={[12, 12]} style={{ pointerEvents: "none" }}>
+          {/* outer div: hang the bubble ABOVE the anchor (tail tip at the
+              anchor, 6px clear) so it never covers the cat; inner div is
+              what animates, so the offset transform and the animation
+              transform don't fight over one element */}
+          <div style={{ transform: "translate(-50%, calc(-100% - 3px))" }}>
+            <div key={bubble.id} ref={animateBubbleIn} style={{ transformOrigin: "50% 100%" }}>
+              <PixelBubble className="select-none font-mono text-[11px] tracking-[0.12em] text-[#e9ecf4]">
+                {bubble.text}
+              </PixelBubble>
+            </div>
+          </div>
+        </Html>
+      )}
 
-        {/* head — tucked against the body's high-x end, tipped down */}
-        <group position={[0.15, 0.03, 0.02]} rotation={[0.3, -0.3, 0]}>
-          <mesh>
-            <boxGeometry args={[0.1, 0.09, 0.1]} />
-            {matte()}
-          </mesh>
-          {/* cream muzzle patch, protruding toward the head's forward-bottom */}
-          <mesh position={[0.04, -0.02, 0.03]}>
-            <boxGeometry args={[0.045, 0.04, 0.045]} />
-            {matte(CAT_CREAM)}
-          </mesh>
-          {/* ears — 2 wedges; the +x one twitches. Each gets a small nested
-              pink cone as a soft inner-ear hint. */}
-          <mesh position={[-0.025, 0.06, 0.01]} rotation={[0, 0, -EAR_BASE_TILT]}>
-            <coneGeometry args={[0.025, 0.045, 3]} />
-            {matte()}
-            <mesh position={[0, -0.005, 0.008]} scale={0.5}>
-              <coneGeometry args={[0.025, 0.045, 3]} />
-              {matte(CAT_EAR_PINK)}
-            </mesh>
-          </mesh>
-          <mesh ref={earRef} position={[0.025, 0.06, 0.01]} rotation={[0, 0, EAR_BASE_TILT]}>
-            <coneGeometry args={[0.025, 0.045, 3]} />
-            {matte()}
-            <mesh position={[0, -0.005, 0.008]} scale={0.5}>
-              <coneGeometry args={[0.025, 0.045, 3]} />
-              {matte(CAT_EAR_PINK)}
-            </mesh>
-          </mesh>
-        </group>
-
-        {/* tail — curls from the body's low-x (back) end around toward the
-            front, 2 segments at increasing yaw to fake a curled sweep. The
-            far/front segment doubles as the cream tail tip. */}
-        <mesh position={[-0.14, -0.005, 0.09]} rotation={[0, 0.5, 0]}>
-          <boxGeometry args={[0.14, 0.045, 0.045]} />
-          {matte()}
-        </mesh>
-        <mesh position={[-0.06, -0.005, 0.15]} rotation={[0, 1.3, 0]}>
-          <boxGeometry args={[0.12, 0.04, 0.04]} />
-          {matte(CAT_CREAM)}
-        </mesh>
-      </group>
-
-      {/* pettable hearts — throttled burst on click, flat-facing-up planes
-          (same convention as the moon floor patch) so they read from the
-          elevated follow-camera regardless of yaw */}
+      {/* Heart silhouettes rise above the head when petted. */}
       {hearts.map((h) => (
         <mesh
           key={h.id}
@@ -279,9 +220,9 @@ export function Cat({ x, y, z, rotationY = 0.35 }: CatProps) {
             else heartMeshRefs.current.delete(h.id);
           }}
           rotation={[-Math.PI / 2, 0, 0]}
-          position={[h.dx, 0.14, h.dz]}
+          position={[h.dx, HEART_BASE_Y, h.dz]}
         >
-          <planeGeometry args={[0.045, 0.045]} />
+          <shapeGeometry args={[HEART_SHAPE, 10]} />
           <meshStandardMaterial
             color={HEART_COLOR}
             emissive={HEART_COLOR}

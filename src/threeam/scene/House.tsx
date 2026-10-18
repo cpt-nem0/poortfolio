@@ -1,10 +1,11 @@
 "use client";
 
-import { Suspense, useRef } from "react";
+import { Suspense, memo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Preload } from "@react-three/drei";
 import type { Group } from "three";
 import { useThreeAm } from "@/threeam/state/store";
+import type { AreaId } from "@/threeam/world/runtime";
 import {
   HOUSE,
   WORKSTATION_ROOM,
@@ -26,6 +27,8 @@ import { usePixelTexture } from "./usePixelTexture";
 import { Workstation } from "./rooms/Workstation";
 import { Genkan } from "./rooms/Genkan";
 import { Roof } from "./rooms/Roof";
+import { WorkstationDoorway } from "./rooms/WorkstationDoorway";
+import { GenkanOnly } from "./GenkanOnly";
 import { VerticalDoorFrame, HorizontalDoorFrame } from "./rooms/CommonArea";
 
 const WALL_H = 2.8; // raised from 2.5 at the style gate: wall art needs the headroom
@@ -100,7 +103,12 @@ function StructureBand({
     if (!ref.current || !bands) return;
     ref.current.visible = bands.some(isBandVisible);
   });
-  return <group ref={ref}>{children}</group>;
+  // `userData.bands` is read by Scene.tsx's ShaderWarmup (one-shot, at load)
+  return (
+    <group ref={ref} userData={bands ? { bands } : undefined}>
+      {children}
+    </group>
+  );
 }
 
 /** Which room band(s) a rect's x-extent touches — used to tag House's
@@ -242,6 +250,36 @@ function StepPlant({ s }: { s: number }) {
   );
 }
 
+/** The common↔genkan divider's UPPER band (SOUTH_STUB_H..WALL_H). From the
+ *  common area this wall is the CAMERA-SIDE wall — the dollhouse camera
+ *  trails south of the player, so a full-height band here hides the whole
+ *  south strip of the common area (z≈4–6: the kotatsu set, the andon, the
+ *  potted tree — KOTATSU LIVING ROOM pass, 2026-10-18, coordinator found
+ *  the hero piece invisible from the follow camera). From the genkan it is
+ *  the room's north wall and reads face-on, and the owner's item-11
+ *  correction wants the genkan to read as an enclosed entry. So: the band
+ *  renders only while the player stands in the genkan strip (z ≥ GENKAN_
+ *  ROOM.z, with a 0.1m hysteresis either side of the doorway so it never
+ *  flickers mid-threshold — see GenkanOnly.tsx, shared with Genkan.tsx's
+ *  north-wall dressing). The y0-0.55 stub under it is rendered by the
+ *  ns-band loop regardless, so from the common area a knee wall still
+ *  marks the room edge. Collision is untouched (layout.ts walls). */
+function GenkanDividerUpper({ rect }: { rect: Rect }) {
+  const upperH = WALL_H - SOUTH_STUB_H;
+  return (
+    <GenkanOnly>
+      <mesh
+        position={[rect.x + rect.w / 2, SOUTH_STUB_H + upperH / 2, rect.z + rect.d / 2]}
+        castShadow
+        receiveShadow
+      >
+        <boxGeometry args={[rect.w, upperH, rect.d]} />
+        <meshStandardMaterial color="#7d6fa8" />
+      </mesh>
+    </GenkanOnly>
+  );
+}
+
 function Stairs({ x, z }: { x: number; z: number }) {
   return (
     <group position={[x, 0, z]}>
@@ -336,6 +374,93 @@ const STAIR_PHOTOS: {
  *  them. The wall-side corner tucks invisibly into the divider. */
 const PHOTO_YAW = 0.16;
 
+/** Cupboard under the stairs — geometry + lamp ONLY (no interaction, no
+ *  text, no audio). This is the future Harry Potter easter egg: see
+ *  HANDOFF §9, "Cupboard under the stairs" ("room available. previous
+ *  tenant got a letter." + `public/3am/audio/cupboard-magic.mp3`).
+ *
+ *  Placement derives from the flight itself, never from hardcoded numbers:
+ *  the Stairs mount below sits at the stairs-up portal trigger's own
+ *  x-midpoint (15.2) with STAIR_WIDTH 1.0, so the flight's WEST flank —
+ *  the face that looks into the common area — is the x = 14.70 plane.
+ *  The door spans z 0.5-1.1 (local to the flight's own z origin), where
+ *  the stringer still stands 1.656m tall at its lowest (step i=4,
+ *  height = (STAIR_STEPS - 4) * STAIR_RISE) — a 0.95m door plus its lamp
+ *  at y 1.35 both clear that comfortably. Verified against the tread caps
+ *  too: at this z they sit at y ≈ 1.66-2.23, far above the door.
+ *
+ *  No collider change: the flight's own furniture rect (layout.ts,
+ *  {x:14.65,z:0,w:1.1,d:2.56}) already covers all of this. */
+const CUPBOARD_W = 0.6; // door width, along z
+const CUPBOARD_H = 0.95;
+const CUPBOARD_ZC = 0.8; // door centre, in the flight's own z frame
+const STAIR_Z0 = 0.004; // matches the <Stairs> mount's z, below
+
+function Cupboard({ flightCenterX }: { flightCenterX: number }) {
+  const westFace = flightCenterX - STAIR_WIDTH / 2; // 14.70, the flank plane
+  return (
+    <group position={[westFace, 0, STAIR_Z0 + CUPBOARD_ZC]}>
+      {/* thin frame, set into the flank (x 14.665-14.700) */}
+      <mesh position={[-0.015, CUPBOARD_H / 2, 0]} castShadow receiveShadow>
+        <boxGeometry args={[0.035, CUPBOARD_H + 0.08, CUPBOARD_W + 0.08]} />
+        <meshStandardMaterial color="#4a3a2e" roughness={0.8} />
+      </mesh>
+      {/* dark wood door leaf, 35mm proud of the frame (face at x ≈ 14.643,
+          well past the house's 6mm coplanar-offset convention) */}
+      <mesh position={[-0.0445, CUPBOARD_H / 2, 0]} castShadow receiveShadow>
+        <boxGeometry args={[0.027, CUPBOARD_H, CUPBOARD_W]} />
+        <meshStandardMaterial color="#2f1d13" roughness={0.75} />
+      </mesh>
+      {/* two plank grooves, 6mm proud of the leaf */}
+      {[-0.17, 0.17].map((dz) => (
+        <mesh key={dz} position={[-0.0615, CUPBOARD_H / 2, dz]}>
+          <boxGeometry args={[0.012, CUPBOARD_H - 0.09, 0.016]} />
+          <meshStandardMaterial color="#231309" roughness={0.9} />
+        </mesh>
+      ))}
+      {/* tiny brass knob, south side of the leaf */}
+      <mesh position={[-0.068, 0.5, 0.2]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.018, 0.022, 0.03, 8]} />
+        <meshStandardMaterial color="#b58a3c" roughness={0.35} metalness={0.6} />
+      </mesh>
+
+      {/* tiny wall lamp above the door — dim, warm, short reach. The
+          pointLight is a CHILD of the shade's own group at the bulb
+          position (HANDOFF §7 bug class 1: a light that is a sibling of a
+          rotated fixture does NOT inherit the rotation). This group's only
+          rotation is the shade's own PI about X — a downlight, the cone's
+          apex pointing at the floor, exactly like the stairs-approach
+          sconce below. (It was -PI/2 about X, the wrong axis for "open
+          downward": that aims the cone's mouth SOUTH along +z and pushed
+          25mm of cone into the stair stringer behind it — HANDOFF §7 bug
+          class 2.) The light sits at that group's local origin, so the
+          bulb is provably at the fixture: world = (westFace - 0.05, 1.35,
+          STAIR_Z0 + CUPBOARD_ZC). */}
+      <group position={[-0.05, 1.35, 0]}>
+        {/* bracket back to the flank */}
+        <mesh position={[0.028, 0.06, 0]}>
+          <boxGeometry args={[0.055, 0.02, 0.02]} />
+          <meshStandardMaterial color="#4a3a2e" />
+        </mesh>
+        <group rotation={[Math.PI, 0, 0]}>
+          <mesh>
+            <coneGeometry args={[0.075, 0.09, 8, 1, true]} />
+            <meshStandardMaterial
+              color="#ffcf8f"
+              emissive="#ffb870"
+              emissiveIntensity={0.55} // under the Bloom threshold (0.6) — 0.75 bloomed into a blob; carries the glow alone now
+              side={2}
+            />
+          </mesh>
+          {/* PERF (coordinator): the real light here was measured at ~1.3 fps
+              for a 2m pool nobody stands in — the shade's emissive carries the
+              glow on its own. Re-add a nested light when the egg goes live. */}
+        </group>
+      </group>
+    </group>
+  );
+}
+
 /** Ground-floor-only dressing for the stairs approach: a rectangle rug at
  *  the foot (where the old green marker sat), the photo wall, and a small
  *  brass sconce (music-nook style) pooling warm light over the corner.
@@ -378,6 +503,16 @@ function StairsApproach() {
         </group>
       ))}
 
+      {/* cupboard under the stairs (HANDOFF §9) — the flight's west flank.
+          Derived from the same portal-trigger midpoint the <Stairs> mount
+          uses, so it tracks the flight if that ever moves. */}
+      <Cupboard
+        flightCenterX={
+          HOUSE.portals.find((p) => p.id === "stairs-up")!.trigger.x +
+          HOUSE.portals.find((p) => p.id === "stairs-up")!.trigger.w / 2
+        }
+      />
+
       {/* wall sconce — brass half-dome over the mid-flight, warm low pool
           (fixture-attached light, no shadows — matches the nook's sconce).
           The pointLight lives INSIDE the group at the shade's origin so the
@@ -398,44 +533,18 @@ function StairsApproach() {
   );
 }
 
-/**
- * T8 finale item 16 (owner ask): the workstation doorway "reads invisible"
- * from the common area — "walking into a wall." Two generated, unlit
- * (meshBasicMaterial) glow textures — no new real light, matching the
- * "sanctioned painted-light pattern" every neon sign in this house already
- * uses:
- * (a) a warm gradient quad RECESSED in the door gap itself (centered in
- *     the shared wall's own z-thickness, -0.2..0), filling most of the
- *     clear opening — brightest near the floor, dimming toward the top —
- *     reads as light spilling out of the room beyond.
- * (b) a soft floor-spill patch on the common-area side, flat ON the floor
- *     (y=0.006, ≥6mm per the house's stacked-surface convention — flat is
- *     fine, it's the VERTICAL fake-shaft pattern that's banned, and this
- *     is neither vertical nor a shaft).
- * Radially-symmetric spill texture (see gen-variants.mjs's floorSpill) so
- * the flat quad's own rotation can't put the gradient backwards.
- */
-function WorkstationDoorGlow() {
-  const glowTex = usePixelTexture("/3am/tex/door-glow.png", 1, 1);
-  const spillTex = usePixelTexture("/3am/tex/floor-spill.png", 1, 1);
-  const doorCX = (WS_DOOR_LO + WS_DOOR_HI) / 2;
-  const doorW = WS_DOOR_HI - WS_DOOR_LO;
-  return (
-    <group>
-      <mesh position={[doorCX, (WALL_H - 0.1) / 2, -0.1]}>
-        <planeGeometry args={[doorW - 0.05, WALL_H - 0.1]} />
-        <meshBasicMaterial map={glowTex} transparent />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[doorCX, 0.006, 0.7]}>
-        <planeGeometry args={[1.8, 1.3]} />
-        <meshBasicMaterial map={spillTex} transparent />
-      </mesh>
-    </group>
-  );
-}
-
-export function House() {
-  const area = useThreeAm((s) => s.area);
+/** One area's whole structural + content tree, for a FIXED `area`. Mounted
+ *  once per area by `House` below and switched by visibility, never by
+ *  mount/unmount (2026-10-19 — owner: "the workroom is only loading when I
+ *  step in"; measured: unmounting an area threw its shaders away, so every
+ *  return to the ground floor from the roof was a ~1.2s rebuild, and every
+ *  workstation entry a build-on-entry). Hidden groups cost nothing to
+ *  render and their lights don't count (three traverses visible objects
+ *  only), so the ≤19-light budget is unchanged. */
+// memo: `House` re-renders on every area switch, and without this all three
+// area trees (thousands of elements) would reconcile each time — measured as
+// a ~250ms frame on every roof trip even with every shader warm.
+const HouseArea = memo(function HouseArea({ area }: { area: AreaId }) {
   // LAYOUT V2 (Task 3): "workstation" is a camera-only area — it isn't a
   // `HOUSE.areas` entry (its floor space is already part of GROUND's own
   // bounds/walls, see layout.ts's LAYOUT V2 comment), so it can't fall
@@ -481,12 +590,12 @@ export function House() {
         {sharedWall.map((rect, i) => (
           <WallBox key={`ws${i}`} rect={rect} height={SOUTH_STUB_H} color="#57497a" />
         ))}
-        {/* framed opening (Task 4): the workstation-side face of the
-            common↔workstation door. The common-side face is mounted from
-            the "ground" branch below — this room's own structural tree
-            never renders alongside it, so both faces need their own
-            mount. */}
-        <HorizontalDoorFrame z={-0.1} xLo={WS_DOOR_LO} xHi={WS_DOOR_HI} height={WALL_H} />
+        {/* The exit follows this wall's cutaway: a low sill marks the gap
+            without a freestanding frame crossing the workstation view. */}
+        <mesh position={[(WS_DOOR_LO + WS_DOOR_HI) / 2, 0.034, -0.02]} receiveShadow>
+          <boxGeometry args={[WS_DOOR_HI - WS_DOOR_LO, 0.028, 0.44]} />
+          <meshStandardMaterial color="#ad8556" roughness={0.9} />
+        </mesh>
         {/* PRELOAD REGRESSION FIX (T8 finale, T3 review carry-forward):
             Workstation's 5 GLBs (EVA, coffee machine, pixar lamp, gaming
             chair, katana) only ever mount HERE, inside this branch — House
@@ -782,17 +891,9 @@ export function House() {
             const isGenkanFrontWall = isCameraSideWall(rect, "ground");
             const isGKDivider = Math.abs(rect.z - 6) < 1e-6 && Math.abs(rect.d - 0.2) < 1e-6;
             if (isGKDivider) {
-              const upperH = WALL_H - SOUTH_STUB_H;
               return (
                 <StructureBand key={`w${i}`} bands={overlappingBands(rect)}>
-                  <mesh
-                    position={[rect.x + rect.w / 2, SOUTH_STUB_H + upperH / 2, rect.z + rect.d / 2]}
-                    castShadow
-                    receiveShadow
-                  >
-                    <boxGeometry args={[rect.w, upperH, rect.d]} />
-                    <meshStandardMaterial color="#7d6fa8" />
-                  </mesh>
+                  <GenkanDividerUpper rect={rect} />
                 </StructureBand>
               );
             }
@@ -848,22 +949,8 @@ export function House() {
             <HorizontalDoorFrame z={6.1} xLo={GENKAN_DOOR_LO} xHi={GENKAN_DOOR_HI} height={WALL_H} />
           </StructureBand>
           <StructureBand bands={[1]}>
-            {/* T8 finale item 16: warmer/lighter frame color on this face
-                only (color prop, CommonArea.tsx — default FRAME_COLOR
-                everywhere else) so it pops from the dark wall; see
-                WorkstationDoorGlow above for the glow quad + floor spill
-                that fill the opening itself. */}
-            <HorizontalDoorFrame
-              z={-0.1}
-              xLo={WS_DOOR_LO}
-              xHi={WS_DOOR_HI}
-              height={WALL_H}
-              color="#6e5238"
-            />
-          </StructureBand>
-          <StructureBand bands={[1]}>
             <Suspense fallback={null}>
-              <WorkstationDoorGlow />
+              <WorkstationDoorway />
             </Suspense>
           </StructureBand>
         </>
@@ -981,5 +1068,22 @@ export function House() {
         </StructureBand>
       )}
     </group>
+  );
+});
+
+/** All three areas, always mounted; `visible` tracks the camera area.
+ *  `userData.area` lets Scene.tsx's ShaderWarmup put each area in front of
+ *  the renderer once at load, so no area compiles on first entry. */
+const AREAS: AreaId[] = ["ground", "workstation", "roof"];
+export function House() {
+  const area = useThreeAm((s) => s.area);
+  return (
+    <>
+      {AREAS.map((id) => (
+        <group key={id} visible={area === id} userData={{ area: id }}>
+          <HouseArea area={id} />
+        </group>
+      ))}
+    </>
   );
 }

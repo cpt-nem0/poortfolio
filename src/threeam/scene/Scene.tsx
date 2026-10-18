@@ -1,9 +1,10 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, memo, useEffect, useRef, useState } from "react";
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
-import { Preload } from "@react-three/drei";
+import { Preload, useProgress } from "@react-three/drei";
 import type { Group } from "three";
+import { WebGLRenderTarget } from "three";
 import { House } from "./House";
 import { Player } from "./Player";
 import { FollowCamera } from "./FollowCamera";
@@ -20,6 +21,7 @@ import {
   updateVisibleBands,
   clearVisibleBands,
   isBandVisible,
+  type AreaId,
   type RoomBand,
 } from "@/threeam/world/runtime";
 
@@ -75,7 +77,107 @@ function RoomCull({ band, children }: { band: RoomBand; children: React.ReactNod
     if (!ref.current) return;
     ref.current.visible = isBandVisible(band);
   });
-  return <group ref={ref}>{children}</group>;
+  // `userData.bands` lets ShaderWarmup (below) find and toggle these groups
+  // synchronously; the per-frame writer above stays the only runtime driver.
+  return (
+    <group ref={ref} userData={{ bands: [band] }}>
+      {children}
+    </group>
+  );
+}
+
+/**
+ * One-shot shader warm-up, run once all assets are in (useProgress idle)
+ * and BEFORE LoadingOverlay's 300ms hold ends, so it hides inside the
+ * loading screen. Why: three.js builds a separate program variant per
+ * material per visible-light COUNT, and the count changes with the
+ * two-band culling (bedroom+common ≠ common+music ≠ a single band). drei's
+ * `<Preload all/>` compiles against ONE state (everything visible), so the
+ * first walk into a differently-lit band still compiled ~6 programs and
+ * dropped a 100ms frame (measured 2026-10-19, music-nook entry). Here we
+ * put the band groups into each configuration the runtime can actually
+ * produce (RoomBandUpdater: a current band, plus at most one neighbour),
+ * call `gl.compile` for each — it reads lights via traverseVisible and
+ * materials via traverse — then restore. The per-frame RoomCull /
+ * StructureBand writers re-apply the live state on the next frame anyway.
+ */
+type WarmupConfig = { area: AreaId; bands: RoomBand[] };
+const WARMUP_CONFIGS: WarmupConfig[] = [
+  { area: "ground", bands: [0] },
+  { area: "ground", bands: [1] },
+  { area: "ground", bands: [2] },
+  { area: "ground", bands: [0, 1] },
+  { area: "ground", bands: [1, 2] },
+  { area: "workstation", bands: [] },
+  { area: "roof", bands: [] },
+];
+const WARMUP_SAFETY_MS = 8000;
+function ShaderWarmup() {
+  const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
+  const camera = useThree((s) => s.camera);
+  const { active, progress } = useProgress();
+  const startedRef = useRef(false);
+  useFrame(() => {
+    if (startedRef.current || active || progress < 100) return;
+    startedRef.current = true;
+    const t0 = performance.now();
+    const bandGroups: Group[] = [];
+    const areaGroups: Group[] = [];
+    scene.traverse((o) => {
+      if (Array.isArray((o as Group).userData?.bands)) bandGroups.push(o as Group);
+      if (typeof (o as Group).userData?.area === "string") areaGroups.push(o as Group);
+    });
+    const apply = (config: WarmupConfig | null) => {
+      const liveArea = useThreeAm.getState().area;
+      for (const g of areaGroups) g.visible = (config ? config.area : liveArea) === g.userData.area;
+      for (const g of bandGroups) {
+        const bands = g.userData.bands as RoomBand[];
+        g.visible = config ? bands.some((b) => config.bands.includes(b)) : bands.some(isBandVisible);
+      }
+    };
+    const finish = () => {
+      useThreeAm.getState().setWarmupDone(true);
+      if (process.env.NODE_ENV !== "production") {
+        console.info(`[3am] shader warm-up: ${gl.info.programs?.length ?? "?"} programs in ${Math.round(performance.now() - t0)}ms`);
+      }
+    };
+    const safety = setTimeout(finish, WARMUP_SAFETY_MS);
+    (async () => {
+      // Phase 1 — per configuration, kick off the compiles. The browser
+      // links shaders on background threads (KHR_parallel_shader_compile);
+      // compileAsync captures the light set synchronously at call time and
+      // resolves once every program is actually linked, without blocking
+      // the main thread — so the loading screen stays animated.
+      for (const config of WARMUP_CONFIGS) {
+        apply(config);
+        try {
+          await gl.compileAsync(scene, camera);
+        } catch {
+          // a lost context or an unsupported extension just means a
+          // slower first entry, same as before this warm-up existed
+        }
+        apply(null); // hand visibility back to the live state between awaits
+      }
+      // Phase 2 — one 1×1 render per configuration. compile keys programs
+      // per MATERIAL; the final variant also keys on per-OBJECT flags
+      // (receiveShadow…), and only a real render list walks those. Cheap
+      // now: the heavy links already happened above.
+      const target = new WebGLRenderTarget(1, 1);
+      const prevTarget = gl.getRenderTarget();
+      for (const config of WARMUP_CONFIGS) {
+        apply(config);
+        gl.setRenderTarget(target);
+        gl.render(scene, camera);
+      }
+      gl.setRenderTarget(prevTarget);
+      target.dispose();
+      apply(null);
+      clearTimeout(safety);
+      finish();
+    })();
+  });
+  return null;
 }
 
 /**
@@ -137,6 +239,50 @@ function useCappedDpr() {
   return dpr;
 }
 
+
+// memo: Scene re-renders on area switch; the ground rooms must not reconcile
+// for that (see HouseArea in House.tsx for the measured cost).
+const GroundRooms = memo(function GroundRooms() {
+  return (
+    <Suspense fallback={null}>
+      {/* adjacent-room culling — see RoomCull/updateVisibleBands
+          (runtime.ts). Current band always renders; bedroom (+engawa)
+          x<8, workspace 8<=x<16, music x>=16, with ±0.4m hysteresis at
+          each boundary so the CURRENT room can't flicker at x=8 / x=16.
+          On top of that, whichever neighbour borders the nearest
+          doorway also renders once the player is within DOOR_MARGIN
+          (4.5m) of it, so it's visible through the doorway before
+          arrival instead of popping in at the threshold. House reads
+          the SAME visibleBands to
+          cull its own structural shell (floors/walls/stairs) to
+          match. */}
+      <RoomCull band={0}>
+        <Bedroom />
+      </RoomCull>
+      <RoomCull band={1}>
+        <CommonArea />
+      </RoomCull>
+      <RoomCull band={2}>
+        <MusicNook />
+      </RoomCull>
+      {/* forces every loaded material/geometry onto the GPU once, so a
+          GLB that resolved while its room was culled doesn't pay its
+          first-frame shader-compile hitch when the room becomes visible.
+          This only covers what's mounted UNDER THIS Suspense (Bedroom/
+          CommonArea/MusicNook) — House.tsx mounts Workstation/Genkan
+          from a separate Suspense tree entirely (House sits outside
+          this boundary), so each of those carries its OWN local
+          `<Preload all/>` for the same reason (T8 finale — see
+          House.tsx's PRELOAD REGRESSION FIX comments). Safe to have
+          multiple: Preload traverses the whole r3f scene regardless of
+          which Suspense mounted it, and a redundant gl.compile() on an
+          already-compiled program is a cheap no-op. */}
+      <Preload all />
+      <ShaderWarmup />
+    </Suspense>
+  );
+});
+
 /** The 3D world. Extended by House/Player/FollowCamera/Effects tasks. */
 export default function Scene() {
   const area = useThreeAm((s) => s.area);
@@ -157,43 +303,14 @@ export default function Scene() {
           House/RoomCull so neither reads a stale prior-frame band */}
       <RoomBandUpdater />
       <House />
-      {area === "ground" && (
-        <Suspense fallback={null}>
-          {/* adjacent-room culling — see RoomCull/updateVisibleBands
-              (runtime.ts). Current band always renders; bedroom (+engawa)
-              x<8, workspace 8<=x<16, music x>=16, with ±0.4m hysteresis at
-              each boundary so the CURRENT room can't flicker at x=8 / x=16.
-              On top of that, whichever neighbour borders the nearest
-              doorway also renders once the player is within DOOR_MARGIN
-              (4.5m) of it, so it's visible through the doorway before
-              arrival instead of popping in at the threshold. House reads
-              the SAME visibleBands to
-              cull its own structural shell (floors/walls/stairs) to
-              match. */}
-          <RoomCull band={0}>
-            <Bedroom />
-          </RoomCull>
-          <RoomCull band={1}>
-            <CommonArea />
-          </RoomCull>
-          <RoomCull band={2}>
-            <MusicNook />
-          </RoomCull>
-          {/* forces every loaded material/geometry onto the GPU once, so a
-              GLB that resolved while its room was culled doesn't pay its
-              first-frame shader-compile hitch when the room becomes visible.
-              This only covers what's mounted UNDER THIS Suspense (Bedroom/
-              CommonArea/MusicNook) — House.tsx mounts Workstation/Genkan
-              from a separate Suspense tree entirely (House sits outside
-              this boundary), so each of those carries its OWN local
-              `<Preload all/>` for the same reason (T8 finale — see
-              House.tsx's PRELOAD REGRESSION FIX comments). Safe to have
-              multiple: Preload traverses the whole r3f scene regardless of
-              which Suspense mounted it, and a redundant gl.compile() on an
-              already-compiled program is a cheap no-op. */}
-          <Preload all />
-        </Suspense>
-      )}
+      {/* Ground-floor room content stays MOUNTED on every floor and is only
+          hidden off the ground (2026-10-19, see HouseArea's note): an unmount
+          here used to throw away every room's shaders + GPU buffers each
+          time the player went up the stairs. `userData.area` is read by
+          ShaderWarmup below. */}
+      <group visible={area === "ground"} userData={{ area: "ground" }}>
+        <GroundRooms />
+      </group>
       <Player />
       <AudioRig />
       <FollowCamera />

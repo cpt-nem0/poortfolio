@@ -109,10 +109,41 @@ function AboutContent() {
   );
 }
 
+/** Rooftop hoarding read-up (2026-10-19). The sign itself only reads as a
+ *  word-shape from the dollhouse camera, so [E] opens this. Copy stays in
+ *  the house's lowercase, slightly-too-honest voice. */
+const CONSTRUCTION_PLAN = [
+  "a terrace with string lights",
+  "the town skyline, the one from the way in",
+  "a paper plane you fold, write on, and throw into the night to say hi",
+];
+function ConstructionContent() {
+  return (
+    <div className="flex flex-col gap-5 text-xs leading-relaxed text-[#9d8fd8]">
+      <p>
+        the plan for up here was good. it was going to be the best room in the house.
+      </p>
+      <ul className="flex flex-col gap-1.5 border-l border-[#453a63] pl-3">
+        {CONSTRUCTION_PLAN.map((line) => (
+          <li key={line} className="text-[#cfc6ee]">
+            — {line}
+          </li>
+        ))}
+      </ul>
+      <p>
+        then the architect went downstairs to &ldquo;quickly&rdquo; build a kotatsu. that was a while ago.
+        the bricks arrived. the cement arrived. the motivation is in transit.
+      </p>
+      <p className="text-[#ffd9a0]">come back after the next hyperfocus.</p>
+    </div>
+  );
+}
+
 const PANEL_TITLES = {
   projects: "things i've built",
   experience: "places i've worked",
   about: "who i am",
+  construction: "rooftop: under construction",
 } as const;
 
 export function StationPanel() {
@@ -141,6 +172,8 @@ export function StationPanel() {
           <ProjectsContent />
         ) : focus === "experience" ? (
           <ExperienceContent />
+        ) : focus === "construction" ? (
+          <ConstructionContent />
         ) : (
           <AboutContent />
         )}

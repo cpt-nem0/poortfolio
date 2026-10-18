@@ -1,4 +1,4 @@
-import { create } from "zustand";
+import { create, type StoreApi, type UseBoundStore } from "zustand";
 
 export type NowPlaying = {
   kind: "ambient" | "preview";
@@ -22,7 +22,11 @@ type AudioState = {
   setError: (error: string | null) => void;
 };
 
-export const useAudioStore = create<AudioState>((set) => ({
+// HMR-stable singleton (dev) — see runtime.ts's playerPosition note: a
+// re-evaluated module would otherwise create a second store, splitting the
+// r3f tree and the DOM HUD across two states.
+const g = globalThis as unknown as { __3amAudioStore?: UseBoundStore<StoreApi<AudioState>> };
+export const useAudioStore = (g.__3amAudioStore ??= create<AudioState>((set) => ({
   unlocked: false,
   muted: false,
   paused: false,
@@ -33,4 +37,4 @@ export const useAudioStore = create<AudioState>((set) => ({
   setPaused: (paused) => set({ paused }),
   setNowPlaying: (nowPlaying) => set({ nowPlaying }),
   setError: (error) => set({ error }),
-}));
+})));

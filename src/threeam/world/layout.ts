@@ -31,8 +31,13 @@ export type Area = {
 };
 
 const WALL_T = 0.2; // interior wall thickness
-const DOOR_LO = 2.2; // doorway gap on z: [DOOR_LO, DOOR_HI]
-const DOOR_HI = 3.8;
+// Exported (COMMON KOTATSU PASS): the shared interior-divider doorway gap is
+// the east-west walk path across the whole front row (bedroom door at x=8,
+// music door at x=16), so any room dressed between them has to keep this
+// z-band clear — furniture.test.ts now sweeps it with the real collision
+// API, and CommonArea.tsx derives its north-cushion stand-off from DOOR_HI.
+export const DOOR_LO = 2.2; // doorway gap on z: [DOOR_LO, DOOR_HI]
+export const DOOR_HI = 3.8;
 
 /** Interior dividing wall at `x` with a doorway gap, spanning depth `d`.
  *  `doorLo`/`doorHi` default to the shared interior-divider gap (used by
@@ -371,6 +376,22 @@ const GK_WALL_LO: Rect = { x: 8, z: 6, w: GENKAN_DOOR_LO - 8, d: 0.2 }; // wall 
 const GK_WALL_HI: Rect = { x: GENKAN_DOOR_HI, z: 6, w: 16 - GENKAN_DOOR_HI, d: 0.2 }; // wall east of the inner doorway
 const GK_FRONT_WALL: Rect = { x: 8, z: 8.1, w: 8, d: 0.2 }; // solid, no gap — front door blocked
 
+// NORTH-WALL DRESSING (owner ask, 2026-10-19: "fill that area a bit").
+// The only piece of that dressing with a real footprint on the floor is a
+// low step-stool you sit on to put shoes on — floor furniture you can walk
+// into, so it gets a collider (the shoe-rack/umbrella-stand precedent in
+// `furniture` below; everything else on that wall is hung decor at
+// y ≥ 0.9 and needs none). Exported so Genkan.tsx derives the mesh from
+// this rect instead of re-hardcoding it.
+//
+// Placement invariants (furniture.test.ts's genkan block asserts all of
+// them): inside GENKAN_ROOM (x8-16, z6.2-8.1); x-min 9.4 leaves a 0.10m
+// gap east of the shoe rack's x-max (9.3); x-max 10.2 stays 1.2m west of
+// the inner doorway, so it never touches the x11.3-12.8 front-door↔doorway
+// walk line; z-min is the divider's own genkan-side face (6.2), with the
+// rendered stool itself sitting 8mm proud of it.
+export const GENKAN_STOOL_RECT: Rect = { x: 9.4, z: 6.2, w: 0.8, d: 0.34 };
+
 // void backstops — see the LAYOUT V2 comment above for why these exist:
 // x8-16 is the only real room at these new z-bands, so the flanks (bedroom/
 // engawa's x<8, music's x>16) need an explicit block once `bounds` grows
@@ -435,6 +456,67 @@ const SR_WALL_S_HI: Rect = {
   w: STAIR_ROOM.x + STAIR_ROOM.w - STAIR_ROOM_DOOR_HI,
   d: WALL_T,
 };
+
+// ── COMMON KOTATSU PASS (this pass, owner-approved design: the common
+// area becomes a Japanese kotatsu living room — "a chill, warm, cozy place
+// where the boys hang out at 3am"). Five new solid-furniture rects; the
+// tatami rug and the stair-approach rug stay visual-only (house convention:
+// rugs never collide). Meshes in CommonArea.tsx / Kotatsu.tsx derive every
+// position from these consts — none of these numbers are re-typed there.
+//
+// Two walk paths are hard constraints and no rect may enter either:
+//   * north–south, x WS_DOOR_LO..GENKAN_DOOR_HI (11.35–12.7) for all z —
+//     the workstation door at the north and the genkan door at the south.
+//   * east–west, z DOOR_LO..DOOR_HI (2.2–3.8) for all x — the shared
+//     interior-divider gap (bedroom door at x=8, music door at x=16).
+//
+//   - KOTATSU SET (SW quadrant): one rect covering the table AND its four
+//     zabuton. Its z-band is pinned by both walk paths at once: the north
+//     cushion's own edge (z 3.875) must stay south of DOOR_HI (3.8) by at
+//     least 0.05 → rect z-min 3.85; the south cushion must stay north of
+//     the room's own south wall (z 6) → rect z-max 5.95. That leaves
+//     exactly 2.1m of depth, which is why the set's center lands at z 4.9
+//     (5cm south of the spec'd 4.85) and the cushions tuck slightly under
+//     the futon drape rather than sitting a clean 0.3m off the table edge.
+//     x-max 10.9 is 0.45m clear of the north–south band's own x-min.
+//   - TOKONOMA (north wall, west of the workstation door): plinth + back
+//     panel + hanging scroll + ikebana + paper lantern. x 8.6–10.9 (0.45m
+//     clear of the band), depth 0.6 (plinth is 0.55 deep; the extra 5cm is
+//     stand-off so the camera-facing face isn't flush with the collider).
+//   - TANSU (north wall, east of the workstation door): stepped chest,
+//     x 12.9–14.4 — 0.2m east of the band and 0.25m west of the stair
+//     flight's own rect (x-min 14.65), both over the 0.2m minimum.
+//   - ANDON floor lantern (SE, by the genkan door's east jamb). Spec'd at
+//     z≈5.5; moved north to z 4.7–5.1 so it clears the pre-existing
+//     "south walkway around the old coffee corner" probes at (13.15,5.5)
+//     and (13.8,5.55) — see the report. Still 0.4m east of the genkan
+//     door's own x-max (12.7).
+//   - SE POTTED TREE: the moved PLANT PASS tree, hugging the SE corner
+//     (x-max 15.9 = the music divider's own west face, z-max 5.96 = the
+//     south wall's). Clear of the stair-approach rug and the music door.
+const COMMON_KOTATSU_RECT: Rect = { x: 8.6, z: 3.85, w: 2.3, d: 2.1 };
+const COMMON_TOKONOMA_RECT: Rect = { x: 8.6, z: 0, w: 2.3, d: 0.6 };
+const COMMON_TANSU_RECT: Rect = { x: 12.9, z: 0, w: 1.5, d: 0.5 };
+const COMMON_ANDON_RECT: Rect = { x: 13.1, z: 4.7, w: 0.4, d: 0.4 };
+// SE-WALL LIGHTING PASS (owner: "we need more lighting"): a second, smaller
+// andon in the room's SW corner — the same <Andon> component at scale 0.8,
+// so its outer cap footprint is exactly (0.35 * 0.8) + 0.06 = 0.34, which
+// is this rect. Sits WEST of the kotatsu set (its x-max 8.49 is 0.11m clear
+// of the set's x-min 8.6) and north of the south wall (z-max 5.89 < 6).
+// Clear of both walk bands by construction (x < WS_DOOR_LO, z > DOOR_HI).
+const COMMON_ANDON2_RECT: Rect = { x: 8.15, z: 5.55, w: 0.34, d: 0.34 };
+const COMMON_SE_TREE_RECT: Rect = { x: 15.24, z: 5.3, w: 0.66, d: 0.66 };
+/** Re-exported as one object so CommonArea.tsx/Kotatsu.tsx can derive every
+ *  mesh position from the live rects (house rule: colliders are the single
+ *  source of truth; meshes never re-hardcode a rect's numbers). */
+export const COMMON_RECTS = {
+  kotatsu: COMMON_KOTATSU_RECT,
+  tokonoma: COMMON_TOKONOMA_RECT,
+  tansu: COMMON_TANSU_RECT,
+  andon: COMMON_ANDON_RECT,
+  andon2: COMMON_ANDON2_RECT,
+  seTree: COMMON_SE_TREE_RECT,
+} as const;
 
 const GROUND: Area = {
   id: "ground",
@@ -567,7 +649,26 @@ const GROUND: Area = {
     // here (SE corner, east divider), MOVED to the workstation's west-wall
     // TBD slot — owner feedback wave, T8 finale item 10 — see the
     // workstation furniture block below.)
-    { x: 9.97, z: 5.32, w: 0.66, d: 0.66 }, // potted tree (south wall) — PLANT PASS; its old neighbors (EVA shrine, coffee counter) migrated out to the workstation
+    // ── COMMON KOTATSU PASS (owner-approved: dress the common area as a
+    // Japanese kotatsu living room). Five rects, all inside the room's own
+    // interior (x 8–16, z 0–6) and all clear of the room's two walk paths:
+    // the north–south band x 11.35–12.7 (workstation door north ↔ genkan
+    // door south) and the east–west band z DOOR_LO–DOOR_HI (bedroom door
+    // west ↔ music door east). See COMMON_* consts above `GROUND` for the
+    // per-rect clearance arithmetic; furniture.test.ts sweeps both bands
+    // with the real `isBlocked` instead of trusting the numbers here.
+    COMMON_KOTATSU_RECT,
+    COMMON_TOKONOMA_RECT,
+    COMMON_TANSU_RECT,
+    COMMON_ANDON_RECT,
+    // SE-WALL LIGHTING PASS: the SW-corner sibling andon (see the rect's
+    // own comment above for the scale arithmetic and its clearances).
+    COMMON_ANDON2_RECT,
+    // potted tree — PLANT PASS, MOVED this pass: its old south-wall spot
+    // ({9.97,5.32,0.66,0.66}) is inside the kotatsu set's footprint now, so
+    // it relocates to the room's SE corner (COMMON_SE_TREE_RECT), clear of
+    // the stair-approach rug (z 2.755–3.605) and the music doorway band.
+    COMMON_SE_TREE_RECT,
     // staircase to the roof — full flight footprint (shallow 10-step run
     // along the east divider). Depth is capped so the expanded blocking
     // (d + player radius = 2.91) stays clear of the music doorway band
@@ -697,6 +798,12 @@ const GROUND: Area = {
     // furniture) — layout-v2.test.ts's live sweep re-verifies both.
     { x: 8.3, z: 6.375, w: 1.0, d: 0.35 }, // genkan shoe rack, NW corner
     { x: 14.45, z: 7.35, w: 0.3, d: 0.3 }, // genkan umbrella stand, SE corner
+    // North-wall dressing pass: the shoe step-stool (see GENKAN_STOOL_RECT
+    // above for the placement invariants). The wall shelf, console shelf,
+    // framed print, coat rail and noren strip that land in the same pass
+    // are hung decor — nothing of them reaches the floor — so they stay
+    // collider-free, like the doormat.
+    GENKAN_STOOL_RECT,
   ],
   rooms: [
     { id: "bedroom", rect: { x: 0, z: 0, w: 8, d: 6 } },
@@ -704,6 +811,35 @@ const GROUND: Area = {
     { id: "music", rect: { x: 16, z: 0, w: 6, d: 6 } },
   ],
 };
+
+// Rooftop "under construction" dressing. The terrace reads as a live
+// building site: a standing hoarding board, a traffic cone, a brick pallet,
+// cement sacks and a mortar bucket. Everything sits OFF the stair-room
+// door's exit line (door gap x STAIR_ROOM_DOOR_LO–HI at z 2.75; the player
+// exits south, straight down x=12) and ≥0.3m clear of its neighbours.
+// Roof.tsx derives every mesh position from these rects — none of these
+// numbers are retyped there.
+//
+// HOARDING (replaces the original tiny A-frame, owner 2026-10-19: "the text
+// on that under construction sign is not visible or readable"): a 1.56m
+// plywood panel on two posts, footprint incl. posts below. Its x-min is
+// STAIR_ROOM_DOOR_HI + 0.25 so the doorway stays clear, and its x-MAX is
+// capped at 14.5 — 0.1m west of the stairs-down portal trigger
+// ({x:14.6,z:3.0,w:1.2,d:0.7}, shared with the ground floor), which a
+// furniture rect may never overlap or the player can't stand on the trigger
+// to go back down (furniture.test.ts asserts exactly that). That cap, not
+// taste, is what sets the board's width.
+export const ROOF_SIGN_RECT: Rect = { x: 12.85, z: 2.95, w: 1.65, d: 0.2 };
+export const ROOF_CONE_RECT: Rect = { x: 10.85, z: 3.35, w: 0.3, d: 0.3 };
+// brick pallet (3 courses + a fallen brick + a leaning shovel)
+export const ROOF_BRICKS_RECT: Rect = { x: 13.4, z: 4.4, w: 1.0, d: 0.8 };
+// stack of cement sacks, 0.3m east of the pallet (that gap is narrower than
+// the player's 0.7m diameter, so the caution tape strung across it in
+// Roof.tsx needs no collider of its own — nothing can walk through there).
+export const ROOF_SACKS_RECT: Rect = { x: 14.7, z: 4.55, w: 0.7, d: 0.6 };
+// mortar bucket + trowel, west side of the terrace beside the cone (the
+// door's exit line runs x 11.4–12.6, so the bucket sits west of 11.0).
+export const ROOF_BUCKET_RECT: Rect = { x: 10.6, z: 4.75, w: 0.32, d: 0.32 };
 
 const ROOF: Area = {
   id: "roof",
@@ -723,6 +859,11 @@ const ROOF: Area = {
   furniture: [
     // the same staircase flight emerges here — same footprint as on ground
     { x: 14.65, z: 0, w: 1.1, d: 2.56 },
+    ROOF_SIGN_RECT,
+    ROOF_CONE_RECT,
+    ROOF_BRICKS_RECT,
+    ROOF_SACKS_RECT,
+    ROOF_BUCKET_RECT,
   ],
   rooms: [{ id: "rooftop", rect: { x: 8, z: 0, w: 8, d: 6 } }],
 };

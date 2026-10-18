@@ -1470,6 +1470,13 @@ const GLYPHS = {
   D: ["####.", "#...#", "#...#", "#...#", "#...#", "#...#", "####."],
   C: [".####", "#....", "#....", "#....", "#....", "#....", ".####"],
   H: ["#...#", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"],
+  // added for the rooftop "UNDER CONSTRUCTION" sign (2026-10-19)
+  U: ["#...#", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."],
+  E: ["#####", "#....", "#....", "####.", "#....", "#....", "#####"],
+  R: ["####.", "#...#", "#...#", "####.", "#.#..", "#..#.", "#...#"],
+  O: [".###.", "#...#", "#...#", "#...#", "#...#", "#...#", ".###."],
+  S: [".####", "#....", "#....", ".###.", "....#", "....#", "####."],
+  T: ["#####", "..#..", "..#..", "..#..", "..#..", "..#..", "..#.."],
 };
 function glyphWidth(ch) {
   return GLYPHS[ch] ? 5 : 3; // space (or any unmapped char) is a 3-unit blank
@@ -1797,9 +1804,141 @@ function pinnedPhoto(x, y) {
   return c;
 }
 
+/* ---- tokonoma hanging scrolls (common area alcove): two kakejiku 32×96 —
+   cream washi paper panel between deep-teal silk mounting strips (top +
+   bottom, ~6px each; reuses the module's existing TEAL so the alcove ties
+   into the room's other teal accents). Ink-wash idiom borrows directly from
+   posterMountainRidge's RIDGE_LAYERS (lighter tone = further layer, array
+   order back-to-front so nearer layers override) and PALETTE's night900/
+   night500 ink tiers. ---- */
+const SCROLL_H = 96, SCROLL_MOUNT_H = 6;
+const SCROLL_SEAL_X0 = 24, SCROLL_SEAL_Y0 = 74; // shared 4×4 red seal, bottom-right of the paper
+
+function scrollMount(x, y, seed) {
+  let f = 0.88 + hash2(x, y, seed) * 0.14;
+  if (y % 2 === 0) f *= 0.93; // woven silk banding
+  return shade(TEAL, f);
+}
+
+function scrollWashi(x, y, seed) {
+  let f = 0.87 + hash2(x, y, seed) * 0.08; // aged cream, not bright white
+  if (hash2(x, y, seed + 1) > 0.965) f *= 0.85; // occasional darker fibre fleck
+  return shade(PALETTE.cream100, f);
+}
+
+function scrollSeal(x, ry, seed) {
+  const sx = x - SCROLL_SEAL_X0, sy = ry - SCROLL_SEAL_Y0;
+  if (sx < 0 || sx > 3 || sy < 0 || sy > 3) return null;
+  return shade(PALETTE.red500, 0.72 + hash2(x, ry, seed) * 0.2);
+}
+
+/* 1. ink landscape — DELETED 2026-10-19 (owner locked the ensō; the texture
+   and its JOBS entry were removed together so the next generator run can't
+   resurrect it — HANDOFF §7 bug class 5). */
+
+/* 2. enso: a single open, uneven zen brush circle (thick brush-start, thin
+   dry-brush end) centred upper-middle of the paper, a short column of
+   abstract ink marks below it (NOT real kanji — plain brush blots), same
+   seal + mount treatment the deleted ink landscape used. */
+const SCROLL_ENSO_MARKS = [
+  { cy: 46, w: 7, dx: 0 }, { cy: 52, w: 5, dx: 1 },
+  { cy: 58, w: 6, dx: -1 }, { cy: 64, w: 4, dx: 0 },
+];
+function scrollEnso(x, y) {
+  if (y < SCROLL_MOUNT_H || y >= SCROLL_H - SCROLL_MOUNT_H) return scrollMount(x, y, 911);
+  const ry = y - SCROLL_MOUNT_H;
+  let c = scrollWashi(x, y, 912);
+
+  const cx = 16, cy = 27, R = 11;
+  const dx = x - cx, dy = ry - cy;
+  const angle = Math.atan2(dy, dx);
+  const wobble = (hash2(Math.round((angle + Math.PI) * 6), 0, 913) - 0.5) * 1.6; // slightly uneven ring
+  const rr = Math.sqrt(dx * dx + dy * dy);
+  const startAngle = -2.5, sweep = 5.1; // ~90% of the circle; the rest is the open end
+  const delta = ((angle - startAngle) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+  if (delta <= sweep) {
+    const t = delta / sweep; // 0 = brush start (thick), 1 = brush end (thin)
+    const half = (2.6 - 1.9 * t) / 2;
+    if (Math.abs(rr - (R + wobble)) < half && hash2(x, y, 914) > t * 0.45) {
+      c = shade(PALETTE.night900, 1.15 + hash2(x, y, 915) * 0.1); // dry-brush gaps grow toward the thin end
+    }
+  }
+
+  for (const m of SCROLL_ENSO_MARKS) {
+    if (ry >= m.cy && ry < m.cy + 3) {
+      const half = m.w / 2 + hash2(x, ry, 916) * 0.6;
+      if (Math.abs(x - (16 + m.dx)) < half && hash2(x, y, 917) > 0.12) c = shade(PALETTE.night900, 1.05);
+    }
+  }
+
+  const seal = scrollSeal(x, ry, 918);
+  if (seal) c = seal;
+  return c;
+}
+
 /* Only textures referenced by src/ belong here — a JOBS entry for a deleted
    PNG silently resurrects it on the next generator run. Prune both together.
    (Variant fns for rejected style-gate options are kept below for reference.) */
+/* ---- rooftop "UNDER CONSTRUCTION" hoarding panel 156×100 (owner, 2026-10-19:
+   "the text on that under construction sign is not visible or readable").
+   TWO faults in the old 96×40 plank version:
+     1. every special-cased branch returned a hex STRING where writePng wants
+        an [r,g,b] array — pngjs coerced `png.data[i] = "#"` to 0 and took the
+        alpha from the string's 4th character, so the painted text and BOTH
+        hazard bands were written near-fully transparent. The letters were
+        literally not in the file. Everything below returns arrays.
+     2. the panel was 0.62m wide on screen (~5px per 5×7 glyph at the
+        dollhouse camera). The board is now a 1.56m × 1.0m standing hoarding.
+   Texture aspect 156:100 matches the panel's 1.56m:1.0m exactly, so glyphs
+   are not stretched. Black #111 ink on safety yellow #e3b23c (max contrast,
+   no mid-tones), 3-texel black border, diagonal black/yellow hazard chevrons
+   in a 12-texel band along the BOTTOM only. "UNDER" is drawn at 5× pixel
+   scale (25×35 texels per glyph ≈ 22px on screen) and carries the
+   legibility; "CONSTRUCTION" is 12 characters wide, so 2× (10×14) is the
+   largest scale that fits across a panel this wide — it reads as a word
+   shape rather than letter-by-letter, which is the hard limit of this
+   camera. ---- */
+const SIGN_W = 156;
+const SIGN_H = 100;
+const SIGN_BORDER = 3;
+const SIGN_HAZARD_H = 12; // bottom band only (6-texel chevrons at 2× scale)
+const SIGN_YELLOW = "#e3b23c";
+const SIGN_INK = "#111111";
+const SIGN_NAIL = "#5a5047";
+const SIGN_L1 = { text: "UNDER", scale: 5 };
+const SIGN_L2 = { text: "CONSTRUCTION", scale: 2 };
+// textPixel advances 6 font units per character and the last one only
+// occupies 5 — same measure the glyph table uses, so the lines stay centred
+// if a scale ever changes.
+const signTextW = (l) => (l.text.length * 6 - 1) * l.scale;
+const SIGN_L1_X = Math.floor((SIGN_W - signTextW(SIGN_L1)) / 2);
+const SIGN_L2_X = Math.floor((SIGN_W - signTextW(SIGN_L2)) / 2);
+const SIGN_L1_Y = 13;
+const SIGN_L2_Y = SIGN_L1_Y + 7 * SIGN_L1.scale + 12;
+const SIGN_HAZ_TOP = SIGN_H - SIGN_BORDER - SIGN_HAZARD_H;
+function signUnderConstruction(x, y) {
+  // 3-texel black border on all four edges
+  if (x < SIGN_BORDER || x >= SIGN_W - SIGN_BORDER || y < SIGN_BORDER || y >= SIGN_H - SIGN_BORDER) {
+    return hexToRgb(SIGN_INK);
+  }
+  // bottom hazard band: 45° chevrons, 6 texels yellow / 6 black
+  if (y >= SIGN_HAZ_TOP) {
+    return hexToRgb(Math.floor((x + (SIGN_H - y)) / 6) % 2 === 0 ? SIGN_YELLOW : SIGN_INK);
+  }
+  // nail heads, 2×2, just inside the top corners and above the hazard band
+  const nailX = x - SIGN_BORDER < 4 || SIGN_W - SIGN_BORDER - x <= 4;
+  const nailY = y - SIGN_BORDER < 3 || SIGN_HAZ_TOP - y <= 3;
+  if (nailX && nailY && (x + y) % 2 === 0) return hexToRgb(SIGN_NAIL);
+  // the paint, in flat #111 — no shading on the ink, contrast is the point
+  if (textPixel(x, y, SIGN_L1.text, SIGN_L1_X, SIGN_L1_Y, SIGN_L1.scale)) return hexToRgb(SIGN_INK);
+  if (textPixel(x, y, SIGN_L2.text, SIGN_L2_X, SIGN_L2_Y, SIGN_L2.scale)) return hexToRgb(SIGN_INK);
+  // plywood ground: safety yellow with a faint vertical grain streak so it
+  // doesn't read as flat vector art (kept inside ±4% so the ink still pops)
+  const streak = hash2(Math.floor(x / 3), Math.floor(y / 7), 781);
+  const f = (streak > 0.93 ? 0.94 : streak < 0.07 ? 1.05 : 1) + hash2(x, y, 782) * 0.03;
+  return shade(SIGN_YELLOW, f);
+}
+
 const JOBS = [
   ["neon-3am", 40, 16, neonSign],
   ["neon-shipped", 62, 22, neonShipped],
@@ -1856,6 +1995,8 @@ const JOBS = [
   ["corkboard-doc-certificate", DOC_W, DOC_H, certificatePaper],
   ["corkboard-doc-offer-letter", DOC_W, DOC_H, offerLetterPaper],
   ["corkboard-photo-polaroid", POLA_W, POLA_H, pinnedPhoto],
+  ["scroll-enso", 32, 96, scrollEnso],
+  ["sign-under-construction", SIGN_W, SIGN_H, signUnderConstruction],
 ];
 
 for (const [name, w, h, fn] of JOBS) {
